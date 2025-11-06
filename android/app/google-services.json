@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "647140541459",
+    "project_id": "flutter-ibalik",
+    "storage_bucket": "flutter-ibalik.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:647140541459:android:22adef3a8b03192d572be6",
+        "android_client_info": {
+          "package_name": "com.example.flutter_ibalik"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCqi3cD6aEXjyycbwtp9k3hAoL6VPn3oTg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
