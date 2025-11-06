@@ -172,7 +172,7 @@ class _LoginPageState extends State<LoginPage> {
                                       ),
                                     );
                                   },
-                                  transitionDuration: const Duration(milliseconds: 400),
+                                  transitionDuration: const Duration(milliseconds: 200),
                                 ),
                               );
                             },

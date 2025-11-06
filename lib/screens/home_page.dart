@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 import 'login_page.dart';
 import 'notifications_page.dart';
+import 'posts_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -54,9 +55,21 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onNavItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+    // Navigate to Posts page when Posts nav item is tapped
+    if (index == 1) {
+      Navigator.push(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) => const PostsPage(),
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
+        ),
+      );
+    } else {
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
   }
 
   @override
@@ -103,8 +116,10 @@ class _HomePageState extends State<HomePage> {
                                 onPressed: () {
                                   Navigator.push(
                                     context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const NotificationsPage(),
+                                    PageRouteBuilder(
+                                      pageBuilder: (context, animation, secondaryAnimation) => const NotificationsPage(),
+                                      transitionDuration: Duration.zero,
+                                      reverseTransitionDuration: Duration.zero,
                                     ),
                                   );
                                 },
@@ -185,7 +200,16 @@ class _HomePageState extends State<HomePage> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: OutlinedButton.icon(
-                                  onPressed: () {},
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      PageRouteBuilder(
+                                        pageBuilder: (context, animation, secondaryAnimation) => const PostsPage(),
+                                        transitionDuration: Duration.zero,
+                                        reverseTransitionDuration: Duration.zero,
+                                      ),
+                                    );
+                                  },
                                   icon: const Icon(Icons.search, color: Colors.black87),
                                   label: const Text(
                                     'Browse Posts',
