@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'item_details_page.dart';
+import 'post_found_item_page.dart';
 
 class PostsPage extends StatefulWidget {
   const PostsPage({super.key});
@@ -14,6 +16,20 @@ class _PostsPageState extends State<PostsPage> {
   // Filter states
   String _selectedCategory = 'All';
   String _selectedLocation = 'All Locations';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      setState(() {}); // Rebuild when search text changes
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   final List<Map<String, dynamic>> _foundItems = [
     {
@@ -101,10 +117,34 @@ class _PostsPageState extends State<PostsPage> {
     }
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
+  // Filter items based on selected category and location
+  List<Map<String, dynamic>> _getFilteredItems() {
+    return _foundItems.where((item) {
+      bool matchesCategory = _selectedCategory == 'All' || _getItemCategory(item) == _selectedCategory;
+      bool matchesLocation = _selectedLocation == 'All Locations' || item['location'] == _selectedLocation;
+      bool matchesSearch = _searchController.text.isEmpty || 
+          item['name'].toLowerCase().contains(_searchController.text.toLowerCase()) ||
+          item['description'].toLowerCase().contains(_searchController.text.toLowerCase());
+      
+      return matchesCategory && matchesLocation && matchesSearch;
+    }).toList();
+  }
+
+  // Get category for an item based on its icon
+  String _getItemCategory(Map<String, dynamic> item) {
+    IconData icon = item['image'];
+    if (icon == Icons.phone_iphone || icon == Icons.headphones || icon == Icons.power) {
+      return 'Electronics';
+    } else if (icon == Icons.backpack) {
+      return 'Bags';
+    } else if (icon == Icons.book) {
+      return 'Documents';
+    } else if (icon == Icons.account_balance_wallet) {
+      return 'Personal Items';
+    } else if (icon == Icons.umbrella || icon == Icons.water_drop) {
+      return 'Accessories';
+    }
+    return 'Personal Items';
   }
 
   void _showFilterBottomSheet() {
@@ -380,12 +420,50 @@ class _PostsPageState extends State<PostsPage> {
             ),
             // Items List
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: _foundItems.length,
-                itemBuilder: (context, index) {
-                  final item = _foundItems[index];
-                  return _buildItemCard(item);
+              child: Builder(
+                builder: (context) {
+                  final filteredItems = _getFilteredItems();
+                  
+                  if (filteredItems.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.search_off,
+                            size: 64,
+                            color: Colors.grey[400],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No items found',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Try adjusting your filters',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: filteredItems.length,
+                    itemBuilder: (context, index) {
+                      final item = filteredItems[index];
+                      return _buildItemCard(item);
+                    },
+                  );
                 },
               ),
             ),
@@ -393,7 +471,16 @@ class _PostsPageState extends State<PostsPage> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () {
+          Navigator.push(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (context, animation, secondaryAnimation) => const PostFoundItemPage(),
+              transitionDuration: Duration.zero,
+              reverseTransitionDuration: Duration.zero,
+            ),
+          );
+        },
         backgroundColor: const Color(0xFF4318FF),
         child: const Icon(Icons.add, color: Colors.white),
       ),
@@ -428,94 +515,107 @@ class _PostsPageState extends State<PostsPage> {
   }
 
   Widget _buildItemCard(Map<String, dynamic> item) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) => ItemDetailsPage(item: item),
+            transitionDuration: Duration.zero,
+            reverseTransitionDuration: Duration.zero,
           ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Item Image
-          Container(
-            width: 70,
-            height: 70,
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(8),
+        );
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
-            child: Icon(item['image'], color: Colors.grey[600], size: 32),
-          ),
-          const SizedBox(width: 16),
-          // Item Details
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item['name'],
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  item['description'],
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey[600],
-                    height: 1.4,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(Icons.location_on, size: 14, color: Colors.grey[500]),
-                    const SizedBox(width: 4),
-                    Text(
-                      item['location'],
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Icon(Icons.access_time, size: 14, color: Colors.grey[500]),
-                    const SizedBox(width: 4),
-                    Text(
-                      item['time'],
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Found by ${item['foundBy']}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[500],
-                  ),
-                ),
-              ],
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Item Image
+            Container(
+              width: 70,
+              height: 70,
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(item['image'], color: Colors.grey[600], size: 32),
             ),
-          ),
-        ],
+            const SizedBox(width: 16),
+            // Item Details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item['name'],
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    item['description'],
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[600],
+                      height: 1.4,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.location_on, size: 14, color: Colors.grey[500]),
+                      const SizedBox(width: 4),
+                      Text(
+                        item['location'],
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Icon(Icons.access_time, size: 14, color: Colors.grey[500]),
+                      const SizedBox(width: 4),
+                      Text(
+                        item['time'],
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Found by ${item['foundBy']}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
