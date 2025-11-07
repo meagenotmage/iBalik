@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../utils/page_transitions.dart';
-import 'claim_item_page.dart';
+import '../../utils/page_transitions.dart';
+import '../claims/claim_item_page.dart';
 
 class ItemDetailsPage extends StatelessWidget {
   final Map<String, dynamic> item;

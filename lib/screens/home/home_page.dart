@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
-import '../utils/page_transitions.dart';
-import 'login_page.dart';
-import 'notifications_page.dart';
-import 'posts_page.dart';
-import 'item_details_page.dart';
-import 'post_found_item_page.dart';
-import 'claims_page.dart';
+import '../../services/auth_service.dart';
+import '../../utils/page_transitions.dart';
+import '../auth/login_page.dart';
+import '../notifications/notifications_page.dart';
+import '../posts/posts_page.dart';
+import '../posts/item_details_page.dart';
+import '../posts/post_found_item_page.dart';
+import '../claims/claims_page.dart';
+import '../game/game_hub_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -92,6 +93,12 @@ class _HomePageState extends State<HomePage> {
       Navigator.push(
         context,
         SmoothPageRoute(page: const ClaimsPage()),
+      );
+    } else if (index == 3) {
+      // Navigate to Game Hub page
+      Navigator.push(
+        context,
+        SmoothPageRoute(page: const GameHubPage()),
       );
     } else {
       setState(() {

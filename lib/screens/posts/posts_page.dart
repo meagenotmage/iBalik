@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import '../utils/page_transitions.dart';
+import '../../utils/page_transitions.dart';
 import 'item_details_page.dart';
 import 'post_found_item_page.dart';
-import 'claims_page.dart';
+import '../claims/claims_page.dart';
+import '../game/game_hub_page.dart';
 
 class PostsPage extends StatefulWidget {
   const PostsPage({super.key});
@@ -117,8 +118,14 @@ class _PostsPageState extends State<PostsPage> {
         context,
         SmoothPageRoute(page: const ClaimsPage()),
       );
+    } else if (index == 3) {
+      // Navigate to Game Hub page
+      Navigator.push(
+        context,
+        SmoothPageRoute(page: const GameHubPage()),
+      );
     } else if (index != 1) {
-      // If it's not Posts, Home, or Claims, just update the selected state
+      // If it's not Posts, Home, Claims, or Game Hub, just update the selected state
       setState(() {
         _selectedIndex = index;
       });

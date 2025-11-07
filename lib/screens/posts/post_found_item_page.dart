@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../utils/page_transitions.dart';
-import 'drop_off_page.dart';
+import '../../utils/page_transitions.dart';
+import '../claims/drop_off_page.dart';
 import 'post_success_page.dart';
 
 class PostFoundItemPage extends StatefulWidget {

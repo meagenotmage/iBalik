@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../utils/page_transitions.dart';
-import 'home_page.dart';
+import '../../utils/page_transitions.dart';
+import '../home/home_page.dart';
 
 class ReturnSuccessPage extends StatelessWidget {
   const ReturnSuccessPage({super.key});

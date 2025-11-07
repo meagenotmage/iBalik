@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import '../utils/page_transitions.dart';
-import 'posts_page.dart';
+import '../../utils/page_transitions.dart';
+import '../posts/posts_page.dart';
 import 'claim_details_page.dart';
 import 'confirm_return_page.dart';
+import 'claim_review_page.dart';
+import '../game/game_hub_page.dart';
 
 class ClaimsPage extends StatefulWidget {
   const ClaimsPage({super.key});
@@ -219,6 +221,12 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
         context,
         SmoothPageRoute(page: const PostsPage()),
       );
+    } else if (index == 3) {
+      // Navigate to Game Hub
+      Navigator.push(
+        context,
+        SmoothPageRoute(page: const GameHubPage()),
+      );
     } else if (index != 2) {
       // For other tabs, just update the selected state
       setState(() {
@@ -279,6 +287,17 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
+          // Pending Claim - Student ID (Needs Review)
+          _buildPendingReviewClaimCard(
+            id: 'review_1',
+            title: 'Student ID - Jane Smith',
+            claimedBy: 'J. Smith',
+            submittedDate: '1/15/2024',
+            claimDescription: 'This is my student ID. I lost it yesterday near the gymnasium.',
+          ),
+          
+          const SizedBox(height: 16),
+          
           // Approved Claim - White Earphones
           _buildReceivedClaimCard(
             id: 'received_1',
@@ -300,6 +319,232 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
           // Successfully Returned Items Section
           _buildReceivedReturnedItemsSection(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPendingReviewClaimCard({
+    required String id,
+    required String title,
+    required String claimedBy,
+    required String submittedDate,
+    required String claimDescription,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF9E6),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                // Item Image
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.badge,
+                    color: Colors.grey[600],
+                    size: 40,
+                  ),
+                ),
+                
+                const SizedBox(width: 16),
+                
+                // Item Details
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              title,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFA726).withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Text(
+                              'Needs Review',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFFF57C00),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.person_outline,
+                            size: 16,
+                            color: Colors.grey[600],
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Claimed by $claimedBy',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.access_time,
+                            size: 16,
+                            color: Colors.grey[600],
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Submitted $submittedDate',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Yellow warning box
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF3CD),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.info_outline,
+                    color: Color(0xFFF57C00),
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Tap to review details and decide',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFFF57C00),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          claimDescription,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.orange[800],
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 12),
+            
+            // Review Claim Button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    SmoothPageRoute(
+                      page: ClaimReviewPage(
+                        claimData: {
+                          'itemTitle': title,
+                          'claimerName': claimedBy,
+                          'claimerEmail': 'jane.smith@wvsu.edu.ph',
+                          'submittedDate': submittedDate,
+                          'claimDescription': claimDescription,
+                          'lostTime': 'Yesterday around 4 PM after basketball practice at the gymnasium',
+                          'uniqueFeatures': 'It has a small scratch on the bottom right corner and my photo shows me wearing the blue WVSU shirt',
+                          'studentNumber': '2021-12345',
+                          'proofImage': null, // Set to image URL if available
+                        },
+                      ),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFF57C00),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.rate_review, size: 20),
+                    SizedBox(width: 8),
+                    Text(
+                      'Review Claim',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
