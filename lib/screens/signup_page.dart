@@ -16,10 +16,13 @@ class _SignUpPageState extends State<SignUpPage> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _nameController = TextEditingController();
+  final _usernameController = TextEditingController();
   final AuthService _authService = AuthService();
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
   bool _isLoading = false;
+  bool _isCheckingUsername = false;
+  String? _usernameError;
 
   @override
   void dispose() {
@@ -27,7 +30,29 @@ class _SignUpPageState extends State<SignUpPage> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _nameController.dispose();
+    _usernameController.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkUsernameAvailability(String username) async {
+    if (username.isEmpty || username.length < 3) {
+      setState(() {
+        _usernameError = null;
+        _isCheckingUsername = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isCheckingUsername = true;
+    });
+
+    final isAvailable = await _authService.isUsernameAvailable(username);
+
+    setState(() {
+      _isCheckingUsername = false;
+      _usernameError = isAvailable ? null : 'Username is already taken';
+    });
   }
 
   void _handleSignUp() async {
@@ -41,6 +66,7 @@ class _SignUpPageState extends State<SignUpPage> {
         email: _emailController.text.trim(),
         password: _passwordController.text,
         fullName: _nameController.text.trim(),
+        username: _usernameController.text.trim(),
       );
 
       setState(() {
@@ -270,6 +296,77 @@ class _SignUpPageState extends State<SignUpPage> {
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Please enter your name';
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Username field
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Username',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF1A1A2E),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _usernameController,
+                        keyboardType: TextInputType.text,
+                        decoration: InputDecoration(
+                          hintText: 'Choose a unique username',
+                          hintStyle: const TextStyle(color: Colors.grey),
+                          filled: true,
+                          fillColor: const Color(0xFFF5F5F5),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
+                          suffixIcon: _isCheckingUsername
+                              ? const Padding(
+                                  padding: EdgeInsets.all(12),
+                                  child: SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  ),
+                                )
+                              : _usernameController.text.isNotEmpty && _usernameError == null && !_isCheckingUsername
+                                  ? const Icon(Icons.check_circle, color: Colors.green)
+                                  : null,
+                          errorText: _usernameError,
+                        ),
+                        onChanged: (value) {
+                          // Debounce username checking
+                          Future.delayed(const Duration(milliseconds: 500), () {
+                            if (value == _usernameController.text) {
+                              _checkUsernameAvailability(value);
+                            }
+                          });
+                        },
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter a username';
+                          }
+                          if (value.length < 3 || value.length > 20) {
+                            return 'Username must be 3-20 characters';
+                          }
+                          if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) {
+                            return 'Only letters, numbers, and underscores allowed';
+                          }
+                          if (_usernameError != null) {
+                            return _usernameError;
                           }
                           return null;
                         },

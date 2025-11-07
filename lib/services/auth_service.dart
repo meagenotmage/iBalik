@@ -11,11 +11,37 @@ class AuthService {
   // Auth state changes stream
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
+  // Check if username is available
+  Future<bool> isUsernameAvailable(String username) async {
+    try {
+      final querySnapshot = await _firestore
+          .collection('users')
+          .where('username', isEqualTo: username.toLowerCase())
+          .limit(1)
+          .get();
+      
+      return querySnapshot.docs.isEmpty;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Get username for current user
+  Future<String?> getUserUsername(String uid) async {
+    try {
+      final doc = await _firestore.collection('users').doc(uid).get();
+      return doc.data()?['username'] as String?;
+    } catch (e) {
+      return null;
+    }
+  }
+
   // Sign up with email and password
   Future<Map<String, dynamic>> signUpWithEmailAndPassword({
     required String email,
     required String password,
     required String fullName,
+    required String username,
   }) async {
     try {
       // Validate WVSU email
@@ -23,6 +49,24 @@ class AuthService {
         return {
           'success': false,
           'message': 'Please use your WVSU email address'
+        };
+      }
+
+      // Validate username (alphanumeric and underscore only, 3-20 characters)
+      final usernameRegex = RegExp(r'^[a-zA-Z0-9_]{3,20}$');
+      if (!usernameRegex.hasMatch(username)) {
+        return {
+          'success': false,
+          'message': 'Username must be 3-20 characters and contain only letters, numbers, and underscores'
+        };
+      }
+
+      // Check if username is available
+      final isAvailable = await isUsernameAvailable(username);
+      if (!isAvailable) {
+        return {
+          'success': false,
+          'message': 'Username is already taken. Please choose another one.'
         };
       }
 
@@ -40,6 +84,7 @@ class AuthService {
         'uid': userCredential.user?.uid,
         'email': email,
         'fullName': fullName,
+        'username': username.toLowerCase(),
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });

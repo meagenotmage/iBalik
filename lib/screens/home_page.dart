@@ -18,6 +18,34 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final AuthService _authService = AuthService();
   int _selectedIndex = 0;
+  String _userName = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    final user = _authService.currentUser;
+    if (user != null) {
+      // Try to get username from Firestore first
+      final username = await _authService.getUserUsername(user.uid);
+      
+      if (username != null && username.isNotEmpty) {
+        setState(() {
+          _userName = username;
+        });
+      } else {
+        // Fallback to display name or email
+        String fullName = user.displayName ?? user.email?.split('@')[0] ?? 'User';
+        String firstName = fullName.split(' ')[0];
+        setState(() {
+          _userName = firstName;
+        });
+      }
+    }
+  }
 
   Future<void> _handleSignOut() async {
     if (!mounted) return;
@@ -123,9 +151,9 @@ class _HomePageState extends State<HomePage> {
                             ],
                           ),
                           const SizedBox(height: 16),
-                          const Text(
-                            'Good morning',
-                            style: TextStyle(
+                          Text(
+                            _userName.isEmpty ? 'Good morning' : 'Good morning, $_userName',
+                            style: const TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
                               color: Colors.black87,
