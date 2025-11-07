@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import '../utils/page_transitions.dart';
 import 'drop_off_page.dart';
+import 'post_success_page.dart';
 
 class PostFoundItemPage extends StatefulWidget {
   const PostFoundItemPage({super.key});
@@ -630,9 +632,11 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text(
-                    'Continue to Drop-off',
-                    style: TextStyle(
+                  child: Text(
+                    _selectedAvailability == 'Keep with me' 
+                      ? 'Post Item and Earn Points' 
+                      : 'Continue to Drop-off',
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -776,22 +780,19 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
     
     // Navigate to drop-off page based on availability selection
     if (_selectedAvailability == 'Keep with me') {
-      // Post immediately without drop-off
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Success!'),
-          content: const Text('Your found item has been posted. You\'ll earn points once the owner claims it!'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context); // Close dialog
-                Navigator.pop(context); // Go back to posts page
-              },
-              child: const Text('OK'),
-            ),
-          ],
-        ),
+      // Post immediately and navigate to success page
+      final itemData = {
+        'title': _titleController.text,
+        'description': _descriptionController.text,
+        'category': _selectedCategory,
+        'location': _selectedLocation,
+        'date': _selectedDate,
+        'availability': _selectedAvailability,
+      };
+      
+      Navigator.push(
+        context,
+        SmoothPageRoute(page: PostSuccessPage(itemData: itemData)),
       );
     } else {
       // Navigate to drop-off page
@@ -814,11 +815,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
       
       Navigator.push(
         context,
-        PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => DropOffPage(itemData: itemData),
-          transitionDuration: Duration.zero,
-          reverseTransitionDuration: Duration.zero,
-        ),
+        SmoothPageRoute(page: DropOffPage(itemData: itemData)),
       );
     }
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/page_transitions.dart';
 import 'claim_item_page.dart';
 
 class ItemDetailsPage extends StatelessWidget {
@@ -343,11 +344,7 @@ class ItemDetailsPage extends StatelessWidget {
   void _showClaimDialog(BuildContext context) {
     Navigator.push(
       context,
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => ClaimItemPage(item: item),
-        transitionDuration: Duration.zero,
-        reverseTransitionDuration: Duration.zero,
-      ),
+      SmoothPageRoute(page: ClaimItemPage(item: item)),
     );
   }
 }

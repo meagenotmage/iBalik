@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../utils/page_transitions.dart';
 import 'item_details_page.dart';
 import 'post_found_item_page.dart';
+import 'claims_page.dart';
 
 class PostsPage extends StatefulWidget {
   const PostsPage({super.key});
@@ -109,8 +111,14 @@ class _PostsPageState extends State<PostsPage> {
   void _onNavItemTapped(int index) {
     if (index == 0) {
       Navigator.pop(context); // Go back to home
+    } else if (index == 2) {
+      // Navigate to Claims page
+      Navigator.push(
+        context,
+        SmoothPageRoute(page: const ClaimsPage()),
+      );
     } else if (index != 1) {
-      // If it's not Posts or Home, just update the selected state
+      // If it's not Posts, Home, or Claims, just update the selected state
       setState(() {
         _selectedIndex = index;
       });
@@ -474,11 +482,7 @@ class _PostsPageState extends State<PostsPage> {
         onPressed: () {
           Navigator.push(
             context,
-            PageRouteBuilder(
-              pageBuilder: (context, animation, secondaryAnimation) => const PostFoundItemPage(),
-              transitionDuration: Duration.zero,
-              reverseTransitionDuration: Duration.zero,
-            ),
+            SmoothPageRoute(page: const PostFoundItemPage()),
           );
         },
         backgroundColor: const Color(0xFF4318FF),
@@ -519,11 +523,7 @@ class _PostsPageState extends State<PostsPage> {
       onTap: () {
         Navigator.push(
           context,
-          PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => ItemDetailsPage(item: item),
-            transitionDuration: Duration.zero,
-            reverseTransitionDuration: Duration.zero,
-          ),
+          SmoothPageRoute(page: ItemDetailsPage(item: item)),
         );
       },
       borderRadius: BorderRadius.circular(12),

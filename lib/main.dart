@@ -19,7 +19,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'iBalik - Campus Lost & Found',
+      title: 'iBalik',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         useMaterial3: true,
@@ -38,13 +38,20 @@ class MyApp extends StatelessWidget {
             );
           }
           
-          // If user is logged in and email is verified, show home page
+          // Smooth fade transition when showing pages
+          Widget page;
           if (snapshot.hasData && snapshot.data!.emailVerified) {
-            return const HomePage();
+            page = const HomePage();
+          } else {
+            page = const LoginPage();
           }
           
-          // Otherwise show login page
-          return const LoginPage();
+          return AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            switchInCurve: Curves.easeInOut,
+            switchOutCurve: Curves.easeInOut,
+            child: page,
+          );
         },
       ),
     );

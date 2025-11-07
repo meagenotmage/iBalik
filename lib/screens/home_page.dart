@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
+import '../utils/page_transitions.dart';
 import 'login_page.dart';
 import 'notifications_page.dart';
 import 'posts_page.dart';
 import 'item_details_page.dart';
 import 'post_found_item_page.dart';
+import 'claims_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -16,16 +17,11 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final AuthService _authService = AuthService();
-  User? _user;
   int _selectedIndex = 0;
 
-  @override
-  void initState() {
-    super.initState();
-    _user = _authService.currentUser;
-  }
-
   Future<void> _handleSignOut() async {
+    if (!mounted) return;
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -38,13 +34,13 @@ class _HomePageState extends State<HomePage> {
           ),
           TextButton(
             onPressed: () async {
+              final navigator = Navigator.of(context);
               await _authService.signOut();
-              if (mounted) {
-                Navigator.of(context).pop();
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (context) => const LoginPage()),
-                );
-              }
+              if (!mounted) return;
+              navigator.pop();
+              navigator.pushReplacement(
+                SmoothReplacementPageRoute(page: const LoginPage()),
+              );
             },
             child: const Text(
               'Sign Out',
@@ -61,11 +57,13 @@ class _HomePageState extends State<HomePage> {
     if (index == 1) {
       Navigator.push(
         context,
-        PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => const PostsPage(),
-          transitionDuration: Duration.zero,
-          reverseTransitionDuration: Duration.zero,
-        ),
+        SmoothPageRoute(page: const PostsPage()),
+      );
+    } else if (index == 2) {
+      // Navigate to Claims page
+      Navigator.push(
+        context,
+        SmoothPageRoute(page: const ClaimsPage()),
       );
     } else {
       setState(() {
@@ -118,11 +116,7 @@ class _HomePageState extends State<HomePage> {
                                 onPressed: () {
                                   Navigator.push(
                                     context,
-                                    PageRouteBuilder(
-                                      pageBuilder: (context, animation, secondaryAnimation) => const NotificationsPage(),
-                                      transitionDuration: Duration.zero,
-                                      reverseTransitionDuration: Duration.zero,
-                                    ),
+                                    SmoothPageRoute(page: const NotificationsPage()),
                                   );
                                 },
                               ),
@@ -184,11 +178,7 @@ class _HomePageState extends State<HomePage> {
                                   onPressed: () {
                                     Navigator.push(
                                       context,
-                                      PageRouteBuilder(
-                                        pageBuilder: (context, animation, secondaryAnimation) => const PostFoundItemPage(),
-                                        transitionDuration: Duration.zero,
-                                        reverseTransitionDuration: Duration.zero,
-                                      ),
+                                      SmoothPageRoute(page: const PostFoundItemPage()),
                                     );
                                   },
                                   icon: const Icon(Icons.add, color: Colors.white),
@@ -214,11 +204,7 @@ class _HomePageState extends State<HomePage> {
                                   onPressed: () {
                                     Navigator.push(
                                       context,
-                                      PageRouteBuilder(
-                                        pageBuilder: (context, animation, secondaryAnimation) => const PostsPage(),
-                                        transitionDuration: Duration.zero,
-                                        reverseTransitionDuration: Duration.zero,
-                                      ),
+                                      SmoothPageRoute(page: const PostsPage()),
                                     );
                                   },
                                   icon: const Icon(Icons.search, color: Colors.black87),
@@ -261,7 +247,7 @@ class _HomePageState extends State<HomePage> {
                           TextButton(
                             onPressed: () {},
                             child: const Text(
-                              'View all >',
+                              'View all',
                               style: TextStyle(
                                 color: Color(0xFF4318FF),
                                 fontWeight: FontWeight.w600,
@@ -365,7 +351,7 @@ class _HomePageState extends State<HomePage> {
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 10,
                     offset: const Offset(0, -2),
                   ),
@@ -416,7 +402,7 @@ class _HomePageState extends State<HomePage> {
             label,
             style: TextStyle(
               fontSize: 10,
-              color: textColor.withOpacity(0.7),
+              color: textColor.withValues(alpha: 0.7),
               height: 1.3,
             ),
           ),
@@ -450,11 +436,7 @@ class _HomePageState extends State<HomePage> {
       onTap: () {
         Navigator.push(
           context,
-          PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => ItemDetailsPage(item: item),
-            transitionDuration: Duration.zero,
-            reverseTransitionDuration: Duration.zero,
-          ),
+          SmoothPageRoute(page: ItemDetailsPage(item: item)),
         );
       },
       borderRadius: BorderRadius.circular(12),
@@ -466,7 +448,7 @@ class _HomePageState extends State<HomePage> {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.03),
+              color: Colors.black.withValues(alpha: 0.03),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),

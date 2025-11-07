@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../utils/page_transitions.dart';
+import 'drop_off_success_page.dart';
 
 class DropOffPage extends StatefulWidget {
   final Map<String, dynamic> itemData;
@@ -563,23 +565,13 @@ class _DropOffPageState extends State<DropOffPage> {
   void _confirmDropOff() {
     final selectedStaff = _staffMembers.firstWhere((staff) => staff['id'] == _selectedStaffId);
     
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Success!'),
-        content: Text(
-          'Your item has been successfully posted and will be handed to ${selectedStaff['name']}.\n\nYou\'ve earned:\n• +15 Points\n• +25 Karma\n\nYou\'ll earn additional rewards when the owner claims the item!',
+    Navigator.push(
+      context,
+      SmoothPageRoute(
+        page: DropOffSuccessPage(
+          itemData: widget.itemData,
+          staffName: selectedStaff['name'],
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context); // Close dialog
-              Navigator.pop(context); // Go back to post page
-              Navigator.pop(context); // Go back to posts page
-            },
-            child: const Text('OK'),
-          ),
-        ],
       ),
     );
   }
