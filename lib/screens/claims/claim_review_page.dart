@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../utils/page_transitions.dart';
 
 class ClaimReviewPage extends StatelessWidget {
   final Map<String, dynamic> claimData;
@@ -42,6 +41,7 @@ class ClaimReviewPage extends StatelessWidget {
         toolbarHeight: 70,
       ),
       body: SingleChildScrollView(
+        physics: const ClampingScrollPhysics(),
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

@@ -128,6 +128,7 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
         toolbarHeight: 70,
       ),
       body: SingleChildScrollView(
+        physics: const ClampingScrollPhysics(),
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

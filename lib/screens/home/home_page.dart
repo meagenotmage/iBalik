@@ -8,6 +8,7 @@ import '../posts/item_details_page.dart';
 import '../posts/post_found_item_page.dart';
 import '../claims/claims_page.dart';
 import '../game/game_hub_page.dart';
+import 'profile_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -100,6 +101,12 @@ class _HomePageState extends State<HomePage> {
         context,
         SmoothPageRoute(page: const GameHubPage()),
       );
+    } else if (index == 4) {
+      // Navigate to Profile page
+      Navigator.push(
+        context,
+        SmoothPageRoute(page: const ProfilePage()),
+      );
     } else {
       setState(() {
         _selectedIndex = index;
@@ -117,6 +124,7 @@ class _HomePageState extends State<HomePage> {
             // Main scrollable content
             Expanded(
               child: SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
                 padding: const EdgeInsets.only(bottom: 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -168,7 +176,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                           const SizedBox(height: 4),
                           const Text(
-                            'Ready to help the community?',
+                            'Ready to help the WVSU community?',
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.black54,

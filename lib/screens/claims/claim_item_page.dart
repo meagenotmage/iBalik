@@ -52,6 +52,7 @@ class _ClaimItemPageState extends State<ClaimItemPage> {
         children: [
           Expanded(
             child: SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [

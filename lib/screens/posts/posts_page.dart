@@ -4,6 +4,7 @@ import 'item_details_page.dart';
 import 'post_found_item_page.dart';
 import '../claims/claims_page.dart';
 import '../game/game_hub_page.dart';
+import '../home/profile_page.dart';
 
 class PostsPage extends StatefulWidget {
   const PostsPage({super.key});
@@ -124,6 +125,12 @@ class _PostsPageState extends State<PostsPage> {
         context,
         SmoothPageRoute(page: const GameHubPage()),
       );
+    } else if (index == 4) {
+      // Navigate to Profile page
+      Navigator.push(
+        context,
+        SmoothPageRoute(page: const ProfilePage()),
+      );
     } else if (index != 1) {
       // If it's not Posts, Home, Claims, or Game Hub, just update the selected state
       setState(() {
@@ -191,6 +198,7 @@ class _PostsPageState extends State<PostsPage> {
                 bottom: false,
                 child: StatefulBuilder(
                   builder: (context, setModalState) => SingleChildScrollView(
+                    physics: const ClampingScrollPhysics(),
                     child: Padding(
                       padding: const EdgeInsets.all(20),
                       child: Column(

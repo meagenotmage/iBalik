@@ -71,6 +71,7 @@ class _DropOffPageState extends State<DropOffPage> {
         toolbarHeight: 80,
       ),
       body: SingleChildScrollView(
+        physics: const ClampingScrollPhysics(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -250,7 +251,7 @@ class _DropOffPageState extends State<DropOffPage> {
                   const SizedBox(height: 16),
                   
                   // Staff Members List
-                  ..._staffMembers.map((staff) => _buildStaffCard(staff)).toList(),
+                  ..._staffMembers.map((staff) => _buildStaffCard(staff)),
                 ],
               ),
             ),

@@ -219,6 +219,7 @@ class _ChallengesPageState extends State<ChallengesPage> with SingleTickerProvid
 
   Widget _buildActiveTab() {
     return SingleChildScrollView(
+      physics: const ClampingScrollPhysics(),
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -336,7 +337,7 @@ class _ChallengesPageState extends State<ChallengesPage> with SingleTickerProvid
           // Challenge Cards
           ...activeChallenges.map((challenge) => 
             _buildChallengeCard(challenge)
-          ).toList(),
+          ),
           
           const SizedBox(height: 20),
           
@@ -615,6 +616,7 @@ class _ChallengesPageState extends State<ChallengesPage> with SingleTickerProvid
     ];
 
     return SingleChildScrollView(
+      physics: const ClampingScrollPhysics(),
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -643,7 +645,7 @@ class _ChallengesPageState extends State<ChallengesPage> with SingleTickerProvid
           // Completed Challenge Cards
           ...completedChallenges.map((challenge) => 
             _buildCompletedChallengeCard(challenge)
-          ).toList(),
+          ),
           
           const SizedBox(height: 20),
           
@@ -823,6 +825,7 @@ class _ChallengesPageState extends State<ChallengesPage> with SingleTickerProvid
     ];
 
     return SingleChildScrollView(
+      physics: const ClampingScrollPhysics(),
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -940,7 +943,7 @@ class _ChallengesPageState extends State<ChallengesPage> with SingleTickerProvid
           // Upcoming Challenge Cards
           ...upcomingChallenges.map((challenge) => 
             _buildUpcomingChallengeCard(challenge)
-          ).toList(),
+          ),
           
           const SizedBox(height: 20),
           

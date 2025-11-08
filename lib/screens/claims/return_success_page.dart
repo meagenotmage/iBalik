@@ -11,6 +11,7 @@ class ReturnSuccessPage extends StatelessWidget {
       backgroundColor: Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
+          physics: const ClampingScrollPhysics(),
           child: Column(
             children: [
               // Top gradient section with trophy

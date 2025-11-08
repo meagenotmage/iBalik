@@ -89,6 +89,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
         ),
       ),
       body: SingleChildScrollView(
+        physics: const ClampingScrollPhysics(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

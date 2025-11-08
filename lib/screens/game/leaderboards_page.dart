@@ -270,6 +270,7 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
         toolbarHeight: 60,
       ),
       body: SingleChildScrollView(
+        physics: const ClampingScrollPhysics(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -472,7 +473,7 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
             const SizedBox(height: 16),
 
             // Full Rankings List
-            ...fullRankings.map((user) => _buildRankingCard(user)).toList(),
+            ...fullRankings.map((user) => _buildRankingCard(user)),
 
             const SizedBox(height: 16),
 

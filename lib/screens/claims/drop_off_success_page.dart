@@ -18,6 +18,7 @@ class DropOffSuccessPage extends StatelessWidget {
           children: [
             Expanded(
               child: SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
                 child: Column(
                   children: [
                     // Success Header with gradient background

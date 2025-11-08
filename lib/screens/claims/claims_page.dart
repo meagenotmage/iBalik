@@ -5,6 +5,7 @@ import 'claim_details_page.dart';
 import 'confirm_return_page.dart';
 import 'claim_review_page.dart';
 import '../game/game_hub_page.dart';
+import '../home/profile_page.dart';
 
 class ClaimsPage extends StatefulWidget {
   const ClaimsPage({super.key});
@@ -227,6 +228,12 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
         context,
         SmoothPageRoute(page: const GameHubPage()),
       );
+    } else if (index == 4) {
+      // Navigate to Profile
+      Navigator.push(
+        context,
+        SmoothPageRoute(page: const ProfilePage()),
+      );
     } else if (index != 2) {
       // For other tabs, just update the selected state
       setState(() {
@@ -237,6 +244,7 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
 
   Widget _buildMyClaimsTab() {
     return SingleChildScrollView(
+      physics: const ClampingScrollPhysics(),
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
@@ -284,6 +292,7 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
 
   Widget _buildReceivedTab() {
     return SingleChildScrollView(
+      physics: const ClampingScrollPhysics(),
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [

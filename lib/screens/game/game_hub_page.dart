@@ -3,6 +3,9 @@ import '../../utils/page_transitions.dart';
 import 'challenges_page.dart';
 import 'badges_page.dart';
 import 'leaderboards_page.dart';
+import '../posts/posts_page.dart';
+import '../claims/claims_page.dart';
+import '../home/profile_page.dart';
 
 class GameHubPage extends StatefulWidget {
   const GameHubPage({super.key});
@@ -132,6 +135,7 @@ class _GameHubPageState extends State<GameHubPage> {
         toolbarHeight: 70,
       ),
       body: SingleChildScrollView(
+        physics: const ClampingScrollPhysics(),
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -537,7 +541,7 @@ class _GameHubPageState extends State<GameHubPage> {
             // Recent Achievements List
             ...recentAchievements.map((achievement) => 
               _buildAchievementCard(achievement)
-            ).toList(),
+            ),
             
             const SizedBox(height: 24),
             
@@ -586,7 +590,7 @@ class _GameHubPageState extends State<GameHubPage> {
             // Active Challenges List
             ...activeChallenges.map((challenge) => 
               _buildChallengeCard(challenge)
-            ).toList(),
+            ),
             
             const SizedBox(height: 20),
           ],
@@ -628,10 +632,25 @@ class _GameHubPageState extends State<GameHubPage> {
       Navigator.pop(context);
     } else if (index == 1) {
       // Navigate to Posts
-      Navigator.pop(context);
+      Navigator.pop(context); // First go back to home
+      Navigator.push(
+        context,
+        SmoothPageRoute(page: const PostsPage()),
+      );
     } else if (index == 2) {
       // Navigate to Claims
-      Navigator.pop(context);
+      Navigator.pop(context); // First go back to home
+      Navigator.push(
+        context,
+        SmoothPageRoute(page: const ClaimsPage()),
+      );
+    } else if (index == 4) {
+      // Navigate to Profile
+      Navigator.pop(context); // First go back to home
+      Navigator.push(
+        context,
+        SmoothPageRoute(page: const ProfilePage()),
+      );
     } else if (index != 3) {
       // For other tabs, just update the selected state
       setState(() {
