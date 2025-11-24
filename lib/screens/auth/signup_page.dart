@@ -47,12 +47,24 @@ class _SignUpPageState extends State<SignUpPage> {
       _isCheckingUsername = true;
     });
 
-    final isAvailable = await _authService.isUsernameAvailable(username);
+    try {
+      final isAvailable = await _authService.isUsernameAvailable(username);
+      setState(() {
+        _isCheckingUsername = false;
+        _usernameError = isAvailable ? null : 'Username is already taken';
+      });
+    } catch (e, st) {
+      // Firestore read failed — surface a clearer message instead of treating as 'taken'
+      // Log the exception to the console to aid debugging (non-user-facing)
+      // Example: permission-denied, network error, or wrong project config
+      debugPrint('Username availability check failed: $e');
+      debugPrint('Stack: $st');
 
-    setState(() {
-      _isCheckingUsername = false;
-      _usernameError = isAvailable ? null : 'Username is already taken';
-    });
+      setState(() {
+        _isCheckingUsername = false;
+        _usernameError = 'Unable to verify username. Check your connection.';
+      });
+    }
   }
 
   void _handleSignUp() async {

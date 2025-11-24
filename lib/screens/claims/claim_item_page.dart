@@ -753,7 +753,67 @@ class _ClaimItemPageState extends State<ClaimItemPage> {
         'founderId': widget.item['userId'] ?? widget.item['foundById'] ?? null,
       };
 
-      await FirebaseFirestore.instance.collection('claims').add(claimData);
+      final firestore = FirebaseFirestore.instance;
+
+      // Create claim document
+      final claimRef = await firestore.collection('claims').add(claimData);
+
+      // If the lost item doc id is available, update the lost_items doc so the
+      // founder sees this in their "Found Claims" (ClaimsPage queries lost_items
+      // where userId == founder and status == 'claimed').
+      final itemId = claimData['itemId'];
+      final founderId = claimData['founderId'];
+      if (itemId != null) {
+        try {
+          final itemRef = firestore.collection('lost_items').doc(itemId.toString());
+          await itemRef.update({
+            'status': 'claimed',
+            'claimedBy': user?.uid,
+            'claimedAt': FieldValue.serverTimestamp(),
+            'claimerProvidedContactMethod': _selectedContactMethod,
+            'claimerProvidedContactValue': contactValue,
+            'claimId': claimRef.id,
+          });
+        } catch (e) {
+          // If update fails (maybe item doc id is not the doc id), try to find by itemId field
+          try {
+            final query = await firestore.collection('lost_items').where('itemId', isEqualTo: itemId).limit(1).get();
+            if (query.docs.isNotEmpty) {
+              final docRef = query.docs.first.reference;
+              await docRef.update({
+                'status': 'claimed',
+                'claimedBy': user?.uid,
+                'claimedAt': FieldValue.serverTimestamp(),
+                'claimerProvidedContactMethod': _selectedContactMethod,
+                'claimerProvidedContactValue': contactValue,
+                'claimId': claimRef.id,
+              });
+            }
+          } catch (_) {
+            // ignore; claim document still exists and founder can be notified separately
+          }
+        }
+      }
+
+      // Create a notification for the founder so they see the new claim in notifications
+      if (founderId != null) {
+        try {
+          await firestore.collection('notifications').add({
+            'userId': founderId,
+            'type': 'new_claim',
+            'title': 'New Claim Received',
+            'message': '${user?.displayName ?? 'Someone'} submitted a claim for your item "${claimData['itemTitle'] ?? ''}"',
+            'createdAt': FieldValue.serverTimestamp(),
+            'isRead': false,
+            'meta': {
+              'claimId': claimRef.id,
+              'itemId': itemId,
+            }
+          });
+        } catch (_) {
+          // ignore notification errors
+        }
+      }
 
       // Close processing dialog
       if (mounted) Navigator.pop(context);

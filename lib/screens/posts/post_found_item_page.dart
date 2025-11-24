@@ -27,7 +27,6 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
   String _selectedLocation = 'Select location';
   String _selectedAvailability = 'Keep with me';
   String _selectedDropOffLocation = 'Library';
-  String _selectedCollege = 'Select college';
   DateTime _selectedDate = DateTime.now();
 
   final List<String> _categories = [
@@ -52,52 +51,46 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
   ];
 
   final List<String> _dropOffLocations = [
+    'College of ICT',
     'Library',
-    'USC Office',
     'College of Nursing',
-    'College of Engineering',
-    'College of Business',
-    'College of Arts and Sciences',
-  ];
-
-  // For the 'Drop off at location' flow we present two options to the founder:
-  // - College Student Council drop-off
-  // - College Building Office drop-off
-  final List<String> _dropOffVariants = [
-    'College Student Council',
-    'College Building Office',
+    'College of Medicine',
+    'College of Arts and Science',
+    'College of Communication',
+    'College of Business and Management',
+    'College of Education',
+    'College of PESCAR',
+    'College of Dentistry',
   ];
 
   // Map recommended drop-off locations based on where the item was found.
   // This provides context-aware suggestions (e.g., if found in the Cafeteria,
   // suggest nearby hubs like Library, USC Office, or College-specific offices).
   final Map<String, List<String>> _locationDropOffMap = {
-    'Library': ['Library', 'USC Office'],
-    'Cafeteria': ['Library', 'USC Office', 'College of Arts and Sciences'],
-    'Engineering Building': ['College of Engineering', 'USC Office', 'Library'],
-    'Main Parking': ['USC Office', 'Library'],
-    'Main Building': ['USC Office', 'Library'],
-    'Gym': ['USC Office', 'Library'],
-    'Computer Lab': ['College of Engineering', 'Library'],
-    'Mathematics Building': ['College of Arts and Sciences', 'Library'],
+    'Library': ['Library'],
+    'Cafeteria': ['Library'],
+    'Engineering Building': ['College of ICT', 'Library'],
+    'Main Parking': ['Library'],
+    'Main Building': ['Library'],
+    'Gym': ['Library'],
+    'Computer Lab': ['College of ICT', 'Library'],
+    'Mathematics Building': ['College of Arts and Science', 'Library'],
   };
 
   List<String> get _currentDropOffOptions {
+    // Return the union of location-specific suggestions and the global drop-off list.
+    // This ensures the user can always choose any available drop-off point,
+    // while still showing location-relevant suggestions first.
+    final defaultList = _dropOffLocations;
     if (_selectedLocation != 'Select location' && _locationDropOffMap.containsKey(_selectedLocation)) {
-      return _locationDropOffMap[_selectedLocation]!;
+      final suggestions = _locationDropOffMap[_selectedLocation]!;
+      final combined = [...suggestions, ...defaultList];
+      return combined.toSet().toList(); // deduplicate
     }
-    return _dropOffLocations;
+    return defaultList;
   }
 
-  final List<String> _colleges = [
-    'Select college',
-    'College of Nursing',
-    'College of Engineering',
-    'College of Business',
-    'College of Arts and Sciences',
-    'College of Education',
-    'College of Law',
-  ];
+  // (Removed college-specific hub UI; no college list needed)
 
   @override
   void dispose() {
@@ -168,7 +161,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                         ),
                         SizedBox(height: 4),
                         Text(
-                          'Help reunite items with their owners and earn rewards!',
+                          'Drop off your found item with a certified staff or Student Council member.\nThey will facilitate the return of the item.\nYou will claim your points and karma once it\'s claimed successfully.',
                           style: TextStyle(
                             fontSize: 13,
                             color: Color(0xFF388E3C),
@@ -278,29 +271,33 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  value: _selectedCategory,
-                                  isExpanded: true,
-                                  icon: const Icon(Icons.keyboard_arrow_down),
-                                  items: _categories.map((String category) {
-                                    return DropdownMenuItem<String>(
-                                      value: category,
-                                      child: Text(
-                                        category,
-                                        style: TextStyle(
-                                          color: category == 'Select category'
-                                              ? Colors.grey[400]
-                                              : Colors.black87,
+                                child: Builder(builder: (context) {
+                                  final categoryOptions = _categories.toSet().toList();
+                                  final currentCategory = categoryOptions.contains(_selectedCategory) ? _selectedCategory : null;
+                                  return DropdownButton<String>(
+                                    value: currentCategory,
+                                    isExpanded: true,
+                                    icon: const Icon(Icons.keyboard_arrow_down),
+                                    items: categoryOptions.map((String category) {
+                                      return DropdownMenuItem<String>(
+                                        value: category,
+                                        child: Text(
+                                          category,
+                                          style: TextStyle(
+                                            color: category == 'Select category'
+                                                ? Colors.grey[400]
+                                                : Colors.black87,
+                                          ),
                                         ),
-                                      ),
-                                    );
-                                  }).toList(),
-                                  onChanged: (String? newValue) {
-                                    setState(() {
-                                      _selectedCategory = newValue!;
-                                    });
-                                  },
-                                ),
+                                      );
+                                    }).toList(),
+                                    onChanged: (String? newValue) {
+                                      setState(() {
+                                        _selectedCategory = newValue ?? 'Select category';
+                                      });
+                                    },
+                                  );
+                                }),
                               ),
                             ),
                           ],
@@ -413,39 +410,46 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: _selectedLocation,
-                        isExpanded: true,
-                        icon: const Icon(Icons.keyboard_arrow_down),
-                        items: _locations.map((String location) {
-                          return DropdownMenuItem<String>(
-                            value: location,
-                            child: Text(
-                              location,
-                              style: TextStyle(
-                                color: location == 'Select location'
-                                    ? Colors.grey[400]
-                                    : Colors.black87,
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (String? newValue) {
-                          setState(() {
-                            _selectedLocation = newValue!;
-                            // If the founder chose the 'Drop off at location' flow,
-                            // default the drop-off selection to the first variant option.
-                            if (_selectedAvailability == 'Drop off at location') {
-                              _selectedDropOffLocation = _dropOffVariants.first;
-                            } else {
-                              final options = _currentDropOffOptions;
-                              if (options.isNotEmpty) {
-                                _selectedDropOffLocation = options.first;
-                              }
-                            }
-                          });
-                        },
-                      ),
+                          child: Builder(builder: (context) {
+                            final locationOptions = _locations.toSet().toList();
+                            final currentLocation = locationOptions.contains(_selectedLocation) ? _selectedLocation : null;
+                            return DropdownButton<String>(
+                              value: currentLocation,
+                              isExpanded: true,
+                              icon: const Icon(Icons.keyboard_arrow_down),
+                              items: locationOptions.map((String location) {
+                                return DropdownMenuItem<String>(
+                                  value: location,
+                                  child: Text(
+                                    location,
+                                    style: TextStyle(
+                                      color: location == 'Select location'
+                                          ? Colors.grey[400]
+                                          : Colors.black87,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (String? newValue) {
+                                setState(() {
+                                  _selectedLocation = newValue ?? 'Select location';
+                                  // If the founder chose the 'Drop off location' flow,
+                                  // default the drop-off selection to the first available option.
+                                  if (_selectedAvailability == 'Drop off location') {
+                                    final options = _currentDropOffOptions;
+                                    if (options.isNotEmpty) {
+                                      _selectedDropOffLocation = options.first;
+                                    }
+                                  } else {
+                                    final options = _currentDropOffOptions;
+                                    if (options.isNotEmpty) {
+                                      _selectedDropOffLocation = options.first;
+                                    }
+                                  }
+                                });
+                              },
+                            );
+                          }),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -479,13 +483,13 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                   
                   // Drop off option
                   _buildAvailabilityOption(
-                    'Drop off at location',
-                    'Choose a drop-off location for the item',
+                    'Drop off location',
+                    'Student council/person in charge will facilitate return',
                     '+15 preliminary points • Professional handling',
                   ),
                   
-                  // Show dropdown if "Drop off at location" is selected
-                  if (_selectedAvailability == 'Drop off at location') ...[
+                  // Show dropdown if "Drop off location" is selected
+                  if (_selectedAvailability == 'Drop off location') ...[
                     const SizedBox(height: 12),
                     Padding(
                       padding: const EdgeInsets.only(left: 32),
@@ -496,77 +500,36 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                           child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: _selectedDropOffLocation,
-                            isExpanded: true,
-                            icon: const Icon(Icons.keyboard_arrow_down),
-                            items: _dropOffVariants.map((String location) {
-                              return DropdownMenuItem<String>(
-                                value: location,
-                                child: Text(
-                                  location,
-                                  style: const TextStyle(color: Colors.black87),
-                                ),
-                              );
-                            }).toList(),
-                            onChanged: (String? newValue) {
-                              setState(() {
-                                _selectedDropOffLocation = newValue!;
-                              });
-                            },
-                          ),
+                          child: Builder(builder: (context) {
+                            final variantOptions = _currentDropOffOptions.toSet().toList();
+                            final currentVariant = variantOptions.contains(_selectedDropOffLocation) ? _selectedDropOffLocation : null;
+                            return DropdownButton<String>(
+                              value: currentVariant,
+                              isExpanded: true,
+                              icon: const Icon(Icons.keyboard_arrow_down),
+                              items: variantOptions.map((String location) {
+                                return DropdownMenuItem<String>(
+                                  value: location,
+                                  child: Text(
+                                    location,
+                                    style: const TextStyle(color: Colors.black87),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (String? newValue) {
+                                setState(() {
+                                  _selectedDropOffLocation = newValue ?? (variantOptions.isNotEmpty ? variantOptions.first : 'Library');
+                                });
+                              },
+                            );
+                          }),
                         ),
                       ),
                     ),
                   ],
                   const SizedBox(height: 12),
                   
-                  // College-specific hub option
-                  _buildAvailabilityOption(
-                    'College-specific hub',
-                    'Student Council will facilitate return',
-                    '+15 preliminary points • College community support',
-                  ),
-                  
-                  // Show college dropdown if "College-specific hub" is selected
-                  if (_selectedAvailability == 'College-specific hub') ...[
-                    const SizedBox(height: 12),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 32),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF5F5F5),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: _selectedCollege,
-                            isExpanded: true,
-                            icon: const Icon(Icons.keyboard_arrow_down),
-                            items: _colleges.map((String college) {
-                              return DropdownMenuItem<String>(
-                                value: college,
-                                child: Text(
-                                  college,
-                                  style: TextStyle(
-                                    color: college == 'Select college'
-                                        ? Colors.grey[400]
-                                        : Colors.black87,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                            onChanged: (String? newValue) {
-                              setState(() {
-                                _selectedCollege = newValue!;
-                              });
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                  // (College-specific hub option removed)
                 ],
               ),
             ),
@@ -1107,16 +1070,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
       return;
     }
     
-    // Validate college selection for college-specific hub
-    if (_selectedAvailability == 'College-specific hub' && _selectedCollege == 'Select college') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select a college'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
+    // No college-specific hub option anymore; no college validation needed
     
     // Images are now OPTIONAL for testing
     // if (_selectedImages.isEmpty) {
@@ -1183,10 +1137,11 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
     } else {
       // Navigate to drop-off page (upload will happen after drop-off confirmation)
       String dropOffLocation;
-      if (_selectedAvailability == 'Drop off at location') {
+      if (_selectedAvailability == 'Drop off location') {
         dropOffLocation = _selectedDropOffLocation;
       } else {
-        dropOffLocation = _selectedCollege;
+        // Not a drop-off flow; clear dropOffLocation
+        dropOffLocation = '';
       }
       
       final itemData = {

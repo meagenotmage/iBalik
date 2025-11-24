@@ -345,10 +345,13 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
       );
     }
 
+    // For received/found claims we now read from the `claims` collection where
+    // the current user is the founder of the item. Claim documents are created
+    // by seekers (claimers) and have status 'pending' initially.
     final Stream<QuerySnapshot> receivedStream = FirebaseFirestore.instance
-      .collection('lost_items')
-      .where('userId', isEqualTo: uid)
-      .where('status', isEqualTo: 'claimed')
+      .collection('claims')
+      .where('founderId', isEqualTo: uid)
+      .orderBy('submittedDate', descending: true)
       .snapshots();
 
     return StreamBuilder<QuerySnapshot>(
@@ -381,10 +384,10 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
           separatorBuilder: (_, __) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
             final data = docs[index].data() as Map<String, dynamic>;
-            final title = (data['itemName'] ?? data['name'] ?? data['title'] ?? 'Untitled').toString();
-            final claimer = (data['claimedBy'] ?? '').toString();
-            final claimedAt = data['claimedAt'];
-            final claimedAtStr = claimedAt is Timestamp ? (claimedAt.toDate().toLocal().toString()) : (claimedAt?.toString() ?? '');
+            final title = (data['itemTitle'] ?? 'Untitled').toString();
+            final claimer = (data['claimerName'] ?? data['claimerEmail'] ?? '').toString();
+            final submitted = data['submittedDate'];
+            final submittedStr = submitted is Timestamp ? (submitted.toDate().toLocal().toString()) : (submitted?.toString() ?? '');
 
             return ListTile(
               tileColor: Colors.white,
@@ -394,18 +397,10 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: Colors.grey[100]),
-                child: Builder(
-                  builder: (context) {
-                    final images = data['images'];
-                    if (images is List && images.isNotEmpty && images[0] is String) {
-                      return ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(images[0], fit: BoxFit.cover));
-                    }
-                    return Icon(Icons.image, color: Colors.grey[400]);
-                  },
-                ),
+                child: Icon(Icons.person_outline, color: Colors.grey[400]),
               ),
               title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text('Claimed by: $claimer\nClaimed: $claimedAtStr', maxLines: 2, overflow: TextOverflow.ellipsis),
+              subtitle: Text('Claimed by: $claimer\nSubmitted: $submittedStr', maxLines: 2, overflow: TextOverflow.ellipsis),
               isThreeLine: true,
               onTap: () {
                 Navigator.push(

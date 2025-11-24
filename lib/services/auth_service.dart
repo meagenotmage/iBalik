@@ -13,17 +13,8 @@ class AuthService {
 
   // Check if username is available
   Future<bool> isUsernameAvailable(String username) async {
-    try {
-      final querySnapshot = await _firestore
-          .collection('users')
-          .where('username', isEqualTo: username.toLowerCase())
-          .limit(1)
-          .get();
-      
-      return querySnapshot.docs.isEmpty;
-    } catch (e) {
-      return false;
-    }
+    final doc = await _firestore.collection('usernames').doc(username.toLowerCase()).get();
+    return !doc.exists;
   }
 
   // Get username for current user
@@ -70,26 +61,64 @@ class AuthService {
         };
       }
 
-      // Create user account
+      // Create user account (Firebase Auth)
       UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // Update display name
+      // Update display name locally on the auth user
       await userCredential.user?.updateDisplayName(fullName);
 
-      // Create user document in Firestore
-      await _firestore.collection('users').doc(userCredential.user?.uid).set({
-        'uid': userCredential.user?.uid,
-        'email': email,
-        'fullName': fullName,
-        'username': username.toLowerCase(),
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+      final usernameLower = username.toLowerCase();
+      final usernameRef = _firestore.collection('usernames').doc(usernameLower);
+      final userRef = _firestore.collection('users').doc(userCredential.user?.uid);
 
-      // Send email verification
+      // Use a transaction to ensure the username doc does not already exist and
+      // atomically create both the `usernames/{username}` and `users/{uid}` docs.
+      try {
+        await _firestore.runTransaction((tx) async {
+          final usernameSnap = await tx.get(usernameRef);
+          if (usernameSnap.exists) {
+            // Signal a username collision from inside the transaction
+            throw FirebaseException(
+                plugin: 'cloud_firestore', code: 'username-already-exists', message: 'Username already taken');
+          }
+
+          tx.set(usernameRef, {
+            'uid': userCredential.user?.uid,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+
+          tx.set(userRef, {
+            'uid': userCredential.user?.uid,
+            'email': email,
+            'fullName': fullName,
+            'username': usernameLower,
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        });
+      } catch (e) {
+        // If the transaction failed because the username already exists,
+        // delete the newly-created auth user to avoid leaving a dangling account.
+        try {
+          await userCredential.user?.delete();
+        } catch (_) {
+          // Ignore errors deleting the auth user; we'll still return an error to the caller.
+        }
+
+        if (e is FirebaseException && e.code == 'username-already-exists') {
+          return {
+            'success': false,
+            'message': 'Username is already taken. Please choose another one.'
+          };
+        }
+
+        return {'success': false, 'message': 'An error occurred creating your account: $e'};
+      }
+
+      // Send email verification after Firestore writes succeeded
       await userCredential.user?.sendEmailVerification();
 
       return {

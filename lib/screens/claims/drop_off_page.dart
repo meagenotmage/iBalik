@@ -17,20 +17,16 @@ class _DropOffPageState extends State<DropOffPage> {
   final List<Map<String, dynamic>> _staffMembers = [
     {
       'id': '1',
-      'name': 'Ms. Sarah Chen',
-      'title': 'Head Librarian',
-      'rating': 4.9,
-      'itemsHandled': 127,
-      'status': 'Available',
+      'name': 'Student Council Member',
+      'title': 'Student council representative will handle the item back to the owner',
+      'availability': 'Mon-Sat 10AM-5PM',
       'avatar': Icons.person,
     },
     {
       'id': '2',
-      'name': 'Mr. James Rodriguez',
-      'title': 'Assistant Librarian',
-      'rating': 4.7,
-      'itemsHandled': 89,
-      'availability': 'Mon-Fri 1PM-8PM',
+      'name': 'Staff/Instructor',
+      'title': 'A staff or instructor will assist in returning the item to its owner',
+      'availability': 'Mon-Sat 8AM-5PM',
       'avatar': Icons.person,
     },
   ];
