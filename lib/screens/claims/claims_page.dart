@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../utils/page_transitions.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../posts/posts_page.dart';
 import 'claim_details_page.dart';
 import 'confirm_return_page.dart';
@@ -243,92 +245,178 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
   }
 
   Widget _buildMyClaimsTab() {
-    return SingleChildScrollView(
-      physics: const ClampingScrollPhysics(),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          // Pending Claim with expandable details
-          _buildExpandableClaimCard(
-            id: 'pending_1',
-            title: 'Black iPhone 13',
-            status: 'Pending',
-            statusColor: const Color(0xFFFFA726),
-            foundBy: 'M. Santos',
-            claimedDate: '15/01/2024',
-            pickupLocation: null,
-            imagePath: null,
-            claimRequest: 'This is my phone. It has a cracked screen protector and my wallpaper is a photo of my dog. I left it near the computer section in the library yesterday afternoon.',
-            submittedDate: null,
-            approvedDate: null,
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Approved Claim with expandable details
-          _buildExpandableClaimCard(
-            id: 'approved_1',
-            title: 'Blue Umbrella',
-            status: 'Approved',
-            statusColor: const Color(0xFF4CAF50),
-            foundBy: 'A. Reyes',
-            claimedDate: '14/01/2024',
-            pickupLocation: 'Library',
-            imagePath: null,
-            backgroundColor: const Color(0xFFB2DFDB),
-            claimRequest: 'Small blue umbrella with a wooden handle. I left it in the cafeteria yesterday during lunch break at table 5.',
-            submittedDate: null,
-            approvedDate: '15/01/2024',
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Returned Items Section
-          _buildReturnedItemsSection(),
-        ],
-      ),
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Text('Please sign in to view your claims.', style: TextStyle(color: Colors.grey[700])),
+        ),
+      );
+    }
+
+    final Stream<QuerySnapshot> myClaimsStream = FirebaseFirestore.instance
+      .collection('lost_items')
+      .where('claimedBy', isEqualTo: uid)
+      .snapshots();
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: myClaimsStream,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(child: Text('Error loading claims'));
+        }
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final docs = snapshot.data?.docs ?? [];
+        if (docs.isEmpty) {
+          return SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                SizedBox(height: 40),
+                Icon(Icons.inbox, size: 64, color: Colors.grey[300]),
+                const SizedBox(height: 16),
+                Text('No claims yet', style: TextStyle(color: Colors.grey[700])),
+              ],
+            ),
+          );
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: docs.length,
+          shrinkWrap: true,
+          physics: const ClampingScrollPhysics(),
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          itemBuilder: (context, index) {
+            final data = docs[index].data() as Map<String, dynamic>;
+            final title = (data['itemName'] ?? data['name'] ?? data['title'] ?? 'Untitled').toString();
+            final foundBy = (data['userName'] ?? data['foundBy'] ?? data['posterName'] ?? '').toString();
+            final status = (data['status'] ?? 'claimed').toString();
+            final claimedAt = data['claimedAt'];
+            final claimedAtStr = claimedAt is Timestamp ? (claimedAt.toDate().toLocal().toString()) : (claimedAt?.toString() ?? '');
+
+            return ListTile(
+              tileColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              contentPadding: const EdgeInsets.all(12),
+              leading: Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: Colors.grey[100]),
+                child: Builder(
+                  builder: (context) {
+                    final images = data['images'];
+                    if (images is List && images.isNotEmpty && images[0] is String) {
+                      return ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(images[0], fit: BoxFit.cover));
+                    }
+                    return Icon(Icons.image, color: Colors.grey[400]);
+                  },
+                ),
+              ),
+              title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text('Found by $foundBy\nStatus: $status\nClaimed: $claimedAtStr', maxLines: 2, overflow: TextOverflow.ellipsis),
+              isThreeLine: true,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  SmoothPageRoute(page: ClaimDetailsPage(claimData: data)),
+                );
+              },
+            );
+          },
+        );
+      },
     );
   }
 
   Widget _buildReceivedTab() {
-    return SingleChildScrollView(
-      physics: const ClampingScrollPhysics(),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          // Pending Claim - Student ID (Needs Review)
-          _buildPendingReviewClaimCard(
-            id: 'review_1',
-            title: 'Student ID - Jane Smith',
-            claimedBy: 'J. Smith',
-            submittedDate: '1/15/2024',
-            claimDescription: 'This is my student ID. I lost it yesterday near the gymnasium.',
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Approved Claim - White Earphones
-          _buildReceivedClaimCard(
-            id: 'received_1',
-            title: 'White Earphones',
-            status: 'Approved',
-            statusColor: const Color(0xFF4CAF50),
-            claimedBy: 'M. Cruz',
-            approvedDate: '1/15/2024',
-            pickupLocation: 'Library Main Entrance',
-            backgroundColor: const Color(0xFFB2DFDB),
-            itemDetails: 'White wireless earphones with charging case. Found near the computer section.',
-            seekerName: 'Maria Cruz',
-            seekerPhone: '+63 912 345 6789',
-            seekerEmail: 'mcruz@university.edu',
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Successfully Returned Items Section
-          _buildReceivedReturnedItemsSection(),
-        ],
-      ),
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Text('Please sign in to view received claims.', style: TextStyle(color: Colors.grey[700])),
+        ),
+      );
+    }
+
+    final Stream<QuerySnapshot> receivedStream = FirebaseFirestore.instance
+      .collection('lost_items')
+      .where('userId', isEqualTo: uid)
+      .where('status', isEqualTo: 'claimed')
+      .snapshots();
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: receivedStream,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) return Center(child: Text('Error loading received claims'));
+        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+
+        final docs = snapshot.data?.docs ?? [];
+        if (docs.isEmpty) {
+          return SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                SizedBox(height: 40),
+                Icon(Icons.inbox_outlined, size: 64, color: Colors.grey[300]),
+                const SizedBox(height: 16),
+                Text('No received claims', style: TextStyle(color: Colors.grey[700])),
+              ],
+            ),
+          );
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: docs.length,
+          shrinkWrap: true,
+          physics: const ClampingScrollPhysics(),
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          itemBuilder: (context, index) {
+            final data = docs[index].data() as Map<String, dynamic>;
+            final title = (data['itemName'] ?? data['name'] ?? data['title'] ?? 'Untitled').toString();
+            final claimer = (data['claimedBy'] ?? '').toString();
+            final claimedAt = data['claimedAt'];
+            final claimedAtStr = claimedAt is Timestamp ? (claimedAt.toDate().toLocal().toString()) : (claimedAt?.toString() ?? '');
+
+            return ListTile(
+              tileColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              contentPadding: const EdgeInsets.all(12),
+              leading: Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: Colors.grey[100]),
+                child: Builder(
+                  builder: (context) {
+                    final images = data['images'];
+                    if (images is List && images.isNotEmpty && images[0] is String) {
+                      return ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(images[0], fit: BoxFit.cover));
+                    }
+                    return Icon(Icons.image, color: Colors.grey[400]);
+                  },
+                ),
+              ),
+              title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text('Claimed by: $claimer\nClaimed: $claimedAtStr', maxLines: 2, overflow: TextOverflow.ellipsis),
+              isThreeLine: true,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  SmoothPageRoute(page: ClaimDetailsPage(claimData: data)),
+                );
+              },
+            );
+          },
+        );
+      },
     );
   }
 

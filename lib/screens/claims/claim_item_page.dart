@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+// no external date package required; we'll format DateTime manually
 
 class ClaimItemPage extends StatefulWidget {
   final Map<String, dynamic> item;
@@ -76,10 +79,39 @@ class _ClaimItemPageState extends State<ClaimItemPage> {
                             color: Colors.grey[300],
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Icon(
-                            widget.item['image'] ?? Icons.umbrella,
-                            size: 32,
-                            color: Colors.grey[600],
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Builder(
+                              builder: (context) {
+                                // Prefer first image URL from `images` list if present
+                                final images = widget.item['images'];
+                                if (images is List && images.isNotEmpty && images[0] is String) {
+                                  return Image.network(
+                                    images[0],
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stack) => Icon(
+                                      Icons.image_not_supported,
+                                      size: 32,
+                                      color: Colors.grey[600],
+                                    ),
+                                  );
+                                }
+                                // Fallback to any provided icon or default umbrella icon
+                                final iconData = widget.item['image'];
+                                if (iconData is IconData) {
+                                  return Icon(
+                                    iconData,
+                                    size: 32,
+                                    color: Colors.grey[600],
+                                  );
+                                }
+                                return Icon(
+                                  Icons.umbrella,
+                                  size: 32,
+                                  color: Colors.grey[600],
+                                );
+                              },
+                            ),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -89,7 +121,7 @@ class _ClaimItemPageState extends State<ClaimItemPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                widget.item['name'] ?? 'Blue Umbrella',
+                                (widget.item['itemName'] ?? widget.item['name'] ?? widget.item['title'] ?? 'Untitled').toString(),
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
@@ -98,7 +130,7 @@ class _ClaimItemPageState extends State<ClaimItemPage> {
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                widget.item['description'] ?? 'Navy blue umbrella with wooden handle, left at table 5. Still in good condition and functional.',
+                                (widget.item['description'] ?? widget.item['details'] ?? '').toString(),
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.grey[600],
@@ -112,7 +144,7 @@ class _ClaimItemPageState extends State<ClaimItemPage> {
                                   Icon(Icons.location_on, size: 12, color: Colors.grey[600]),
                                   const SizedBox(width: 4),
                                   Text(
-                                    widget.item['location'] ?? 'Cafeteria',
+                                    (widget.item['location'] ?? widget.item['place'] ?? 'Unknown location').toString(),
                                     style: TextStyle(
                                       fontSize: 11,
                                       color: Colors.grey[600],
@@ -120,12 +152,32 @@ class _ClaimItemPageState extends State<ClaimItemPage> {
                                   ),
                                   const SizedBox(width: 12),
                                   Text(
-                                    'Found: 15/01/2024',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
+                                        // Prefer `dateFound` (ISO string) or `datePosted` (Timestamp)
+                                        (() {
+                                          final df = widget.item['dateFound'] ?? widget.item['datePosted'];
+                                          if (df == null) return 'Found: Date unknown';
+                                          if (df is String) {
+                                          try {
+                                            final dt = DateTime.parse(df);
+                                            return 'Found: ${dt.month}/${dt.day}/${dt.year}';
+                                          } catch (_) {
+                                            return 'Found: ${df.toString()}';
+                                          }
+                                        }
+                                        if (df is Timestamp) {
+                                          final dt = df.toDate();
+                                          return 'Found: ${dt.month}/${dt.day}/${dt.year}';
+                                        }
+                                        if (df is DateTime) {
+                                          return 'Found: ${df.month}/${df.day}/${df.year}';
+                                        }
+                                          return 'Found: ${df.toString()}';
+                                        })(),
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
                                 ],
                               ),
                             ],
@@ -677,18 +729,47 @@ class _ClaimItemPageState extends State<ClaimItemPage> {
       builder: (context) => const _ProcessingDialog(),
     );
     
-    // Simulate processing (replace with actual database call later)
-    await Future.delayed(const Duration(seconds: 2));
-    
-    // Close processing dialog
-    if (mounted) Navigator.pop(context);
-    
-    // Show success dialog
-    if (mounted) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const _SuccessDialog(),
+    // Prepare contact value
+    String contactValue = '';
+    if (_selectedContactMethod == 'Phone Call') contactValue = _phoneController.text.trim();
+    if (_selectedContactMethod == 'WhatsApp') contactValue = _whatsappController.text.trim();
+    if (_selectedContactMethod == 'Email') contactValue = _emailController.text.trim();
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      final claimData = {
+        'itemId': widget.item['itemId'] ?? widget.item['id'] ?? widget.item['docId'] ?? null,
+        'itemTitle': widget.item['itemName'] ?? widget.item['title'] ?? null,
+        'claimerId': user?.uid,
+        'claimerName': user?.displayName ?? null,
+        'claimerEmail': user?.email ?? null,
+        'claimerProvidedContactMethod': _selectedContactMethod,
+        'claimerProvidedContactValue': contactValue,
+        'claimDescription': _detailsController.text.trim(),
+        'additionalInfo': _additionalInfoController.text.trim(),
+        'proofImage': null,
+        'submittedDate': FieldValue.serverTimestamp(),
+        'status': 'pending',
+        'founderId': widget.item['userId'] ?? widget.item['foundById'] ?? null,
+      };
+
+      await FirebaseFirestore.instance.collection('claims').add(claimData);
+
+      // Close processing dialog
+      if (mounted) Navigator.pop(context);
+
+      // Show success dialog
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const _SuccessDialog(),
+        );
+      }
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to submit claim: $e'), backgroundColor: Colors.red),
       );
     }
   }

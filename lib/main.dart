@@ -4,13 +4,28 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'screens/auth/login_page.dart';
 import 'screens/home/home_page.dart';
+import 'services/storage_cleanup_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  // Run storage cleanup in background to stay within free tier
+  _runStorageCleanup();
+  
   runApp(const MyApp());
+}
+
+/// Run storage cleanup in background
+void _runStorageCleanup() async {
+  try {
+    final cleanupService = StorageCleanupService();
+    await cleanupService.checkAndRunCleanup();
+  } catch (e) {
+    print('Storage cleanup error: $e');
+  }
 }
 
 class MyApp extends StatelessWidget {

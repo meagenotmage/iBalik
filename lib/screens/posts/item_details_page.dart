@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../utils/page_transitions.dart';
 import '../claims/claim_item_page.dart';
 
@@ -36,7 +37,7 @@ class ItemDetailsPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: 16),
-                  // Item Image
+                  // Item Image (use Cloudinary/URL if available, otherwise fallback to icon)
                   Container(
                     height: 250,
                     margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -45,17 +46,46 @@ class ItemDetailsPage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Center(
-                      child: item['image'] != null
-                          ? Icon(
-                              item['image'],
-                              size: 100,
-                              color: Colors.white.withOpacity(0.4),
-                            )
-                          : Icon(
-                              Icons.image,
-                              size: 100,
-                              color: Colors.white.withOpacity(0.4),
+                      child: () {
+                        // images field is a list of URLs in Firestore
+                        final images = (item['images'] is List) ? List.from(item['images']) : null;
+                        final firstImage = (images != null && images.isNotEmpty) ? images.first as String? : null;
+                        if (firstImage != null && firstImage.isNotEmpty) {
+                          return ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Image.network(
+                              firstImage,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: 250,
+                              errorBuilder: (context, error, stackTrace) => const Icon(
+                                Icons.broken_image,
+                                size: 80,
+                                color: Colors.white54,
+                              ),
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return const Center(child: CircularProgressIndicator());
+                              },
                             ),
+                          );
+                        }
+
+                        // If an icon code was passed (legacy), show it
+                        if (item['image'] != null && item['image'] is IconData) {
+                          return Icon(
+                            item['image'],
+                            size: 100,
+                            color: Colors.white.withOpacity(0.4),
+                          );
+                        }
+
+                        return Icon(
+                          Icons.image,
+                          size: 100,
+                          color: Colors.white.withOpacity(0.4),
+                        );
+                      }(),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -73,7 +103,7 @@ class ItemDetailsPage extends StatelessWidget {
                       children: [
                         // Item Name
                         Text(
-                          item['name'],
+                          item['itemName'] ?? item['name'] ?? item['title'] ?? 'Untitled',
                           style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
@@ -87,7 +117,16 @@ class ItemDetailsPage extends StatelessWidget {
                             Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
                             const SizedBox(width: 6),
                             Text(
-                              'Found 1/15/2024',
+                              // Try to format datePosted (Timestamp) or dateFound string
+                              () {
+                                final dp = item['datePosted'] ?? item['dateFound'];
+                                if (dp == null) return 'Date unknown';
+                                if (dp is Timestamp) {
+                                  final dt = dp.toDate();
+                                  return '${dt.month}/${dt.day}/${dt.year}';
+                                }
+                                return dp.toString();
+                              }(),
                               style: TextStyle(
                                 fontSize: 14,
                                 color: Colors.grey[600],
@@ -97,7 +136,7 @@ class ItemDetailsPage extends StatelessWidget {
                             Icon(Icons.location_on, size: 18, color: Colors.grey[600]),
                             const SizedBox(width: 6),
                             Text(
-                              item['location'] ?? 'Library',
+                              item['location'] ?? item['place'] ?? 'Library',
                               style: TextStyle(
                                 fontSize: 14,
                                 color: Colors.grey[600],
@@ -108,7 +147,7 @@ class ItemDetailsPage extends StatelessWidget {
                         const SizedBox(height: 16),
                         // Description
                         Text(
-                          item['description'] ?? 'Found near the computer section, has a cracked screen protector. The phone appears to be in working condition.',
+                          item['description'] ?? item['details'] ?? 'No description provided.',
                           style: TextStyle(
                             fontSize: 15,
                             color: Colors.grey[800],
@@ -116,16 +155,16 @@ class ItemDetailsPage extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        // Category Badge
+                        // Category Badge (use Firestore value if available)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           decoration: BoxDecoration(
                             color: const Color(0xFF4318FF),
                             borderRadius: BorderRadius.circular(20),
                           ),
-                          child: const Text(
-                            'Electronics',
-                            style: TextStyle(
+                          child: Text(
+                            (item['category'] ?? 'Uncategorized').toString(),
+                            style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                               color: Colors.white,
@@ -176,7 +215,7 @@ class ItemDetailsPage extends StatelessWidget {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                item['foundBy'] ?? 'John Cruz',
+                                item['userName'] ?? item['foundBy'] ?? 'Unknown',
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
@@ -255,42 +294,106 @@ class ItemDetailsPage extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Available at:',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[700],
+                        // Pickup info depends on availability
+                        () {
+                          final availability = (item['availability'] ?? '').toString();
+                          final dropOff = (item['dropOffLocation'] ?? item['location'] ?? 'Library').toString();
+
+                          if (availability.isNotEmpty && availability == 'Keep with me') {
+                            // Show contact-founder UI
+                            final contactName = item['userName'] ?? item['foundBy'] ?? 'Founder';
+                            final contactEmail = item['userEmail'] ?? '';
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Available at:',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey[700],
+                                      ),
+                                    ),
+                                    Text(
+                                      'Contact founder',
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'This item is being kept by the finder. Contact $contactName ${contactEmail.isNotEmpty ? '($contactEmail)' : ''} to arrange return or pickup. Use the in-app chat or call feature to reach out.',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.grey[800],
+                                          height: 1.5,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            );
+                          }
+
+                          // Default: show drop-off location info
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Available at:',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey[700],
+                                    ),
+                                  ),
+                                  Text(
+                                    dropOff,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                            Text(
-                              'Library',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black87,
+                              const SizedBox(height: 12),
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  'Visit the $dropOff information desk during its hours with a valid ID to claim this item. Items are kept in the secure Lost & Found area.',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[800],
+                                    height: 1.5,
+                                  ),
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            'Visit the Library information desk during library hours with a valid ID to claim this item. Items are kept in the secure Lost & Found area.',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[800],
-                              height: 1.5,
-                            ),
-                          ),
-                        ),
+                            ],
+                          );
+                        }(),
                       ],
                     ),
                   ),

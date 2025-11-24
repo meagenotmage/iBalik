@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../utils/page_transitions.dart';
 import 'item_details_page.dart';
 import 'post_found_item_page.dart';
 import '../claims/claims_page.dart';
 import '../game/game_hub_page.dart';
 import '../home/profile_page.dart';
+import '../../services/lost_item_service.dart';
 
 class PostsPage extends StatefulWidget {
   const PostsPage({super.key});
@@ -16,6 +18,7 @@ class PostsPage extends StatefulWidget {
 class _PostsPageState extends State<PostsPage> {
   int _selectedIndex = 1; // Posts tab is selected
   final TextEditingController _searchController = TextEditingController();
+  final LostItemService _lostItemService = LostItemService();
   
   // Filter states
   String _selectedCategory = 'All';
@@ -34,81 +37,6 @@ class _PostsPageState extends State<PostsPage> {
     _searchController.dispose();
     super.dispose();
   }
-
-  final List<Map<String, dynamic>> _foundItems = [
-    {
-      'id': 1,
-      'name': 'Black iPhone 13',
-      'description': 'Found near the computer section, has a cracked screen protector.',
-      'location': 'Library',
-      'time': '2h ago',
-      'foundBy': 'John Cruz',
-      'image': Icons.phone_iphone,
-    },
-    {
-      'id': 2,
-      'name': 'Blue Umbrella',
-      'description': 'Navy blue umbrella with wooden handle, left at table 5. Still in good',
-      'location': 'Cafeteria',
-      'time': '4h ago',
-      'foundBy': 'Maria Santos',
-      'image': Icons.umbrella,
-    },
-    {
-      'id': 3,
-      'name': 'Red Backpack',
-      'description': 'Medium-sized red backpack with laptop compartment, found in',
-      'location': 'Engineering Building',
-      'time': '6h ago',
-      'foundBy': 'Alex Rivera',
-      'image': Icons.backpack,
-    },
-    {
-      'id': 4,
-      'name': 'White Earphones',
-      'description': 'Apple AirPods in white case, found on bench near parking area. Both',
-      'location': 'Main Parking',
-      'time': '1d ago',
-      'foundBy': 'Lisa Garcia',
-      'image': Icons.headphones,
-    },
-    {
-      'id': 5,
-      'name': 'Brown Wallet',
-      'description': 'Leather wallet with ID cards still inside, found in restroom. Owner',
-      'location': 'Main Building',
-      'time': '2d ago',
-      'foundBy': 'Mike Torres',
-      'image': Icons.account_balance_wallet,
-    },
-    {
-      'id': 6,
-      'name': 'Green Water Bottle',
-      'description': 'Stainless steel water bottle with university sticker. Appears to be',
-      'location': 'Gym',
-      'time': '3d ago',
-      'foundBy': 'Anna Lopez',
-      'image': Icons.water_drop,
-    },
-    {
-      'id': 7,
-      'name': 'Black Laptop Charger',
-      'description': 'Dell laptop charger with original cable. Found plugged in at the',
-      'location': 'Computer Lab',
-      'time': '5h ago',
-      'foundBy': 'Sarah Kim',
-      'image': Icons.power,
-    },
-    {
-      'id': 8,
-      'name': 'Blue Notebook',
-      'description': 'Spiral notebook with math notes and formulas. Has the owner\'s',
-      'location': 'Mathematics Building',
-      'time': '1d ago',
-      'foundBy': 'Carlos Mendez',
-      'image': Icons.book,
-    },
-  ];
 
   void _onNavItemTapped(int index) {
     if (index == 0) {
@@ -140,33 +68,32 @@ class _PostsPageState extends State<PostsPage> {
   }
 
   // Filter items based on selected category and location
-  List<Map<String, dynamic>> _getFilteredItems() {
-    return _foundItems.where((item) {
-      bool matchesCategory = _selectedCategory == 'All' || _getItemCategory(item) == _selectedCategory;
+  List<Map<String, dynamic>> _getFilteredItems(List<Map<String, dynamic>> items) {
+    return items.where((item) {
+      bool matchesCategory = _selectedCategory == 'All' || item['category'] == _selectedCategory;
       bool matchesLocation = _selectedLocation == 'All Locations' || item['location'] == _selectedLocation;
       bool matchesSearch = _searchController.text.isEmpty || 
-          item['name'].toLowerCase().contains(_searchController.text.toLowerCase()) ||
+          item['itemName'].toLowerCase().contains(_searchController.text.toLowerCase()) ||
           item['description'].toLowerCase().contains(_searchController.text.toLowerCase());
       
       return matchesCategory && matchesLocation && matchesSearch;
     }).toList();
   }
 
-  // Get category for an item based on its icon
-  String _getItemCategory(Map<String, dynamic> item) {
-    IconData icon = item['image'];
-    if (icon == Icons.phone_iphone || icon == Icons.headphones || icon == Icons.power) {
-      return 'Electronics';
-    } else if (icon == Icons.backpack) {
-      return 'Bags';
-    } else if (icon == Icons.book) {
-      return 'Documents';
-    } else if (icon == Icons.account_balance_wallet) {
-      return 'Personal Items';
-    } else if (icon == Icons.umbrella || icon == Icons.water_drop) {
-      return 'Accessories';
+  // Get relative time from timestamp
+  String _getRelativeTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+    
+    if (difference.inDays > 0) {
+      return '${difference.inDays}d ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes}m ago';
+    } else {
+      return 'Just now';
     }
-    return 'Personal Items';
   }
 
   void _showFilterBottomSheet() {
@@ -407,16 +334,22 @@ class _PostsPageState extends State<PostsPage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 56),
-                    child: Text(
-                      '${_foundItems.length} items',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Colors.black54,
-                      ),
-                    ),
+                  const SizedBox(height: 8),
+                  StreamBuilder<QuerySnapshot>(
+                    stream: _lostItemService.getLostItems(status: 'available'),
+                    builder: (context, snapshot) {
+                      int itemCount = snapshot.hasData ? snapshot.data!.docs.length : 0;
+                      return Padding(
+                        padding: const EdgeInsets.only(left: 56),
+                        child: Text(
+                          '$itemCount items',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Colors.black54,
+                          ),
+                        ),
+                      );
+                    },
                   ),
                   const SizedBox(height: 16),
                   // Search Bar
@@ -443,11 +376,54 @@ class _PostsPageState extends State<PostsPage> {
             ),
             // Items List
             Expanded(
-              child: Builder(
-                builder: (context) {
-                  final filteredItems = _getFilteredItems();
+              child: StreamBuilder<QuerySnapshot>(
+                stream: _lostItemService.getLostItems(status: 'available', limit: 50),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(),
+                    );
+                  }
                   
-                  if (filteredItems.isEmpty) {
+                  if (snapshot.hasError) {
+                    // Log the detailed error and show it in the UI for debugging
+                    print('Firestore error while loading lost_items: ${snapshot.error}');
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              size: 64,
+                              color: Colors.grey[400],
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Error loading items',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              snapshot.error.toString(),
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+                  
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                     return Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -468,7 +444,53 @@ class _PostsPageState extends State<PostsPage> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Try adjusting your filters',
+                            'Be the first to post a found item!',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  
+                  // Convert Firestore documents to list
+                  List<Map<String, dynamic>> items = snapshot.data!.docs.map((doc) {
+                    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+                    data['docId'] = doc.id;
+                    return data;
+                  }).toList();
+                  // DEBUG: Print all fetched items
+                  print('Fetched items from Firestore:');
+                  for (var item in items) {
+                    print(item);
+                  }
+                  // Apply filters
+                  final filteredItems = _getFilteredItems(items);
+                  
+                  if (filteredItems.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.search_off,
+                            size: 64,
+                            color: Colors.grey[400],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No items match your filters',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Try adjusting your search or filters',
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.grey[500],
@@ -481,6 +503,7 @@ class _PostsPageState extends State<PostsPage> {
                   
                   return ListView.builder(
                     padding: const EdgeInsets.all(16),
+                    physics: const ClampingScrollPhysics(),
                     itemCount: filteredItems.length,
                     itemBuilder: (context, index) {
                       final item = filteredItems[index];
@@ -534,6 +557,12 @@ class _PostsPageState extends State<PostsPage> {
   }
 
   Widget _buildItemCard(Map<String, dynamic> item) {
+    final images = item['images'] as List<dynamic>? ?? [];
+    final imageUrl = images.isNotEmpty ? images[0] : null;
+    final datePosted = item['datePosted'] != null 
+        ? (item['datePosted'] as Timestamp).toDate() 
+        : DateTime.now();
+    
     return InkWell(
       onTap: () {
         Navigator.push(
@@ -567,7 +596,31 @@ class _PostsPageState extends State<PostsPage> {
                 color: Colors.grey[100],
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(item['image'], color: Colors.grey[600], size: 32),
+              child: imageUrl != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        imageUrl,
+                        width: 70,
+                        height: 70,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(
+                            child: CircularProgressIndicator(
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                      loadingProgress.expectedTotalBytes!
+                                  : null,
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return Icon(Icons.broken_image, color: Colors.grey[400], size: 32);
+                        },
+                      ),
+                    )
+                  : Icon(Icons.image, color: Colors.grey[400], size: 32),
             ),
             const SizedBox(width: 16),
             // Item Details
@@ -576,7 +629,7 @@ class _PostsPageState extends State<PostsPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    item['name'],
+                    item['itemName'] ?? 'Unknown Item',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -585,7 +638,7 @@ class _PostsPageState extends State<PostsPage> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    item['description'],
+                    item['description'] ?? '',
                     style: TextStyle(
                       fontSize: 13,
                       color: Colors.grey[600],
@@ -599,18 +652,21 @@ class _PostsPageState extends State<PostsPage> {
                     children: [
                       Icon(Icons.location_on, size: 14, color: Colors.grey[500]),
                       const SizedBox(width: 4),
-                      Text(
-                        item['location'],
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
+                      Flexible(
+                        child: Text(
+                          item['location'] ?? 'Unknown',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       const SizedBox(width: 12),
                       Icon(Icons.access_time, size: 14, color: Colors.grey[500]),
                       const SizedBox(width: 4),
                       Text(
-                        item['time'],
+                        _getRelativeTime(datePosted),
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey[600],
@@ -620,7 +676,7 @@ class _PostsPageState extends State<PostsPage> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Found by ${item['foundBy']}',
+                    'Found by ${item['userName'] ?? 'Unknown'}',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.grey[500],

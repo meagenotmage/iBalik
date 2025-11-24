@@ -39,6 +39,21 @@ dependencies:
   firebase_core: ^3.6.0
   firebase_auth: ^5.3.1
   cloud_firestore: ^5.4.4
+  
+  # Image picker for selecting photos
+  image_picker: ^1.0.7
+  
+  # Permission handler for runtime permissions
+  permission_handler: ^11.0.0
+  
+  # Shared preferences for storing cleanup timestamps
+  shared_preferences: ^2.2.2
+  
+  # Cloudinary for FREE image storage (25GB free)
+  cloudinary_public: ^0.21.0
+  
+  # HTTP for API calls
+  http: ^1.1.0
 
 dev_dependencies:
   flutter_test:

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../services/lost_item_service.dart';
+import 'dart:io';
 
-class DropOffSuccessPage extends StatelessWidget {
+class DropOffSuccessPage extends StatefulWidget {
   final Map<String, dynamic> itemData;
   final String staffName;
 
@@ -9,6 +11,66 @@ class DropOffSuccessPage extends StatelessWidget {
     required this.itemData,
     required this.staffName,
   });
+
+  @override
+  State<DropOffSuccessPage> createState() => _DropOffSuccessPageState();
+}
+
+class _DropOffSuccessPageState extends State<DropOffSuccessPage> {
+  final LostItemService _lostItemService = LostItemService();
+  bool _isCreating = false;
+  String? _itemId;
+
+  @override
+  void initState() {
+    super.initState();
+    _createLostItemIfNeeded();
+  }
+
+  Future<void> _createLostItemIfNeeded() async {
+    // If itemData already contains an itemId, skip creation
+    if (widget.itemData['itemId'] != null) {
+      setState(() {
+        _itemId = widget.itemData['itemId'];
+      });
+      return;
+    }
+
+    setState(() {
+      _isCreating = true;
+    });
+
+    try {
+      // Prepare data
+      final images = (widget.itemData['images'] as List<dynamic>?)?.cast<File>() ?? [];
+      final date = widget.itemData['date'];
+      final String dateFound = date is DateTime ? date.toIso8601String() : (date?.toString() ?? DateTime.now().toIso8601String());
+
+      final String createdId = await _lostItemService.createLostItem(
+        itemName: widget.itemData['title'] ?? widget.itemData['itemName'] ?? 'Untitled',
+        description: widget.itemData['description'] ?? '',
+        category: widget.itemData['category'] ?? 'Uncategorized',
+        location: widget.itemData['location'] ?? 'Unknown',
+        images: images.cast<File>(),
+        dateFound: dateFound,
+        additionalDetails: {
+          'availability': widget.itemData['availability'],
+          'dropOffLocation': widget.itemData['dropOffLocation'],
+        },
+      );
+
+      setState(() {
+        _itemId = createdId;
+        _isCreating = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isCreating = false;
+      });
+      // log error but continue to show success UI
+      print('Failed to create lost item after drop-off: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -74,6 +136,16 @@ class DropOffSuccessPage extends StatelessWidget {
                     ),
                     
                     const SizedBox(height: 24),
+                    if (_isCreating)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                        child: Column(
+                          children: const [
+                            LinearProgressIndicator(),
+                            SizedBox(height: 12),
+                          ],
+                        ),
+                      ),
                     
                     // Drop-off Confirmed Card
                     Container(
@@ -121,7 +193,7 @@ class DropOffSuccessPage extends StatelessWidget {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'Item ID: DO-2024-001234',
+                                      'Item ID: ${_itemId ?? 'DO-2024-001234'}',
                                       style: TextStyle(
                                         fontSize: 14,
                                         color: Colors.grey[600],
@@ -157,7 +229,7 @@ class DropOffSuccessPage extends StatelessWidget {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      itemData['title'] ?? 'Black iPhone 13',
+                                      widget.itemData['title'] ?? 'Black iPhone 13',
                                       style: const TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
@@ -175,7 +247,7 @@ class DropOffSuccessPage extends StatelessWidget {
                                         const SizedBox(width: 6),
                                         Expanded(
                                           child: Text(
-                                            'Dropped at ${itemData['dropOffLocation'] ?? 'Library'}',
+                                            'Dropped at ${widget.itemData['dropOffLocation'] ?? 'Library'}',
                                             style: TextStyle(
                                               fontSize: 14,
                                               color: Colors.grey[600],
@@ -195,7 +267,7 @@ class DropOffSuccessPage extends StatelessWidget {
                                         const SizedBox(width: 6),
                                         Expanded(
                                           child: Text(
-                                            'Received by $staffName',
+                                            'Received by ${widget.staffName}',
                                             style: TextStyle(
                                               fontSize: 14,
                                               color: Colors.grey[600],

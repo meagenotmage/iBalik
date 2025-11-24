@@ -8,6 +8,8 @@ import '../posts/item_details_page.dart';
 import '../posts/post_found_item_page.dart';
 import '../claims/claims_page.dart';
 import '../game/game_hub_page.dart';
+import '../game/leaderboards_page.dart';
+import '../game/challenges_page.dart';
 import 'profile_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -46,6 +48,18 @@ class _HomePageState extends State<HomePage> {
           _userName = firstName;
         });
       }
+    }
+  }
+
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    
+    if (hour < 12) {
+      return 'Good morning';
+    } else if (hour < 18) {
+      return 'Good afternoon';
+    } else {
+      return 'Good evening';
     }
   }
 
@@ -167,7 +181,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            _userName.isEmpty ? 'Good morning' : 'Good morning, $_userName',
+                            _userName.isEmpty ? _getGreeting() : '${_getGreeting()}, $_userName',
                             style: const TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
@@ -191,6 +205,8 @@ class _HomePageState extends State<HomePage> {
                                   '245',
                                   'Karma\nCommunity\nScore',
                                   const Color(0xFFE8F5E9),
+                                  icon: Icons.star,
+                                  iconColor: const Color(0xFFFFC107),
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -199,6 +215,8 @@ class _HomePageState extends State<HomePage> {
                                   '850',
                                   'Points\nExchange\nCurrency',
                                   const Color(0xFFE0F2F1),
+                                  icon: Icons.bolt,
+                                  iconColor: const Color(0xFF60A5FA),
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -208,6 +226,8 @@ class _HomePageState extends State<HomePage> {
                                   'Rank\nCampus',
                                   const Color(0xFF1A1A2E),
                                   textColor: Colors.white,
+                                  icon: Icons.emoji_events,
+                                  iconColor: Colors.white,
                                 ),
                               ),
                             ],
@@ -364,20 +384,38 @@ class _HomePageState extends State<HomePage> {
                       child: Row(
                         children: [
                           Expanded(
-                            child: _buildGameCard(
-                              'Challenges',
-                              '2 active',
-                              const Color(0xFF4ECDC4),
-                              Icons.flag,
+                            child: InkWell(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  SmoothPageRoute(page: const ChallengesPage()),
+                                );
+                              },
+                              borderRadius: BorderRadius.circular(12),
+                              child: _buildGameCard(
+                                'Challenges',
+                                '2 active',
+                                const Color(0xFF4ECDC4),
+                                Icons.flag,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: _buildGameCard(
-                              'Leaderboard',
-                              'Rank #8',
-                              const Color(0xFF4318FF),
-                              Icons.emoji_events,
+                            child: InkWell(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  SmoothPageRoute(page: const LeaderboardsPage()),
+                                );
+                              },
+                              borderRadius: BorderRadius.circular(12),
+                              child: _buildGameCard(
+                                'Leaderboard',
+                                'Rank #8',
+                                const Color(0xFF4318FF),
+                                Icons.emoji_events,
+                              ),
                             ),
                           ),
                         ],
@@ -422,7 +460,14 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildStatCard(String value, String label, Color bgColor, {Color textColor = Colors.black87}) {
+  Widget _buildStatCard(
+    String value, 
+    String label, 
+    Color bgColor, {
+    Color textColor = Colors.black87,
+    IconData? icon,
+    Color? iconColor,
+  }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -432,6 +477,14 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (icon != null) ...[
+            Icon(
+              icon,
+              color: iconColor ?? textColor,
+              size: 20,
+            ),
+            const SizedBox(height: 8),
+          ],
           Text(
             value,
             style: TextStyle(

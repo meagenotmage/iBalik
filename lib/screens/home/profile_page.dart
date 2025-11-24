@@ -36,21 +36,8 @@ class _ProfilePageState extends State<ProfilePage> {
   int streak = 5;
   int level = 3;
 
-  // Recent items
-  final List<Map<String, dynamic>> recentItems = [
-    {
-      'name': 'Black iPhone 13',
-      'location': 'Library',
-      'status': 'Active',
-      'image': Icons.phone_iphone,
-    },
-    {
-      'name': 'Blue Umbrella',
-      'location': 'Cafeteria',
-      'status': 'Returned',
-      'image': Icons.umbrella,
-    },
-  ];
+  // No more mock recent items. Will fetch from Firestore.
+  // final List<Map<String, dynamic>> recentItems = [];
 
   @override
   void initState() {
@@ -678,7 +665,6 @@ class _ProfilePageState extends State<ProfilePage> {
           const SizedBox(height: 12),
 
           // Recent Items List
-          ...recentItems.map((item) => _buildRecentItemCard(item)).toList(),
           const SizedBox(height: 24),
         ],
       ),
