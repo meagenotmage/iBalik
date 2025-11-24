@@ -47,3 +47,46 @@ app.*.map.json
 # Firebase documentation files
 FIREBASE_AUTH_README.md
 FIREBASE_SETUP.md
+
+# Local and generated config (sensitive)
+local.properties
+**/local.properties
+
+# Android Google Services (contains API keys)
+/app/google-services.json
+**/google-services.json
+
+# iOS GoogleService-Info (contains API keys)
+ios/**/GoogleService-Info.plist
+**/GoogleService-Info.plist
+
+# Environment files
+.env
+.env.*
+
+# Firebase / service account secrets
+serviceAccountKey.json
+*.serviceAccount.json
+firebase-debug.log
+
+# Generated Firebase/credentials files (ignore generated credentials and SDK output)
+# FlutterFire generated file
+lib/firebase_options.dart
+**/firebase_options.dart
+
+# Common service account / credential filenames
+credentials.json
+credential.json
+service-account*.json
+service_account_*.json
+serviceAccountKey.json
+*-credentials.json
+*-key.json
+
+# Private keys and certificates
+*.pem
+*.p12
+*.p8
+
+# Keystore (Android signing files)
+*.jks
