@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../utils/page_transitions.dart';
+import '../../utils/app_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../posts/posts_page.dart';
@@ -21,7 +22,7 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
   bool _showReturnedItems = false;
   bool _showReceivedReturnedItems = false;
   String? _expandedClaimId;
-  int _selectedIndex = 2; // Claims tab is selected
+  int _selectedIndex = 3; // Claims tab is selected (new position)
 
   @override
   void initState() {
@@ -161,25 +162,19 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
   Widget _buildBottomNavBar() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
+        color: AppColors.black,
+        boxShadow: AppShadows.nav,
       ),
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _buildNavItem(Icons.home, 'Home', 0),
               _buildNavItem(Icons.search, 'Posts', 1),
-              _buildNavItem(Icons.description_outlined, 'Claims', 2),
-              _buildNavItem(Icons.emoji_events_outlined, 'Game Hub', 3),
+              _buildNavItem(Icons.emoji_events_outlined, 'Game Hub', 2),
+              _buildNavItem(Icons.description_outlined, 'Claims', 3),
               _buildNavItem(Icons.person_outline, 'Profile', 4),
             ],
           ),
@@ -197,15 +192,14 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
         children: [
           Icon(
             icon,
-            color: isSelected ? const Color(0xFF4318FF) : Colors.grey,
+            color: isSelected ? AppColors.primary : AppColors.white.withOpacity(0.6),
             size: 26,
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xs),
           Text(
             label,
-            style: TextStyle(
-              fontSize: 11,
-              color: isSelected ? const Color(0xFF4318FF) : Colors.grey,
+            style: AppTextStyles.captionSmall.copyWith(
+              color: isSelected ? AppColors.primary : AppColors.white.withOpacity(0.6),
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
             ),
           ),
@@ -224,8 +218,8 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
         context,
         SmoothPageRoute(page: const PostsPage()),
       );
-    } else if (index == 3) {
-      // Navigate to Game Hub
+    } else if (index == 2) {
+      // Navigate to Game Hub (now in center)
       Navigator.push(
         context,
         SmoothPageRoute(page: const GameHubPage()),

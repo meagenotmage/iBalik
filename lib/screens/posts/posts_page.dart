@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../utils/page_transitions.dart';
+import '../../utils/app_theme.dart';
 import 'item_details_page.dart';
 import 'post_found_item_page.dart';
 import '../claims/claims_page.dart';
@@ -528,25 +529,19 @@ class _PostsPageState extends State<PostsPage> {
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
+          color: AppColors.black,
+          boxShadow: AppShadows.nav,
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildNavItem(Icons.home_outlined, 'Home', 0),
                 _buildNavItem(Icons.search, 'Posts', 1),
-                _buildNavItem(Icons.description_outlined, 'Claims', 2),
-                _buildNavItem(Icons.emoji_events_outlined, 'Game Hub', 3),
+                _buildNavItem(Icons.emoji_events_outlined, 'Game Hub', 2),
+                _buildNavItem(Icons.description_outlined, 'Claims', 3),
                 _buildNavItem(Icons.person_outline, 'Profile', 4),
               ],
             ),
@@ -700,15 +695,14 @@ class _PostsPageState extends State<PostsPage> {
         children: [
           Icon(
             icon,
-            color: isSelected ? const Color(0xFF4318FF) : Colors.grey,
+            color: isSelected ? AppColors.primary : AppColors.white.withOpacity(0.6),
             size: 26,
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xs),
           Text(
             label,
-            style: TextStyle(
-              fontSize: 11,
-              color: isSelected ? const Color(0xFF4318FF) : Colors.grey,
+            style: AppTextStyles.captionSmall.copyWith(
+              color: isSelected ? AppColors.primary : AppColors.white.withOpacity(0.6),
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
             ),
           ),

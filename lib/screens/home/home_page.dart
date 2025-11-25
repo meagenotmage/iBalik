@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../utils/page_transitions.dart';
+import '../../utils/app_theme.dart';
 import '../auth/login_page.dart';
 import '../notifications/notifications_page.dart';
 import '../posts/posts_page.dart';
@@ -104,16 +105,16 @@ class _HomePageState extends State<HomePage> {
         SmoothPageRoute(page: const PostsPage()),
       );
     } else if (index == 2) {
+      // Navigate to Game Hub page (now in center)
+      Navigator.push(
+        context,
+        SmoothPageRoute(page: const GameHubPage()),
+      );
+    } else if (index == 3) {
       // Navigate to Claims page
       Navigator.push(
         context,
         SmoothPageRoute(page: const ClaimsPage()),
-      );
-    } else if (index == 3) {
-      // Navigate to Game Hub page
-      Navigator.push(
-        context,
-        SmoothPageRoute(page: const GameHubPage()),
       );
     } else if (index == 4) {
       // Navigate to Profile page
@@ -131,7 +132,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -145,8 +146,8 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     // Header Section
                     Container(
-                      color: Colors.white,
-                      padding: const EdgeInsets.all(20),
+                      color: AppColors.white,
+                      padding: const EdgeInsets.all(AppSpacing.xl),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -155,16 +156,16 @@ class _HomePageState extends State<HomePage> {
                             children: [
                               // Logo
                               Container(
-                                width: 40,
-                                height: 40,
+                                width: AppIconSize.xxl,
+                                height: AppIconSize.xxl,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF1A1A2E),
-                                  borderRadius: BorderRadius.circular(8),
+                                  color: AppColors.darkGray,
+                                  borderRadius: BorderRadius.circular(AppRadius.sm),
                                 ),
                                 child: const Icon(
                                   Icons.location_on,
-                                  color: Colors.white,
-                                  size: 24,
+                                  color: AppColors.white,
+                                  size: AppIconSize.lg,
                                 ),
                               ),
                               // Notification Bell
@@ -179,24 +180,19 @@ class _HomePageState extends State<HomePage> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: AppSpacing.lg),
                           Text(
                             _userName.isEmpty ? _getGreeting() : '${_getGreeting()}, $_userName',
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
+                            style: AppTextStyles.displaySmall,
                           ),
-                          const SizedBox(height: 4),
-                          const Text(
+                          const SizedBox(height: AppSpacing.xs),
+                          Text(
                             'Ready to help the WVSU community?',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.black54,
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              color: AppColors.textSecondary,
                             ),
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: AppSpacing.xl),
                           // Stats Cards
                           Row(
                             children: [
@@ -204,35 +200,35 @@ class _HomePageState extends State<HomePage> {
                                 child: _buildStatCard(
                                   '245',
                                   'Karma\nCommunity\nScore',
-                                  const Color(0xFFE8F5E9),
+                                  AppColors.successLight,
                                   icon: Icons.star,
-                                  iconColor: const Color(0xFFFFC107),
+                                  iconColor: AppColors.warning,
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: AppSpacing.md),
                               Expanded(
                                 child: _buildStatCard(
                                   '850',
                                   'Points\nExchange\nCurrency',
                                   const Color(0xFFE0F2F1),
                                   icon: Icons.bolt,
-                                  iconColor: const Color(0xFF60A5FA),
+                                  iconColor: AppColors.primary,
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: AppSpacing.md),
                               Expanded(
                                 child: _buildStatCard(
                                   '#8',
                                   'Rank\nCampus',
-                                  const Color(0xFF1A1A2E),
-                                  textColor: Colors.white,
+                                  AppColors.darkGray,
+                                  textColor: AppColors.white,
                                   icon: Icons.emoji_events,
-                                  iconColor: Colors.white,
+                                  iconColor: AppColors.white,
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: AppSpacing.xl),
                           // Action Buttons
                           Row(
                             children: [
@@ -244,24 +240,15 @@ class _HomePageState extends State<HomePage> {
                                       SmoothPageRoute(page: const PostFoundItemPage()),
                                     );
                                   },
-                                  icon: const Icon(Icons.add, color: Colors.white),
-                                  label: const Text(
-                                    'Report Find',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
+                                  icon: const Icon(Icons.add, size: AppIconSize.md),
+                                  label: const Text('Report Find'),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF4318FF),
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: AppColors.white,
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: AppSpacing.md),
                               Expanded(
                                 child: OutlinedButton.icon(
                                   onPressed: () {
@@ -270,20 +257,10 @@ class _HomePageState extends State<HomePage> {
                                       SmoothPageRoute(page: const PostsPage()),
                                     );
                                   },
-                                  icon: const Icon(Icons.search, color: Colors.black87),
-                                  label: const Text(
+                                  icon: Icon(Icons.search, size: AppIconSize.md, color: AppColors.textPrimary),
+                                  label: Text(
                                     'Browse Posts',
-                                    style: TextStyle(
-                                      color: Colors.black87,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
-                                    side: const BorderSide(color: Colors.black12),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
+                                    style: TextStyle(color: AppColors.textPrimary),
                                   ),
                                 ),
                               ),
@@ -292,30 +269,20 @@ class _HomePageState extends State<HomePage> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.sm),
                     // Recent Finds Section
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.lg),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
+                          Text(
                             'Recent Finds',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
+                            style: AppTextStyles.titleMedium,
                           ),
                           TextButton(
                             onPressed: () {},
-                            child: const Text(
-                              'View all',
-                              style: TextStyle(
-                                color: Color(0xFF4318FF),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
+                            child: const Text('View all'),
                           ),
                         ],
                       ),
@@ -345,42 +312,32 @@ class _HomePageState extends State<HomePage> {
                       'Available',
                       Icons.backpack,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.lg),
                     // Game Hub Section
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.sm),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Row(
-                            children: const [
-                              Icon(Icons.emoji_events, size: 20),
-                              SizedBox(width: 8),
+                            children: [
+                              Icon(Icons.emoji_events, size: AppIconSize.md),
+                              const SizedBox(width: AppSpacing.sm),
                               Text(
                                 'Game Hub',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
-                                ),
+                                style: AppTextStyles.titleMedium,
                               ),
                             ],
                           ),
                           TextButton(
                             onPressed: () {},
-                            child: const Text(
-                              'View All',
-                              style: TextStyle(
-                                color: Color(0xFF4318FF),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
+                            child: const Text('View All'),
                           ),
                         ],
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
                       child: Row(
                         children: [
                           Expanded(
@@ -391,16 +348,16 @@ class _HomePageState extends State<HomePage> {
                                   SmoothPageRoute(page: const ChallengesPage()),
                                 );
                               },
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(AppRadius.md),
                               child: _buildGameCard(
                                 'Challenges',
                                 '2 active',
-                                const Color(0xFF4ECDC4),
+                                AppColors.secondary,
                                 Icons.flag,
                               ),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: AppSpacing.md),
                           Expanded(
                             child: InkWell(
                               onTap: () {
@@ -409,11 +366,11 @@ class _HomePageState extends State<HomePage> {
                                   SmoothPageRoute(page: const LeaderboardsPage()),
                                 );
                               },
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(AppRadius.md),
                               child: _buildGameCard(
                                 'Leaderboard',
                                 'Rank #8',
-                                const Color(0xFF4318FF),
+                                AppColors.primary,
                                 Icons.emoji_events,
                               ),
                             ),
@@ -421,7 +378,7 @@ class _HomePageState extends State<HomePage> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: AppSpacing.xl),
                   ],
                 ),
               ),
@@ -429,25 +386,19 @@ class _HomePageState extends State<HomePage> {
             // Bottom Navigation Bar (Fixed)
             Container(
               decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, -2),
-                  ),
-                ],
+                color: AppColors.black,
+                boxShadow: AppShadows.nav,
               ),
               child: SafeArea(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       _buildNavItem(Icons.home, 'Home', 0),
                       _buildNavItem(Icons.search, 'Posts', 1),
-                      _buildNavItem(Icons.description_outlined, 'Claims', 2),
-                      _buildNavItem(Icons.emoji_events_outlined, 'Game Hub', 3),
+                      _buildNavItem(Icons.emoji_events_outlined, 'Game Hub', 2),
+                      _buildNavItem(Icons.description_outlined, 'Claims', 3),
                       _buildNavItem(Icons.person_outline, 'Profile', 4),
                     ],
                   ),
@@ -464,15 +415,17 @@ class _HomePageState extends State<HomePage> {
     String value, 
     String label, 
     Color bgColor, {
-    Color textColor = Colors.black87,
+    Color? textColor,
     IconData? icon,
     Color? iconColor,
   }) {
+    final effectiveTextColor = textColor ?? AppColors.textPrimary;
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        boxShadow: AppShadows.soft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -480,26 +433,22 @@ class _HomePageState extends State<HomePage> {
           if (icon != null) ...[
             Icon(
               icon,
-              color: iconColor ?? textColor,
-              size: 20,
+              color: iconColor ?? effectiveTextColor,
+              size: AppIconSize.md,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
           ],
           Text(
             value,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: textColor,
+            style: AppTextStyles.displaySmall.copyWith(
+              color: effectiveTextColor,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xs),
           Text(
             label,
-            style: TextStyle(
-              fontSize: 10,
-              color: textColor.withValues(alpha: 0.7),
-              height: 1.3,
+            style: AppTextStyles.overline.copyWith(
+              color: effectiveTextColor.withOpacity(0.7),
             ),
           ),
         ],
@@ -535,20 +484,14 @@ class _HomePageState extends State<HomePage> {
           SmoothPageRoute(page: ItemDetailsPage(item: item)),
         );
       },
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(AppRadius.md),
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: 6),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          boxShadow: AppShadows.soft,
         ),
         child: Row(
           children: [
@@ -557,12 +500,12 @@ class _HomePageState extends State<HomePage> {
               width: 60,
               height: 60,
               decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(8),
+                color: AppColors.lightGray,
+                borderRadius: BorderRadius.circular(AppRadius.sm),
               ),
-              child: Icon(icon, color: Colors.grey[600], size: 30),
+              child: Icon(icon, color: AppColors.mediumGray, size: 30),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: AppSpacing.lg),
             // Item Details
             Expanded(
               child: Column(
@@ -573,24 +516,21 @@ class _HomePageState extends State<HomePage> {
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
+                        style: AppTextStyles.titleSmall,
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.sm,
+                          vertical: AppSpacing.xs,
+                        ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE8F5E9),
+                          color: AppColors.successLight,
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           status,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF4CAF50),
+                          style: AppTextStyles.captionSmall.copyWith(
+                            color: AppColors.success,
                           ),
                         ),
                       ),
@@ -599,34 +539,25 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(height: 6),
                   Text(
                     description,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey[600],
-                    ),
+                    style: AppTextStyles.bodySmall,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   Row(
                     children: [
-                      Icon(Icons.access_time, size: 14, color: Colors.grey[500]),
-                      const SizedBox(width: 4),
+                      Icon(Icons.access_time, size: AppIconSize.sm, color: AppColors.textTertiary),
+                      const SizedBox(width: AppSpacing.xs),
                       Text(
                         time,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[500],
-                        ),
+                        style: AppTextStyles.captionLarge,
                       ),
-                      const SizedBox(width: 12),
-                      Icon(Icons.location_on, size: 14, color: Colors.grey[500]),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: AppSpacing.md),
+                      Icon(Icons.location_on, size: AppIconSize.sm, color: AppColors.textTertiary),
+                      const SizedBox(width: AppSpacing.xs),
                       Text(
                         location,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[500],
-                        ),
+                        style: AppTextStyles.captionLarge,
                       ),
                     ],
                   ),
@@ -641,30 +572,29 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildGameCard(String title, String subtitle, Color color, IconData icon) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        boxShadow: AppShadows.soft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: Colors.white, size: 24),
-          const SizedBox(height: 8),
+          Icon(icon, color: color == AppColors.secondary ? AppColors.black : AppColors.white, size: AppIconSize.lg),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 14,
+            style: AppTextStyles.bodyMedium.copyWith(
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: color == AppColors.secondary ? AppColors.black : AppColors.white,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xs),
           Text(
             subtitle,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.white70,
+            style: AppTextStyles.captionLarge.copyWith(
+              color: color == AppColors.secondary ? AppColors.black.withOpacity(0.7) : AppColors.white.withOpacity(0.7),
             ),
           ),
         ],
@@ -681,15 +611,14 @@ class _HomePageState extends State<HomePage> {
         children: [
           Icon(
             icon,
-            color: isSelected ? const Color(0xFF4318FF) : Colors.grey,
+            color: isSelected ? AppColors.primary : AppColors.white.withOpacity(0.6),
             size: 26,
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xs),
           Text(
             label,
-            style: TextStyle(
-              fontSize: 11,
-              color: isSelected ? const Color(0xFF4318FF) : Colors.grey,
+            style: AppTextStyles.captionSmall.copyWith(
+              color: isSelected ? AppColors.primary : AppColors.white.withOpacity(0.6),
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
             ),
           ),
