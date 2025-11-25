@@ -111,15 +111,15 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
             Text(
               'Confirm Return',
               style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+                fontSize: 22,
+                fontWeight: FontWeight.w600,
                 color: Colors.black87,
               ),
             ),
             Text(
               'Mark this item as successfully returned',
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 14,
                 color: Colors.black54,
               ),
             ),
@@ -171,8 +171,8 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
                         Text(
                           widget.itemData['title'] ?? 'Black iPhone 13',
                           style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
                             color: Colors.black87,
                           ),
                         ),
@@ -250,8 +250,8 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
                   const Text(
                     'Verify Owner Identity',
                     style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
                       color: Colors.black87,
                     ),
                   ),
@@ -311,8 +311,8 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
                   const Text(
                     'Return Details',
                     style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
                       color: Colors.black87,
                     ),
                   ),
@@ -411,8 +411,8 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
                       const Text(
                         'Return Photo (Optional)',
                         style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
                           color: Colors.black87,
                         ),
                       ),
@@ -529,7 +529,7 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
                               'Your Rewards',
                               style: TextStyle(
                                 fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w600,
                                 color: Color(0xFF2E7D32),
                               ),
                             ),
@@ -537,6 +537,7 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
                               'Earned for successful return',
                               style: TextStyle(
                                 fontSize: 12,
+                                fontWeight: FontWeight.w500,
                                 color: Color(0xFF388E3C),
                               ),
                             ),

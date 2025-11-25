@@ -324,8 +324,8 @@ class _PostsPageState extends State<PostsPage> {
                         child: Text(
                           'Found Items',
                           style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w600,
                             color: Colors.black87,
                           ),
                         ),
@@ -346,7 +346,7 @@ class _PostsPageState extends State<PostsPage> {
                         child: Text(
                           '$itemCount items',
                           style: const TextStyle(
-                            fontSize: 13,
+                            fontSize: 14,
                             color: Colors.black54,
                           ),
                         ),
@@ -540,7 +540,7 @@ class _PostsPageState extends State<PostsPage> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildNavItem(Icons.home_outlined, 'Home', 0),
-                _buildNavItem(Icons.search, 'Posts', 1),
+                _buildNavItem(Icons.article_outlined, 'Posts', 1),
                 _buildNavItem(Icons.emoji_events_outlined, 'Game Hub', 2),
                 _buildNavItem(Icons.description_outlined, 'Claims', 3),
                 _buildNavItem(Icons.person_outline, 'Profile', 4),
@@ -628,7 +628,7 @@ class _PostsPageState extends State<PostsPage> {
                     item['itemName'] ?? 'Unknown Item',
                     style: const TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w600,
                       color: Colors.black87,
                     ),
                   ),
@@ -636,7 +636,7 @@ class _PostsPageState extends State<PostsPage> {
                   Text(
                     item['description'] ?? '',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 14,
                       color: Colors.grey[600],
                       height: 1.4,
                     ),
@@ -699,10 +699,11 @@ class _PostsPageState extends State<PostsPage> {
             color: isSelected ? AppColors.primary : AppColors.white.withOpacity(0.6),
             size: 26,
           ),
-          const SizedBox(height: AppSpacing.xs),
+          const SizedBox(height: 4),
           Text(
             label,
-            style: AppTextStyles.captionSmall.copyWith(
+            style: TextStyle(
+              fontSize: 11,
               color: isSelected ? AppColors.primary : AppColors.white.withOpacity(0.6),
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
             ),

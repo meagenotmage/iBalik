@@ -178,8 +178,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                 userName,
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -261,7 +261,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                                 'Karma',
                                                 style: TextStyle(
                                                   color: Colors.white70,
-                                                  fontSize: 13,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w500,
                                                 ),
                                               ),
                                             ],
@@ -271,8 +272,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                             karma.toString(),
                                             style: const TextStyle(
                                               color: Color(0xFFFFC107),
-                                              fontSize: 32,
-                                              fontWeight: FontWeight.bold,
+                                              fontSize: 28,
+                                              fontWeight: FontWeight.w600,
                                             ),
                                           ),
                                           const SizedBox(height: 4),
@@ -319,7 +320,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                                 'Points',
                                                 style: TextStyle(
                                                   color: Colors.white70,
-                                                  fontSize: 13,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w500,
                                                 ),
                                               ),
                                             ],
@@ -329,8 +331,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                             points.toString(),
                                             style: const TextStyle(
                                               color: Color(0xFF60A5FA),
-                                              fontSize: 32,
-                                              fontWeight: FontWeight.bold,
+                                              fontSize: 28,
+                                              fontWeight: FontWeight.w600,
                                             ),
                                           ),
                                           const SizedBox(height: 4),
@@ -455,10 +457,10 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildNavItem(Icons.home, 'Home', 0),
-                    _buildNavItem(Icons.search, 'Posts', 1),
-                    _buildNavItem(Icons.description_outlined, 'Claims', 2),
-                    _buildNavItem(Icons.emoji_events_outlined, 'Game Hub', 3),
+                    _buildNavItem(Icons.home_outlined, 'Home', 0),
+                    _buildNavItem(Icons.article_outlined, 'Posts', 1),
+                    _buildNavItem(Icons.emoji_events_outlined, 'Game Hub', 2),
+                    _buildNavItem(Icons.description_outlined, 'Claims', 3),
                     _buildNavItem(Icons.person_outline, 'Profile', 4),
                   ],
                 ),
@@ -488,14 +490,18 @@ class _ProfilePageState extends State<ProfilePage> {
             value,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 2),
           Text(
             label,
-            style: const TextStyle(color: Colors.white70, fontSize: 10),
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
@@ -637,8 +643,8 @@ class _ProfilePageState extends State<ProfilePage> {
               const Text(
                 'Recent Items',
                 style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
                   color: Colors.black87,
                 ),
               ),

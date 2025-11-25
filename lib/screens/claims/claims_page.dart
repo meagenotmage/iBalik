@@ -53,8 +53,8 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
             Text(
               'Claims',
               style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+                fontSize: 22,
+                fontWeight: FontWeight.w600,
                 color: Colors.black87,
               ),
             ),
@@ -150,7 +150,7 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
             label,
             style: TextStyle(
               fontSize: 16,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               color: isSelected ? Colors.black87 : Colors.grey[600],
             ),
           ),
@@ -171,8 +171,8 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(Icons.home, 'Home', 0),
-              _buildNavItem(Icons.search, 'Posts', 1),
+              _buildNavItem(Icons.home_outlined, 'Home', 0),
+              _buildNavItem(Icons.article_outlined, 'Posts', 1),
               _buildNavItem(Icons.emoji_events_outlined, 'Game Hub', 2),
               _buildNavItem(Icons.description_outlined, 'Claims', 3),
               _buildNavItem(Icons.person_outline, 'Profile', 4),
@@ -195,10 +195,11 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
             color: isSelected ? AppColors.primary : AppColors.white.withOpacity(0.6),
             size: 26,
           ),
-          const SizedBox(height: AppSpacing.xs),
+          const SizedBox(height: 4),
           Text(
             label,
-            style: AppTextStyles.captionSmall.copyWith(
+            style: TextStyle(
+              fontSize: 11,
               color: isSelected ? AppColors.primary : AppColors.white.withOpacity(0.6),
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
             ),
