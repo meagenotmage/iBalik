@@ -36,18 +36,36 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
     'Bags',
     'Documents',
     'Accessories',
+    'Clothes',
+    'Shoes',
+    'Others'
   ];
 
   final List<String> _locations = [
     'Select location',
     'Library',
-    'Cafeteria',
-    'Engineering Building',
-    'Main Parking',
-    'Main Building',
-    'Gym',
-    'Computer Lab',
-    'Mathematics Building',
+    'CO-OP',
+    'College of ICT',
+    'College of Nursing',
+    'College of Law',
+    'Research Building',
+    'Binhi',
+    'Medicine Gym',
+    'Rizal Hall',
+    'Admin Building',
+    'Mini Forest',
+    'Jubilee Park',
+    'Quezon Hall',
+    'Grandstand',
+    'College of Communications',
+    'Audio Visual Hall',
+    'Cultural Center',
+    'Foreign Languages Building',
+    'College of Education',
+    'College of Business and Management',
+    'College of PESCAR', 
+    'CTE Building',
+    'Elementary CO-OP'
   ];
 
   final List<String> _dropOffLocations = [
@@ -61,34 +79,10 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
     'College of Education',
     'College of PESCAR',
     'College of Dentistry',
+    'Guard House',
   ];
 
-  // Map recommended drop-off locations based on where the item was found.
-  // This provides context-aware suggestions (e.g., if found in the Cafeteria,
-  // suggest nearby hubs like Library, USC Office, or College-specific offices).
-  final Map<String, List<String>> _locationDropOffMap = {
-    'Library': ['Library'],
-    'Cafeteria': ['Library'],
-    'Engineering Building': ['College of ICT', 'Library'],
-    'Main Parking': ['Library'],
-    'Main Building': ['Library'],
-    'Gym': ['Library'],
-    'Computer Lab': ['College of ICT', 'Library'],
-    'Mathematics Building': ['College of Arts and Science', 'Library'],
-  };
-
-  List<String> get _currentDropOffOptions {
-    // Return the union of location-specific suggestions and the global drop-off list.
-    // This ensures the user can always choose any available drop-off point,
-    // while still showing location-relevant suggestions first.
-    final defaultList = _dropOffLocations;
-    if (_selectedLocation != 'Select location' && _locationDropOffMap.containsKey(_selectedLocation)) {
-      final suggestions = _locationDropOffMap[_selectedLocation]!;
-      final combined = [...suggestions, ...defaultList];
-      return combined.toSet().toList(); // deduplicate
-    }
-    return defaultList;
-  }
+  // No location-based drop-off suggestions needed anymore.
 
   // (Removed college-specific hub UI; no college list needed)
 
@@ -435,17 +429,6 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                                   _selectedLocation = newValue ?? 'Select location';
                                   // If the founder chose the 'Drop off location' flow,
                                   // default the drop-off selection to the first available option.
-                                  if (_selectedAvailability == 'Drop off location') {
-                                    final options = _currentDropOffOptions;
-                                    if (options.isNotEmpty) {
-                                      _selectedDropOffLocation = options.first;
-                                    }
-                                  } else {
-                                    final options = _currentDropOffOptions;
-                                    if (options.isNotEmpty) {
-                                      _selectedDropOffLocation = options.first;
-                                    }
-                                  }
                                 });
                               },
                             );
@@ -501,7 +484,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                         ),
                           child: DropdownButtonHideUnderline(
                           child: Builder(builder: (context) {
-                            final variantOptions = _currentDropOffOptions.toSet().toList();
+                            final variantOptions = _dropOffLocations.toSet().toList();
                             final currentVariant = variantOptions.contains(_selectedDropOffLocation) ? _selectedDropOffLocation : null;
                             return DropdownButton<String>(
                               value: currentVariant,
