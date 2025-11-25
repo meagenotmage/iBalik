@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../utils/page_transitions.dart';
+import '../../utils/app_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../posts/posts_page.dart';
@@ -21,7 +22,7 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
   bool _showReturnedItems = false;
   bool _showReceivedReturnedItems = false;
   String? _expandedClaimId;
-  int _selectedIndex = 2; // Claims tab is selected
+  int _selectedIndex = 3; // Claims tab is selected (new position)
 
   @override
   void initState() {
@@ -102,12 +103,12 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Column(
@@ -116,16 +117,16 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
             Text(
               'Claims',
               style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
+                fontSize: 22,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
               ),
             ),
             Text(
               'Manage your claim requests',
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.black54,
+                color: AppColors.textSecondary,
               ),
             ),
           ],
@@ -136,8 +137,11 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
         children: [
           // Custom Tab Bar
           Container(
-            color: Colors.white,
-            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              boxShadow: AppShadows.soft,
+            ),
+            padding: const EdgeInsets.all(AppSpacing.lg),
             child: Row(
               children: [
                 Expanded(
@@ -213,7 +217,7 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
             label,
             style: TextStyle(
               fontSize: 16,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               color: isSelected ? Colors.black87 : Colors.grey[600],
             ),
           ),
@@ -257,7 +261,7 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
         children: [
           Icon(
             icon,
-            color: isSelected ? const Color(0xFF4318FF) : Colors.grey,
+            color: isSelected ? AppColors.primary : AppColors.white.withOpacity(0.6),
             size: 26,
           ),
           const SizedBox(height: 4),
@@ -265,7 +269,7 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
             label,
             style: TextStyle(
               fontSize: 11,
-              color: isSelected ? const Color(0xFF4318FF) : Colors.grey,
+              color: isSelected ? AppColors.primary : AppColors.white.withOpacity(0.6),
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
             ),
           ),
@@ -277,26 +281,26 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
   void _onNavItemTapped(int index) {
     if (index == 0) {
       // Go back to Home
-      Navigator.pop(context);
+      Navigator.of(context).popUntil((route) => route.isFirst);
     } else if (index == 1) {
       // Navigate to Posts
       Navigator.pushReplacement(
         context,
         SmoothPageRoute(page: const PostsPage()),
       );
-    } else if (index == 3) {
+    } else if (index == 2) {
       // Navigate to Game Hub
-      Navigator.push(
+      Navigator.pushReplacement(
         context,
         SmoothPageRoute(page: const GameHubPage()),
       );
     } else if (index == 4) {
       // Navigate to Profile
-      Navigator.push(
+      Navigator.pushReplacement(
         context,
         SmoothPageRoute(page: const ProfilePage()),
       );
-    } else if (index != 2) {
+    } else if (index != 3) {
       // For other tabs, just update the selected state
       setState(() {
         _selectedIndex = index;

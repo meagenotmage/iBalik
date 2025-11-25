@@ -3,6 +3,7 @@ import '../../services/auth_service.dart';
 import '../../services/lost_item_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../utils/page_transitions.dart';
+import '../../utils/app_theme.dart';
 import '../auth/login_page.dart';
 import '../notifications/notifications_page.dart';
 import '../posts/posts_page.dart';
@@ -148,16 +149,16 @@ class _HomePageState extends State<HomePage> {
         SmoothPageRoute(page: const PostsPage()),
       );
     } else if (index == 2) {
+      // Navigate to Game Hub page (now in center)
+      Navigator.push(
+        context,
+        SmoothPageRoute(page: const GameHubPage()),
+      );
+    } else if (index == 3) {
       // Navigate to Claims page
       Navigator.push(
         context,
         SmoothPageRoute(page: const ClaimsPage()),
-      );
-    } else if (index == 3) {
-      // Navigate to Game Hub page
-      Navigator.push(
-        context,
-        SmoothPageRoute(page: const GameHubPage()),
       );
     } else if (index == 4) {
       // Navigate to Profile page
@@ -175,7 +176,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -183,14 +184,17 @@ class _HomePageState extends State<HomePage> {
             Expanded(
               child: SingleChildScrollView(
                 physics: const ClampingScrollPhysics(),
-                padding: const EdgeInsets.only(bottom: 20),
+                padding: const EdgeInsets.only(bottom: AppSpacing.lg),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Header Section
                     Container(
-                      color: Colors.white,
-                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: AppColors.white,
+                        boxShadow: AppShadows.soft,
+                      ),
+                      padding: const EdgeInsets.all(AppSpacing.lg),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -199,16 +203,16 @@ class _HomePageState extends State<HomePage> {
                             children: [
                               // Logo
                               Container(
-                                width: 40,
-                                height: 40,
+                                width: AppIconSize.xxl,
+                                height: AppIconSize.xxl,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF1A1A2E),
-                                  borderRadius: BorderRadius.circular(8),
+                                  color: AppColors.darkGray,
+                                  borderRadius: BorderRadius.circular(AppRadius.sm),
                                 ),
                                 child: const Icon(
                                   Icons.location_on,
-                                  color: Colors.white,
-                                  size: 24,
+                                  color: AppColors.white,
+                                  size: AppIconSize.lg,
                                 ),
                               ),
                               // Notification Bell
@@ -227,56 +231,55 @@ class _HomePageState extends State<HomePage> {
                           Text(
                             _userName.isEmpty ? _getGreeting() : '${_getGreeting()}, $_userName',
                             style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 8),
                           const Text(
                             'Ready to help the WVSU community?',
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.black54,
+                              color: AppColors.textSecondary,
                             ),
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 24),
                           // Stats Cards
                           Row(
                             children: [
                               Expanded(
                                 child: _buildStatCard(
                                   '245',
-                                  'Karma\nCommunity\nScore',
-                                  const Color(0xFFE8F5E9),
-                                  icon: Icons.star,
-                                  iconColor: const Color(0xFFFFC107),
+                                  'Karma',
+                                  AppColors.white,
+                                  icon: Icons.star_outline,
+                                  iconColor: AppColors.secondary,
                                 ),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: _buildStatCard(
                                   '850',
-                                  'Points\nExchange\nCurrency',
-                                  const Color(0xFFE0F2F1),
-                                  icon: Icons.bolt,
-                                  iconColor: const Color(0xFF60A5FA),
+                                  'Points',
+                                  AppColors.white,
+                                  icon: Icons.bolt_outlined,
+                                  iconColor: AppColors.primary,
                                 ),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: _buildStatCard(
                                   '#8',
-                                  'Rank\nCampus',
-                                  const Color(0xFF1A1A2E),
-                                  textColor: Colors.white,
-                                  icon: Icons.emoji_events,
-                                  iconColor: Colors.white,
+                                  'Rank',
+                                  AppColors.white,
+                                  icon: Icons.emoji_events_outlined,
+                                  iconColor: AppColors.primary,
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 24),
                           // Action Buttons
                           Row(
                             children: [
@@ -288,19 +291,18 @@ class _HomePageState extends State<HomePage> {
                                       SmoothPageRoute(page: const PostFoundItemPage()),
                                     );
                                   },
-                                  icon: const Icon(Icons.add, color: Colors.white),
-                                  label: const Text(
-                                    'Report Find',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
+                                  icon: const Icon(Icons.add, size: 20),
+                                  label: const Text('Report Find'),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF4318FF),
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: AppColors.white,
                                     padding: const EdgeInsets.symmetric(vertical: 16),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    textStyle: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ),
@@ -314,19 +316,18 @@ class _HomePageState extends State<HomePage> {
                                       SmoothPageRoute(page: const PostsPage()),
                                     );
                                   },
-                                  icon: const Icon(Icons.search, color: Colors.black87),
-                                  label: const Text(
-                                    'Browse Posts',
-                                    style: TextStyle(
-                                      color: Colors.black87,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
+                                  icon: const Icon(Icons.search_outlined, size: 20),
+                                  label: const Text('Browse Posts'),
                                   style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppColors.textPrimary,
+                                    side: const BorderSide(color: AppColors.lightGray),
                                     padding: const EdgeInsets.symmetric(vertical: 16),
-                                    side: const BorderSide(color: Colors.black12),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    textStyle: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ),
@@ -336,33 +337,30 @@ class _HomePageState extends State<HomePage> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.lg),
                     // Recent Finds Section
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           const Text(
-                          'Recent Finds',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
+                            'Recent Finds',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
                           ),
                           TextButton(
-                          onPressed: () {
-                            Navigator.push(
-                            context,
-                            SmoothPageRoute(page: const PostsPage()),
-                            );
-                          },
-                          child: const Text(
-                            'View all',
-                            style: TextStyle(
-                            color: Color(0xFF4318FF),
-                            fontWeight: FontWeight.w600,
+                            onPressed: () {},
+                            child: const Text(
+                              'View All',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primary,
+                              ),
                             ),
                           ),
                           ),
@@ -425,23 +423,23 @@ class _HomePageState extends State<HomePage> {
                         );
                       },
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
                     // Game Hub Section
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Row(
-                            children: const [
-                              Icon(Icons.emoji_events, size: 20),
-                              SizedBox(width: 8),
-                              Text(
+                            children: [
+                              Icon(Icons.emoji_events_outlined, size: 24, color: AppColors.textPrimary),
+                              const SizedBox(width: 8),
+                              const Text(
                                 'Game Hub',
                                 style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
                                 ),
                               ),
                             ],
@@ -456,8 +454,9 @@ class _HomePageState extends State<HomePage> {
                             child: const Text(
                               'View All',
                               style: TextStyle(
-                                color: Color(0xFF4318FF),
+                                fontSize: 14,
                                 fontWeight: FontWeight.w600,
+                                color: AppColors.primary,
                               ),
                             ),
                           ),
@@ -465,7 +464,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
                       child: Row(
                         children: [
                           Expanded(
@@ -480,8 +479,9 @@ class _HomePageState extends State<HomePage> {
                               child: _buildGameCard(
                                 'Challenges',
                                 '2 active',
-                                const Color(0xFF4ECDC4),
-                                Icons.flag,
+                                AppColors.black,
+                                Icons.flag_outlined,
+                                AppColors.secondary,
                               ),
                             ),
                           ),
@@ -498,15 +498,16 @@ class _HomePageState extends State<HomePage> {
                               child: _buildGameCard(
                                 'Leaderboard',
                                 'Rank #8',
-                                const Color(0xFF4318FF),
-                                Icons.emoji_events,
+                                AppColors.black,
+                                Icons.emoji_events_outlined,
+                                AppColors.primary,
                               ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: AppSpacing.xl),
                   ],
                 ),
               ),
@@ -514,25 +515,19 @@ class _HomePageState extends State<HomePage> {
             // Bottom Navigation Bar (Fixed)
             Container(
               decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, -2),
-                  ),
-                ],
+                color: AppColors.black,
+                boxShadow: AppShadows.nav,
               ),
               child: SafeArea(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildNavItem(Icons.home, 'Home', 0),
-                      _buildNavItem(Icons.search, 'Posts', 1),
-                      _buildNavItem(Icons.description_outlined, 'Claims', 2),
-                      _buildNavItem(Icons.emoji_events_outlined, 'Game Hub', 3),
+                      _buildNavItem(Icons.home_outlined, 'Home', 0),
+                      _buildNavItem(Icons.article_outlined, 'Posts', 1),
+                      _buildNavItem(Icons.emoji_events_outlined, 'Game Hub', 2),
+                      _buildNavItem(Icons.description_outlined, 'Claims', 3),
                       _buildNavItem(Icons.person_outline, 'Profile', 4),
                     ],
                   ),
@@ -549,15 +544,21 @@ class _HomePageState extends State<HomePage> {
     String value, 
     String label, 
     Color bgColor, {
-    Color textColor = Colors.black87,
+    Color? textColor,
     IconData? icon,
     Color? iconColor,
   }) {
+    final effectiveTextColor = textColor ?? AppColors.textPrimary;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.lightGray.withOpacity(0.3),
+          width: 1,
+        ),
+        boxShadow: AppShadows.soft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -565,26 +566,27 @@ class _HomePageState extends State<HomePage> {
           if (icon != null) ...[
             Icon(
               icon,
-              color: iconColor ?? textColor,
-              size: 20,
+              color: iconColor ?? effectiveTextColor,
+              size: 24,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
           ],
           Text(
             value,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: textColor,
-            ),
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ).copyWith(color: effectiveTextColor),
           ),
           const SizedBox(height: 4),
           Text(
             label,
-            style: TextStyle(
-              fontSize: 10,
-              color: textColor.withValues(alpha: 0.7),
-              height: 1.3,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ).copyWith(
+              color: effectiveTextColor.withOpacity(0.7),
             ),
           ),
         ],
@@ -622,18 +624,16 @@ class _HomePageState extends State<HomePage> {
       },
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.xs),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(
+            color: AppColors.lightGray.withOpacity(0.3),
+            width: 1,
+          ),
+          boxShadow: AppShadows.soft,
         ),
         child: Row(
           children: [
@@ -642,10 +642,10 @@ class _HomePageState extends State<HomePage> {
               width: 60,
               height: 60,
               decoration: BoxDecoration(
-                color: Colors.grey[200],
+                color: const Color(0xFFF5F5F5),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(icon, color: Colors.grey[600], size: 30),
+              child: Icon(icon, color: AppColors.mediumGray, size: 28),
             ),
             const SizedBox(width: 16),
             // Item Details
@@ -656,26 +656,32 @@ class _HomePageState extends State<HomePage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                       ),
+                      const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE8F5E9),
-                          borderRadius: BorderRadius.circular(6),
+                          color: AppColors.secondary.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           status,
                           style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF4CAF50),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textPrimary,
                           ),
                         ),
                       ),
@@ -684,9 +690,9 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(height: 6),
                   Text(
                     description,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey[600],
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -694,23 +700,25 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      Icon(Icons.access_time, size: 14, color: Colors.grey[500]),
+                      Icon(Icons.access_time_outlined, size: 16, color: AppColors.textTertiary),
                       const SizedBox(width: 4),
                       Text(
                         time,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 12,
-                          color: Colors.grey[500],
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textTertiary,
                         ),
                       ),
                       const SizedBox(width: 12),
-                      Icon(Icons.location_on, size: 14, color: Colors.grey[500]),
+                      Icon(Icons.location_on_outlined, size: 16, color: AppColors.textTertiary),
                       const SizedBox(width: 4),
                       Text(
                         location,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 12,
-                          color: Colors.grey[500],
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textTertiary,
                         ),
                       ),
                     ],
@@ -724,32 +732,33 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildGameCard(String title, String subtitle, Color color, IconData icon) {
+  Widget _buildGameCard(String title, String subtitle, Color bgColor, IconData icon, Color iconColor) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color,
+        color: AppColors.black,
         borderRadius: BorderRadius.circular(12),
+        boxShadow: AppShadows.soft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: Colors.white, size: 24),
-          const SizedBox(height: 8),
+          Icon(icon, color: iconColor, size: 28),
+          const SizedBox(height: 12),
           Text(
             title,
             style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.white,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             subtitle,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.white70,
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.white.withOpacity(0.7),
             ),
           ),
         ],
@@ -766,7 +775,7 @@ class _HomePageState extends State<HomePage> {
         children: [
           Icon(
             icon,
-            color: isSelected ? const Color(0xFF4318FF) : Colors.grey,
+            color: isSelected ? AppColors.primary : AppColors.white.withOpacity(0.6),
             size: 26,
           ),
           const SizedBox(height: 4),
@@ -774,7 +783,7 @@ class _HomePageState extends State<HomePage> {
             label,
             style: TextStyle(
               fontSize: 11,
-              color: isSelected ? const Color(0xFF4318FF) : Colors.grey,
+              color: isSelected ? AppColors.primary : AppColors.white.withOpacity(0.6),
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
             ),
           ),

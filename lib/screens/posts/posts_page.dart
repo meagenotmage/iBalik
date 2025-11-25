@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../utils/page_transitions.dart';
+import '../../utils/app_theme.dart';
 import 'item_details_page.dart';
 import 'post_found_item_page.dart';
 import '../claims/claims_page.dart';
@@ -80,27 +81,28 @@ class _PostsPageState extends State<PostsPage> {
 
   void _onNavItemTapped(int index) {
     if (index == 0) {
-      Navigator.pop(context); // Go back to home
+      // Go back to Home
+      Navigator.of(context).popUntil((route) => route.isFirst);
     } else if (index == 2) {
-      // Navigate to Claims page
-      Navigator.push(
-        context,
-        SmoothPageRoute(page: const ClaimsPage()),
-      );
-    } else if (index == 3) {
-      // Navigate to Game Hub page
-      Navigator.push(
+      // Navigate to Game Hub
+      Navigator.pushReplacement(
         context,
         SmoothPageRoute(page: const GameHubPage()),
       );
+    } else if (index == 3) {
+      // Navigate to Claims
+      Navigator.pushReplacement(
+        context,
+        SmoothPageRoute(page: const ClaimsPage()),
+      );
     } else if (index == 4) {
-      // Navigate to Profile page
-      Navigator.push(
+      // Navigate to Profile
+      Navigator.pushReplacement(
         context,
         SmoothPageRoute(page: const ProfilePage()),
       );
     } else if (index != 1) {
-      // If it's not Posts, Home, Claims, or Game Hub, just update the selected state
+      // For other tabs, just update the selected state
       setState(() {
         _selectedIndex = index;
       });
@@ -304,35 +306,38 @@ class _PostsPageState extends State<PostsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
             // Header
             Container(
-              color: Colors.white,
-              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                boxShadow: AppShadows.soft,
+              ),
+              padding: const EdgeInsets.all(AppSpacing.lg),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                        icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
                         onPressed: () => Navigator.pop(context),
                       ),
                       const Expanded(
                         child: Text(
                           'Found Items',
                           style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
                           ),
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.tune, color: Colors.black87),
+                        icon: const Icon(Icons.tune, color: AppColors.textPrimary),
                         onPressed: _showFilterBottomSheet,
                       ),
                     ],
@@ -347,8 +352,8 @@ class _PostsPageState extends State<PostsPage> {
                         child: Text(
                           '$itemCount items',
                           style: const TextStyle(
-                            fontSize: 13,
-                            color: Colors.black54,
+                            fontSize: 14,
+                            color: AppColors.textSecondary,
                           ),
                         ),
                       );
@@ -361,17 +366,17 @@ class _PostsPageState extends State<PostsPage> {
                     decoration: InputDecoration(
                       hintText: 'Search items, descriptions, locations...',
                       hintStyle: const TextStyle(
-                        color: Colors.black38,
+                        color: AppColors.textTertiary,
                         fontSize: 14,
                       ),
-                      prefixIcon: const Icon(Icons.search, color: Colors.black38),
+                      prefixIcon: const Icon(Icons.search, color: AppColors.textTertiary),
                       filled: true,
-                      fillColor: const Color(0xFFF5F5F5),
+                      fillColor: AppColors.background,
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                         borderSide: BorderSide.none,
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
                     ),
                   ),
                 ],
@@ -505,7 +510,7 @@ class _PostsPageState extends State<PostsPage> {
                   }
                   
                   return ListView.builder(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(AppSpacing.lg),
                     physics: const ClampingScrollPhysics(),
                     itemCount: filteredItems.length,
                     itemBuilder: (context, index) {
@@ -526,30 +531,24 @@ class _PostsPageState extends State<PostsPage> {
             SmoothPageRoute(page: const PostFoundItemPage()),
           );
         },
-        backgroundColor: const Color(0xFF4318FF),
+        backgroundColor: AppColors.primary,
         child: const Icon(Icons.add, color: Colors.white),
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
+          color: AppColors.black,
+          boxShadow: AppShadows.nav,
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildNavItem(Icons.home_outlined, 'Home', 0),
-                _buildNavItem(Icons.search, 'Posts', 1),
-                _buildNavItem(Icons.description_outlined, 'Claims', 2),
-                _buildNavItem(Icons.emoji_events_outlined, 'Game Hub', 3),
+                _buildNavItem(Icons.article_outlined, 'Posts', 1),
+                _buildNavItem(Icons.emoji_events_outlined, 'Game Hub', 2),
+                _buildNavItem(Icons.description_outlined, 'Claims', 3),
                 _buildNavItem(Icons.person_outline, 'Profile', 4),
               ],
             ),
@@ -573,20 +572,14 @@ class _PostsPageState extends State<PostsPage> {
           SmoothPageRoute(page: ItemDetailsPage(item: item)),
         );
       },
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(AppRadius.md),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(bottom: AppSpacing.md),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          boxShadow: AppShadows.soft,
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -596,8 +589,8 @@ class _PostsPageState extends State<PostsPage> {
               width: 70,
               height: 70,
               decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(8),
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(AppRadius.sm),
               ),
               child: imageUrl != null
                   ? ClipRRect(
@@ -635,7 +628,7 @@ class _PostsPageState extends State<PostsPage> {
                     item['itemName'] ?? 'Unknown Item',
                     style: const TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w600,
                       color: Colors.black87,
                     ),
                   ),
@@ -643,7 +636,7 @@ class _PostsPageState extends State<PostsPage> {
                   Text(
                     item['description'] ?? '',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 14,
                       color: Colors.grey[600],
                       height: 1.4,
                     ),
@@ -703,7 +696,7 @@ class _PostsPageState extends State<PostsPage> {
         children: [
           Icon(
             icon,
-            color: isSelected ? const Color(0xFF4318FF) : Colors.grey,
+            color: isSelected ? AppColors.primary : AppColors.white.withOpacity(0.6),
             size: 26,
           ),
           const SizedBox(height: 4),
@@ -711,7 +704,7 @@ class _PostsPageState extends State<PostsPage> {
             label,
             style: TextStyle(
               fontSize: 11,
-              color: isSelected ? const Color(0xFF4318FF) : Colors.grey,
+              color: isSelected ? AppColors.primary : AppColors.white.withOpacity(0.6),
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
             ),
           ),
