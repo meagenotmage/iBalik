@@ -41,27 +41,28 @@ class _PostsPageState extends State<PostsPage> {
 
   void _onNavItemTapped(int index) {
     if (index == 0) {
-      Navigator.pop(context); // Go back to home
+      // Go back to Home
+      Navigator.of(context).popUntil((route) => route.isFirst);
     } else if (index == 2) {
-      // Navigate to Claims page
-      Navigator.push(
-        context,
-        SmoothPageRoute(page: const ClaimsPage()),
-      );
-    } else if (index == 3) {
-      // Navigate to Game Hub page
-      Navigator.push(
+      // Navigate to Game Hub
+      Navigator.pushReplacement(
         context,
         SmoothPageRoute(page: const GameHubPage()),
       );
+    } else if (index == 3) {
+      // Navigate to Claims
+      Navigator.pushReplacement(
+        context,
+        SmoothPageRoute(page: const ClaimsPage()),
+      );
     } else if (index == 4) {
-      // Navigate to Profile page
-      Navigator.push(
+      // Navigate to Profile
+      Navigator.pushReplacement(
         context,
         SmoothPageRoute(page: const ProfilePage()),
       );
     } else if (index != 1) {
-      // If it's not Posts, Home, Claims, or Game Hub, just update the selected state
+      // For other tabs, just update the selected state
       setState(() {
         _selectedIndex = index;
       });

@@ -585,25 +585,22 @@ class _GameHubPageState extends State<GameHubPage> {
   void _onNavItemTapped(int index) {
     if (index == 0) {
       // Go back to Home
-      Navigator.pop(context);
+      Navigator.of(context).popUntil((route) => route.isFirst);
     } else if (index == 1) {
       // Navigate to Posts
-      Navigator.pop(context); // First go back to home
-      Navigator.push(
+      Navigator.pushReplacement(
         context,
         SmoothPageRoute(page: const PostsPage()),
       );
     } else if (index == 3) {
       // Navigate to Claims
-      Navigator.pop(context); // First go back to home
-      Navigator.push(
+      Navigator.pushReplacement(
         context,
         SmoothPageRoute(page: const ClaimsPage()),
       );
     } else if (index == 4) {
       // Navigate to Profile
-      Navigator.pop(context); // First go back to home
-      Navigator.push(
+      Navigator.pushReplacement(
         context,
         SmoothPageRoute(page: const ProfilePage()),
       );

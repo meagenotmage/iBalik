@@ -211,7 +211,7 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
   void _onNavItemTapped(int index) {
     if (index == 0) {
       // Go back to Home
-      Navigator.pop(context);
+      Navigator.of(context).popUntil((route) => route.isFirst);
     } else if (index == 1) {
       // Navigate to Posts
       Navigator.pushReplacement(
@@ -219,18 +219,18 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
         SmoothPageRoute(page: const PostsPage()),
       );
     } else if (index == 2) {
-      // Navigate to Game Hub (now in center)
-      Navigator.push(
+      // Navigate to Game Hub
+      Navigator.pushReplacement(
         context,
         SmoothPageRoute(page: const GameHubPage()),
       );
     } else if (index == 4) {
       // Navigate to Profile
-      Navigator.push(
+      Navigator.pushReplacement(
         context,
         SmoothPageRoute(page: const ProfilePage()),
       );
-    } else if (index != 2) {
+    } else if (index != 3) {
       // For other tabs, just update the selected state
       setState(() {
         _selectedIndex = index;

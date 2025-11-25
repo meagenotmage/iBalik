@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../utils/page_transitions.dart';
+import '../../utils/app_theme.dart';
 import '../game/game_hub_page.dart';
 import '../game/leaderboards_page.dart';
 import '../game/challenges_page.dart';
@@ -442,14 +443,8 @@ class _ProfilePageState extends State<ProfilePage> {
           // Bottom Navigation Bar
           Container(
             decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, -2),
-                ),
-              ],
+              color: AppColors.black,
+              boxShadow: AppShadows.nav,
             ),
             child: SafeArea(
               child: Padding(
@@ -1438,19 +1433,16 @@ class _ProfilePageState extends State<ProfilePage> {
   void _onNavItemTapped(int index) {
     if (index == 0) {
       // Go back to Home
-      Navigator.pop(context);
+      Navigator.of(context).popUntil((route) => route.isFirst);
     } else if (index == 1) {
       // Navigate to Posts
-      Navigator.pop(context); // First go back to home
-      Navigator.push(context, SmoothPageRoute(page: const PostsPage()));
+      Navigator.pushReplacement(context, SmoothPageRoute(page: const PostsPage()));
     } else if (index == 2) {
-      // Navigate to Claims
-      Navigator.pop(context); // First go back to home
-      Navigator.push(context, SmoothPageRoute(page: const ClaimsPage()));
-    } else if (index == 3) {
       // Navigate to Game Hub
-      Navigator.pop(context); // First go back to home
-      Navigator.push(context, SmoothPageRoute(page: const GameHubPage()));
+      Navigator.pushReplacement(context, SmoothPageRoute(page: const GameHubPage()));
+    } else if (index == 3) {
+      // Navigate to Claims
+      Navigator.pushReplacement(context, SmoothPageRoute(page: const ClaimsPage()));
     } else if (index != 4) {
       // For other tabs, just update the selected state
       setState(() {
@@ -1468,7 +1460,7 @@ class _ProfilePageState extends State<ProfilePage> {
         children: [
           Icon(
             icon,
-            color: isSelected ? const Color(0xFF4318FF) : Colors.grey,
+            color: isSelected ? AppColors.primary : AppColors.white.withOpacity(0.6),
             size: 26,
           ),
           const SizedBox(height: 4),
@@ -1476,7 +1468,7 @@ class _ProfilePageState extends State<ProfilePage> {
             label,
             style: TextStyle(
               fontSize: 11,
-              color: isSelected ? const Color(0xFF4318FF) : Colors.grey,
+              color: isSelected ? AppColors.primary : AppColors.white.withOpacity(0.6),
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
             ),
           ),
