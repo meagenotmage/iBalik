@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'challenges_page.dart';
 import '../../utils/page_transitions.dart';
+import '../../utils/app_theme.dart';
 
 class BadgesPage extends StatelessWidget {
   const BadgesPage({super.key});
@@ -73,30 +74,27 @@ class BadgesPage extends StatelessWidget {
     ];
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: AppColors.darkBackground,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.darkSurface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          icon: const Icon(Icons.arrow_back, color: AppColors.lightText),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Badges',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
+              style: AppTextStyles.titleLarge.copyWith(
+                color: AppColors.lightText,
               ),
             ),
             Text(
               'Your achievements and progress',
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.black54,
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.lightTextSecondary,
               ),
             ),
           ],
@@ -115,15 +113,13 @@ class BadgesPage extends StatelessWidget {
                 const Icon(
                   Icons.stars,
                   size: 20,
-                  color: Colors.black87,
+                  color: AppColors.secondary,
                 ),
                 const SizedBox(width: 6),
                 Text(
                   'Earned Badges (${earnedBadges.length})',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                  style: AppTextStyles.titleMedium.copyWith(
+                    color: AppColors.lightText,
                   ),
                 ),
               ],
@@ -152,18 +148,16 @@ class BadgesPage extends StatelessWidget {
             // Available Badges Section
             Row(
               children: [
-                Icon(
+                const Icon(
                   Icons.bookmark_border,
                   size: 20,
-                  color: Colors.grey[600],
+                  color: AppColors.lightTextSecondary,
                 ),
                 const SizedBox(width: 6),
                 Text(
                   'Available Badges (${availableBadges.length})',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                  style: AppTextStyles.titleMedium.copyWith(
+                    color: AppColors.lightText,
                   ),
                 ),
               ],
@@ -193,34 +187,27 @@ class BadgesPage extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFE5E1FF), Color(0xFFE5E1FF)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
+                color: AppColors.darkCard,
+                borderRadius: BorderRadius.circular(AppRadius.xl),
                 border: Border.all(
-                  color: const Color(0xFF8B7FFF),
+                  color: AppColors.primary,
                   width: 2,
                 ),
               ),
               child: Column(
                 children: [
-                  const Text(
+                  Text(
                     'Keep Going!',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                    style: AppTextStyles.titleLarge.copyWith(
+                      color: AppColors.lightText,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Complete more challenges to unlock new badges and increase your karma.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[700],
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.lightTextSecondary,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -234,19 +221,18 @@ class BadgesPage extends StatelessWidget {
                         );
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0000FF),
-                        foregroundColor: Colors.white,
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: AppColors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
                         ),
                         elevation: 0,
                       ),
-                      child: const Text(
+                      child: Text(
                         'View Challenges',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                        style: AppTextStyles.titleSmall.copyWith(
+                          color: AppColors.white,
                         ),
                       ),
                     ),
@@ -266,14 +252,15 @@ class BadgesPage extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: badge['bgColor'],
-        borderRadius: BorderRadius.circular(16),
-        border: badge['bgColor'] == Colors.white 
-            ? Border.all(color: Colors.grey[300]!, width: 1)
-            : null,
+        color: AppColors.darkCard,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(
+          color: AppColors.secondary.withOpacity(0.5),
+          width: 2,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: AppColors.secondary.withOpacity(0.1),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -286,12 +273,12 @@ class BadgesPage extends StatelessWidget {
             width: 70,
             height: 70,
             decoration: BoxDecoration(
-              color: badge['color'],
-              borderRadius: BorderRadius.circular(16),
+              color: AppColors.secondary,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
             ),
             child: Icon(
               badge['icon'],
-              color: badge['iconColor'],
+              color: AppColors.black,
               size: 35,
             ),
           ),
@@ -299,19 +286,16 @@ class BadgesPage extends StatelessWidget {
           Text(
             badge['name'],
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+            style: AppTextStyles.titleSmall.copyWith(
+              color: AppColors.lightText,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             badge['description'],
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.grey[600],
+            style: AppTextStyles.captionSmall.copyWith(
+              color: AppColors.lightTextSecondary,
               height: 1.3,
             ),
             maxLines: 2,
@@ -321,9 +305,8 @@ class BadgesPage extends StatelessWidget {
           Text(
             'Earned\n${badge['earned']}',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.grey[500],
+            style: AppTextStyles.overline.copyWith(
+              color: AppColors.secondary,
               height: 1.2,
             ),
           ),
@@ -336,16 +319,12 @@ class BadgesPage extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: badge['bgColor'],
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[300]!, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: AppColors.darkCard.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(
+          color: AppColors.darkBorder,
+          width: 1,
+        ),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -354,12 +333,12 @@ class BadgesPage extends StatelessWidget {
             width: 70,
             height: 70,
             decoration: BoxDecoration(
-              color: badge['color'],
-              borderRadius: BorderRadius.circular(16),
+              color: AppColors.darkBorder,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
             ),
             child: Icon(
               badge['icon'],
-              color: badge['iconColor'],
+              color: AppColors.lightTextSecondary.withOpacity(0.5),
               size: 35,
             ),
           ),
@@ -367,19 +346,16 @@ class BadgesPage extends StatelessWidget {
           Text(
             badge['name'],
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+            style: AppTextStyles.titleSmall.copyWith(
+              color: AppColors.lightTextSecondary,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             badge['description'],
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.grey[600],
+            style: AppTextStyles.captionSmall.copyWith(
+              color: AppColors.lightTextSecondary.withOpacity(0.7),
               height: 1.3,
             ),
             maxLines: 2,
@@ -389,9 +365,8 @@ class BadgesPage extends StatelessWidget {
           Text(
             '${badge['progress']} / ${badge['total']}',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.grey[500],
+            style: AppTextStyles.captionSmall.copyWith(
+              color: AppColors.lightTextSecondary,
               fontWeight: FontWeight.w600,
             ),
           ),
