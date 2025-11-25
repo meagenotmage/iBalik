@@ -30,6 +30,70 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
     _tabController = TabController(length: 2, vsync: this);
   }
 
+  Widget _buildFoundBySubtitle(Map<String, dynamic> data, String status, String submittedStr) {
+    final founderName = (data['founderName'] ?? data['posterName'] ?? data['userName'])?.toString();
+    final founderId = data['founderId']?.toString();
+    final itemId = data['itemId'];
+
+    if (founderName != null && founderName.isNotEmpty) {
+      return Text('Found by $founderName\nStatus: $status\nSubmitted: $submittedStr', maxLines: 2, overflow: TextOverflow.ellipsis);
+    }
+
+    if ((founderId == null || founderId.isEmpty) && (itemId == null)) {
+      return Text('Found by Unknown\nStatus: $status\nSubmitted: $submittedStr', maxLines: 2, overflow: TextOverflow.ellipsis);
+    }
+
+    // Resolve display name with fallbacks: users/{founderId} -> lost_items by docId -> lost_items by itemId
+    return FutureBuilder<String>(
+      future: _resolveFounderDisplayName(founderId, itemId),
+      builder: (context, snapshot) {
+        String display = 'Unknown';
+        if (snapshot.hasData && snapshot.data!.isNotEmpty) display = snapshot.data!;
+        return Text('Found by $display\nStatus: $status\nSubmitted: $submittedStr', maxLines: 2, overflow: TextOverflow.ellipsis);
+      },
+    );
+  }
+
+  Future<String> _resolveFounderDisplayName(String? founderId, dynamic itemId) async {
+    try {
+      // 1) Try users/{founderId}
+      if (founderId != null && founderId.isNotEmpty) {
+        final userDoc = await FirebaseFirestore.instance.collection('users').doc(founderId).get();
+        if (userDoc.exists) {
+          final u = userDoc.data() as Map<String, dynamic>?;
+          final name = (u?['displayName'] ?? u?['name'] ?? u?['userName'])?.toString();
+          if (name != null && name.isNotEmpty) return name;
+        }
+      }
+
+      // 2) Try lost_items by doc id (itemId could be a doc id)
+      if (itemId != null) {
+        try {
+          final itemRef = FirebaseFirestore.instance.collection('lost_items').doc(itemId.toString());
+          final itemDoc = await itemRef.get();
+          if (itemDoc.exists) {
+            final it = itemDoc.data() as Map<String, dynamic>?;
+            final posterName = (it?['userName'] ?? it?['posterName'] ?? it?['foundBy'])?.toString();
+            if (posterName != null && posterName.isNotEmpty) return posterName;
+          }
+        } catch (_) {}
+
+        // 3) Fallback: query lost_items where itemId == itemId (for older data)
+        try {
+          final q = await FirebaseFirestore.instance.collection('lost_items').where('itemId', isEqualTo: itemId).limit(1).get();
+          if (q.docs.isNotEmpty) {
+            final it = q.docs.first.data() as Map<String, dynamic>?;
+            final posterName = (it?['userName'] ?? it?['posterName'] ?? it?['foundBy'])?.toString();
+            if (posterName != null && posterName.isNotEmpty) return posterName;
+          }
+        } catch (_) {}
+      }
+    } catch (_) {}
+    // Last-resort: return founderId short or 'Unknown'
+    if (founderId != null && founderId.isNotEmpty) return founderId;
+    return 'Unknown';
+  }
+
   @override
   void dispose() {
     _tabController.dispose();
@@ -164,20 +228,27 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
 
   Widget _buildBottomNavBar() {
     return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
-        color: AppColors.black,
-        boxShadow: AppShadows.nav,
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
       ),
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(Icons.home_outlined, 'Home', 0),
-              _buildNavItem(Icons.article_outlined, 'Posts', 1),
-              _buildNavItem(Icons.emoji_events_outlined, 'Game Hub', 2),
-              _buildNavItem(Icons.description_outlined, 'Claims', 3),
+              _buildNavItem(Icons.home, 'Home', 0),
+              _buildNavItem(Icons.search, 'Posts', 1),
+              _buildNavItem(Icons.description_outlined, 'Claims', 2),
+              _buildNavItem(Icons.emoji_events_outlined, 'Game Hub', 3),
               _buildNavItem(Icons.person_outline, 'Profile', 4),
             ],
           ),
@@ -254,8 +325,8 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
     }
 
     final Stream<QuerySnapshot> myClaimsStream = FirebaseFirestore.instance
-      .collection('lost_items')
-      .where('claimedBy', isEqualTo: uid)
+      .collection('claims')
+      .where('claimerId', isEqualTo: uid)
       .snapshots();
 
     return StreamBuilder<QuerySnapshot>(
@@ -268,7 +339,21 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
           return const Center(child: CircularProgressIndicator());
         }
 
-        final docs = snapshot.data?.docs ?? [];
+        var docs = snapshot.data?.docs ?? [];
+        // Client-side sort by submittedDate (newest first) to avoid requiring
+        // a Firestore composite index on server-side ordering for older data.
+        try {
+          docs = docs.toList()
+            ..sort((a, b) {
+              final aTs = (a.data() as Map)['submittedDate'];
+              final bTs = (b.data() as Map)['submittedDate'];
+              DateTime aDt = DateTime.fromMillisecondsSinceEpoch(0);
+              DateTime bDt = DateTime.fromMillisecondsSinceEpoch(0);
+              if (aTs is Timestamp) aDt = aTs.toDate();
+              if (bTs is Timestamp) bDt = bTs.toDate();
+              return bDt.compareTo(aDt);
+            });
+        } catch (_) {}
         if (docs.isEmpty) {
           return SingleChildScrollView(
             physics: const ClampingScrollPhysics(),
@@ -291,12 +376,16 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
           physics: const ClampingScrollPhysics(),
           separatorBuilder: (_, __) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
-            final data = docs[index].data() as Map<String, dynamic>;
-            final title = (data['itemName'] ?? data['name'] ?? data['title'] ?? 'Untitled').toString();
-            final foundBy = (data['userName'] ?? data['foundBy'] ?? data['posterName'] ?? '').toString();
-            final status = (data['status'] ?? 'claimed').toString();
-            final claimedAt = data['claimedAt'];
-            final claimedAtStr = claimedAt is Timestamp ? (claimedAt.toDate().toLocal().toString()) : (claimedAt?.toString() ?? '');
+            final doc = docs[index];
+            final data = Map<String, dynamic>.from(doc.data() as Map);
+            data['docId'] = doc.id;
+            // Normalize item title and prefer a human-friendly founder name
+            data['itemTitle'] = data['itemTitle'] ?? data['title'] ?? data['itemName'] ?? data['name'];
+            data['title'] = data['title'] ?? data['itemTitle'];
+            final title = (data['itemTitle'] ?? data['title'] ?? 'Untitled').toString();
+            final status = (data['status'] ?? 'pending').toString();
+            final submitted = data['submittedDate'];
+            final submittedStr = submitted is Timestamp ? (submitted.toDate().toLocal().toString()) : (submitted?.toString() ?? '');
 
             return ListTile(
               tileColor: Colors.white,
@@ -306,18 +395,10 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: Colors.grey[100]),
-                child: Builder(
-                  builder: (context) {
-                    final images = data['images'];
-                    if (images is List && images.isNotEmpty && images[0] is String) {
-                      return ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(images[0], fit: BoxFit.cover));
-                    }
-                    return Icon(Icons.image, color: Colors.grey[400]);
-                  },
-                ),
+                child: Icon(Icons.image, color: Colors.grey[400]),
               ),
               title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text('Found by $foundBy\nStatus: $status\nClaimed: $claimedAtStr', maxLines: 2, overflow: TextOverflow.ellipsis),
+              subtitle: _buildFoundBySubtitle(data, status, submittedStr),
               isThreeLine: true,
               onTap: () {
                 Navigator.push(
@@ -349,7 +430,6 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
     final Stream<QuerySnapshot> receivedStream = FirebaseFirestore.instance
       .collection('claims')
       .where('founderId', isEqualTo: uid)
-      .orderBy('submittedDate', descending: true)
       .snapshots();
 
     return StreamBuilder<QuerySnapshot>(
@@ -358,7 +438,19 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
         if (snapshot.hasError) return Center(child: Text('Error loading received claims'));
         if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
 
-        final docs = snapshot.data?.docs ?? [];
+        var docs = snapshot.data?.docs ?? [];
+        try {
+          docs = docs.toList()
+            ..sort((a, b) {
+              final aTs = (a.data() as Map)['submittedDate'];
+              final bTs = (b.data() as Map)['submittedDate'];
+              DateTime aDt = DateTime.fromMillisecondsSinceEpoch(0);
+              DateTime bDt = DateTime.fromMillisecondsSinceEpoch(0);
+              if (aTs is Timestamp) aDt = aTs.toDate();
+              if (bTs is Timestamp) bDt = bTs.toDate();
+              return bDt.compareTo(aDt);
+            });
+        } catch (_) {}
         if (docs.isEmpty) {
           return SingleChildScrollView(
             physics: const ClampingScrollPhysics(),
@@ -381,7 +473,12 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
           physics: const ClampingScrollPhysics(),
           separatorBuilder: (_, __) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
-            final data = docs[index].data() as Map<String, dynamic>;
+            final doc = docs[index];
+            final data = Map<String, dynamic>.from(doc.data() as Map);
+            data['docId'] = doc.id;
+            data['itemTitle'] = data['itemTitle'] ?? data['title'] ?? data['itemName'] ?? data['name'];
+            data['title'] = data['title'] ?? data['itemTitle'];
+            data['claimerName'] = data['claimerName'] ?? data['claimerDisplayName'] ?? data['claimerEmail'];
             final title = (data['itemTitle'] ?? 'Untitled').toString();
             final claimer = (data['claimerName'] ?? data['claimerEmail'] ?? '').toString();
             final submitted = data['submittedDate'];
