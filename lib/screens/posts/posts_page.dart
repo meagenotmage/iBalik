@@ -303,21 +303,24 @@ class _PostsPageState extends State<PostsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
             // Header
             Container(
-              color: Colors.white,
-              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                boxShadow: AppShadows.soft,
+              ),
+              padding: const EdgeInsets.all(AppSpacing.lg),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                        icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
                         onPressed: () => Navigator.pop(context),
                       ),
                       const Expanded(
@@ -326,12 +329,12 @@ class _PostsPageState extends State<PostsPage> {
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w600,
-                            color: Colors.black87,
+                            color: AppColors.textPrimary,
                           ),
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.tune, color: Colors.black87),
+                        icon: const Icon(Icons.tune, color: AppColors.textPrimary),
                         onPressed: _showFilterBottomSheet,
                       ),
                     ],
@@ -347,7 +350,7 @@ class _PostsPageState extends State<PostsPage> {
                           '$itemCount items',
                           style: const TextStyle(
                             fontSize: 14,
-                            color: Colors.black54,
+                            color: AppColors.textSecondary,
                           ),
                         ),
                       );
@@ -360,17 +363,17 @@ class _PostsPageState extends State<PostsPage> {
                     decoration: InputDecoration(
                       hintText: 'Search items, descriptions, locations...',
                       hintStyle: const TextStyle(
-                        color: Colors.black38,
+                        color: AppColors.textTertiary,
                         fontSize: 14,
                       ),
-                      prefixIcon: const Icon(Icons.search, color: Colors.black38),
+                      prefixIcon: const Icon(Icons.search, color: AppColors.textTertiary),
                       filled: true,
-                      fillColor: const Color(0xFFF5F5F5),
+                      fillColor: AppColors.background,
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                         borderSide: BorderSide.none,
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
                     ),
                   ),
                 ],
@@ -504,7 +507,7 @@ class _PostsPageState extends State<PostsPage> {
                   }
                   
                   return ListView.builder(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(AppSpacing.lg),
                     physics: const ClampingScrollPhysics(),
                     itemCount: filteredItems.length,
                     itemBuilder: (context, index) {
@@ -525,7 +528,7 @@ class _PostsPageState extends State<PostsPage> {
             SmoothPageRoute(page: const PostFoundItemPage()),
           );
         },
-        backgroundColor: const Color(0xFF4318FF),
+        backgroundColor: AppColors.primary,
         child: const Icon(Icons.add, color: Colors.white),
       ),
       bottomNavigationBar: Container(
@@ -566,20 +569,14 @@ class _PostsPageState extends State<PostsPage> {
           SmoothPageRoute(page: ItemDetailsPage(item: item)),
         );
       },
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(AppRadius.md),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(bottom: AppSpacing.md),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          boxShadow: AppShadows.soft,
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -589,8 +586,8 @@ class _PostsPageState extends State<PostsPage> {
               width: 70,
               height: 70,
               decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(8),
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(AppRadius.sm),
               ),
               child: imageUrl != null
                   ? ClipRRect(

@@ -458,24 +458,10 @@ class _ProfilePageState extends State<ProfilePage> {
         crossAxisAlignment: CrossAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            padding: EdgeInsets.all(isPrimary ? 8 : 6),
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              boxShadow: [
-                BoxShadow(
-                  color: color.withValues(alpha: 0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Icon(
-              icon,
-              color: AppColors.white,
-              size: isPrimary ? AppIconSize.lg : AppIconSize.md,
-            ),
+          Icon(
+            icon,
+            color: color,
+            size: isPrimary ? AppIconSize.lg : AppIconSize.md,
           ),
           SizedBox(height: isPrimary ? 12 : 8),
           Text(
@@ -560,11 +546,9 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildOverviewTab() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
           // Quick Actions Grid
           Row(
             children: [
@@ -671,7 +655,6 @@ class _ProfilePageState extends State<ProfilePage> {
           // Recent Items List
           const SizedBox(height: 8),
         ],
-      ),
     );
   }
 

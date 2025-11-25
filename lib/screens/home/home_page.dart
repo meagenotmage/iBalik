@@ -140,14 +140,17 @@ class _HomePageState extends State<HomePage> {
             Expanded(
               child: SingleChildScrollView(
                 physics: const ClampingScrollPhysics(),
-                padding: const EdgeInsets.only(bottom: 20),
+                padding: const EdgeInsets.only(bottom: AppSpacing.lg),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Header Section
                     Container(
-                      color: AppColors.white,
-                      padding: const EdgeInsets.all(AppSpacing.xl),
+                      decoration: BoxDecoration(
+                        color: AppColors.white,
+                        boxShadow: AppShadows.soft,
+                      ),
+                      padding: const EdgeInsets.all(AppSpacing.lg),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -290,10 +293,10 @@ class _HomePageState extends State<HomePage> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.lg),
                     // Recent Finds Section
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -347,7 +350,7 @@ class _HomePageState extends State<HomePage> {
                     const SizedBox(height: 24),
                     // Game Hub Section
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -385,7 +388,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
                       child: Row(
                         children: [
                           Expanded(
@@ -479,6 +482,7 @@ class _HomePageState extends State<HomePage> {
           color: AppColors.lightGray.withOpacity(0.3),
           width: 1,
         ),
+        boxShadow: AppShadows.soft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -544,15 +548,16 @@ class _HomePageState extends State<HomePage> {
       },
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.xs),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         decoration: BoxDecoration(
           color: AppColors.white,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.md),
           border: Border.all(
             color: AppColors.lightGray.withOpacity(0.3),
             width: 1,
           ),
+          boxShadow: AppShadows.soft,
         ),
         child: Row(
           children: [
@@ -657,6 +662,7 @@ class _HomePageState extends State<HomePage> {
       decoration: BoxDecoration(
         color: AppColors.black,
         borderRadius: BorderRadius.circular(12),
+        boxShadow: AppShadows.soft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

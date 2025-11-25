@@ -137,7 +137,7 @@ class _GameHubPageState extends State<GameHubPage> {
       ),
       body: SingleChildScrollView(
         physics: const ClampingScrollPhysics(),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -145,12 +145,8 @@ class _GameHubPageState extends State<GameHubPage> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.darkCard,
+                color: AppColors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AppColors.primary,
-                  width: 2,
-                ),
                 boxShadow: AppShadows.soft,
               ),
               child: Column(
@@ -166,15 +162,11 @@ class _GameHubPageState extends State<GameHubPage> {
                             height: 50,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: AppColors.darkSurface,
-                              border: Border.all(
-                                color: AppColors.primary,
-                                width: 2,
-                              ),
+                              color: AppColors.background,
                             ),
                             child: Icon(
                               Icons.person,
-                              color: AppColors.lightTextSecondary,
+                              color: AppColors.textSecondary,
                               size: 30,
                             ),
                           ),
@@ -187,14 +179,14 @@ class _GameHubPageState extends State<GameHubPage> {
                                 style: const TextStyle(
                                   fontSize: 22,
                                   fontWeight: FontWeight.w600,
-                                  color: AppColors.lightText,
+                                  color: AppColors.textPrimary,
                                 ),
                               ),
                               Text(
                                 levelTitle,
                                 style: const TextStyle(
                                   fontSize: 14,
-                                  color: AppColors.lightTextSecondary,
+                                  color: AppColors.textSecondary,
                                 ),
                               ),
                             ],
@@ -209,7 +201,7 @@ class _GameHubPageState extends State<GameHubPage> {
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
-                              color: AppColors.lightTextSecondary,
+                              color: AppColors.textSecondary,
                             ),
                           ),
                           Text(
@@ -217,7 +209,7 @@ class _GameHubPageState extends State<GameHubPage> {
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.lightText,
+                              color: AppColors.textPrimary,
                             ),
                           ),
                         ],
@@ -232,7 +224,7 @@ class _GameHubPageState extends State<GameHubPage> {
                         child: LinearProgressIndicator(
                           value: currentXP / maxXP,
                           minHeight: 12,
-                          backgroundColor: AppColors.darkBorder,
+                          backgroundColor: AppColors.lightGray,
                           valueColor: const AlwaysStoppedAnimation<Color>(
                             AppColors.primary,
                           ),
@@ -247,7 +239,7 @@ class _GameHubPageState extends State<GameHubPage> {
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
-                              color: AppColors.lightTextSecondary,
+                              color: AppColors.textSecondary,
                             ),
                           ),
                           Text(
@@ -255,7 +247,7 @@ class _GameHubPageState extends State<GameHubPage> {
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
-                              color: AppColors.lightTextSecondary,
+                              color: AppColors.textSecondary,
                             ),
                           ),
                         ],
@@ -310,10 +302,10 @@ class _GameHubPageState extends State<GameHubPage> {
               children: [
                 Expanded(
                   child: Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(AppSpacing.lg),
                     decoration: BoxDecoration(
                       color: AppColors.darkCard,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
                       border: Border.all(
                         color: AppColors.primary.withOpacity(0.3),
                         width: 1.5,
@@ -381,10 +373,10 @@ class _GameHubPageState extends State<GameHubPage> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(AppSpacing.lg),
                     decoration: BoxDecoration(
                       color: AppColors.darkCard,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
                       border: Border.all(
                         color: AppColors.secondary.withOpacity(0.3),
                         width: 1.5,
@@ -605,7 +597,7 @@ class _GameHubPageState extends State<GameHubPage> {
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [

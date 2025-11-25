@@ -39,12 +39,12 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Column(
@@ -55,14 +55,14 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w600,
-                color: Colors.black87,
+                color: AppColors.textPrimary,
               ),
             ),
             Text(
               'Manage your claim requests',
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.black54,
+                color: AppColors.textSecondary,
               ),
             ),
           ],
@@ -73,8 +73,11 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
         children: [
           // Custom Tab Bar
           Container(
-            color: Colors.white,
-            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              boxShadow: AppShadows.soft,
+            ),
+            padding: const EdgeInsets.all(AppSpacing.lg),
             child: Row(
               children: [
                 Expanded(
