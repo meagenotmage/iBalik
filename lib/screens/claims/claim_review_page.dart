@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ClaimReviewPage extends StatelessWidget {
   final Map<String, dynamic> claimData;
@@ -503,10 +505,22 @@ class ClaimReviewPage extends StatelessWidget {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context); // Close dialog
+              // Attempt to mark claim as rejected in Firestore
+              final claimId = claimData['docId'] as String?;
+              if (claimId != null) {
+                try {
+                  await FirebaseFirestore.instance.collection('claims').doc(claimId).update({
+                    'status': 'rejected',
+                    'rejectedBy': FirebaseAuth.instance.currentUser?.uid,
+                    'rejectedAt': FieldValue.serverTimestamp(),
+                  });
+                } catch (_) {
+                  // ignore errors
+                }
+              }
               Navigator.pop(context); // Go back to claims page
-              // TODO: Add Firebase logic to reject claim
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text(
@@ -543,10 +557,70 @@ class ClaimReviewPage extends StatelessWidget {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context); // Close dialog
+              // Approve claim: update claim doc and update lost_items to 'claimed'
+              final claimId = claimData['docId'] as String?;
+              final claimerId = claimData['claimerId'] as String?;
+              final itemId = claimData['itemId'];
+              final currentUid = FirebaseAuth.instance.currentUser?.uid;
+
+              if (claimId != null) {
+                try {
+                  final fs = FirebaseFirestore.instance;
+                  // Update claim status
+                  await fs.collection('claims').doc(claimId).update({
+                    'status': 'approved',
+                    'approvedBy': currentUid,
+                    'approvedAt': FieldValue.serverTimestamp(),
+                  });
+
+                  // Try to update lost_items doc by doc id first
+                  if (itemId != null) {
+                    try {
+                      final itemRef = fs.collection('lost_items').doc(itemId.toString());
+                      await itemRef.update({
+                        'status': 'claimed',
+                        'claimedBy': claimerId,
+                        'claimedAt': FieldValue.serverTimestamp(),
+                        'claimId': claimId,
+                      });
+                    } catch (_) {
+                      // fallback: find by itemId field
+                      try {
+                        final q = await fs.collection('lost_items').where('itemId', isEqualTo: itemId).limit(1).get();
+                        if (q.docs.isNotEmpty) {
+                          await q.docs.first.reference.update({
+                            'status': 'claimed',
+                            'claimedBy': claimerId,
+                            'claimedAt': FieldValue.serverTimestamp(),
+                            'claimId': claimId,
+                          });
+                        }
+                      } catch (_) {}
+                    }
+                  }
+
+                  // Notify claimer
+                  if (claimerId != null) {
+                    try {
+                      await FirebaseFirestore.instance.collection('notifications').add({
+                        'userId': claimerId,
+                        'type': 'claim_approved',
+                        'title': 'Claim Approved',
+                        'message': 'Your claim for "${claimData['itemTitle'] ?? ''}" was approved.',
+                        'createdAt': FieldValue.serverTimestamp(),
+                        'isRead': false,
+                        'meta': {'claimId': claimId, 'itemId': itemId},
+                      });
+                    } catch (_) {}
+                  }
+                } catch (_) {
+                  // ignore errors
+                }
+              }
+
               Navigator.pop(context); // Go back to claims page
-              // TODO: Add Firebase logic to approve claim
             },
             style: TextButton.styleFrom(
               foregroundColor: const Color(0xFF4CAF50),
