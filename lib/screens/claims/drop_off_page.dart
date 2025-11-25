@@ -202,7 +202,7 @@ class _DropOffPageState extends State<DropOffPage> {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          'Drop off your found item with a certified staff member. They will handle the return process while you earn preliminary points.',
+                          'Drop off your found item with a certified staff member. They will facilitate the return of the item.\nYou will claim your points and karma once it\'s claimed successfully.',
                           style: TextStyle(
                             fontSize: 13,
                             color: Colors.grey[800],
@@ -229,7 +229,7 @@ class _DropOffPageState extends State<DropOffPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Select Certified Staff Member',
+                    'Select which member you\'ll be dropping off the item with',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -510,33 +510,44 @@ class _DropOffPageState extends State<DropOffPage> {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.star, size: 14, color: Color(0xFFFFA000)),
-                            const SizedBox(width: 4),
-                            Text(
-                              staff['rating'].toString(),
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black87,
+                        // Rating (only show when available)
+                        if (staff['rating'] != null) ...[
+                          Row(
+                            children: [
+                              const Icon(Icons.star, size: 14, color: Color(0xFFFFA000)),
+                              const SizedBox(width: 4),
+                              Text(
+                                staff['rating'].toString(),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black87,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '•',
-                          style: TextStyle(color: Colors.grey[400]),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${staff['itemsHandled']} items handled',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
+                            ],
                           ),
-                        ),
+                        ],
+
+                        // Separator dot only when both rating and itemsHandled exist
+                        if (staff['rating'] != null && staff['itemsHandled'] != null) ...[
+                          const SizedBox(width: 4),
+                          Text(
+                            '•',
+                            style: TextStyle(color: Colors.grey[400]),
+                          ),
+                          const SizedBox(width: 4),
+                        ],
+
+                        // Items handled (only show when available)
+                        if (staff['itemsHandled'] != null) ...[
+                          Text(
+                            '${staff['itemsHandled']} items handled',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                     if (staff['availability'] != null) ...[

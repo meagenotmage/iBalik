@@ -155,7 +155,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                         ),
                         SizedBox(height: 4),
                         Text(
-                          'Drop off your found item with a certified staff or Student Council member.\nThey will facilitate the return of the item.\nYou will claim your points and karma once it\'s claimed successfully.',
+                          'Drop off your found item with a certified staff or Student Council member.',
                           style: TextStyle(
                             fontSize: 13,
                             color: Color(0xFF388E3C),
