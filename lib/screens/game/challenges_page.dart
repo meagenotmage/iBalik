@@ -243,18 +243,16 @@ class _ChallengesPageState extends State<ChallengesPage> with SingleTickerProvid
                   children: [
                     Row(
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.calendar_today,
                           size: 20,
-                          color: Colors.grey[700],
+                          color: AppColors.secondary,
                         ),
                         const SizedBox(width: 8),
-                        const Text(
+                        Text(
                           'Daily Progress',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
+                          style: AppTextStyles.titleSmall.copyWith(
+                            color: AppColors.lightText,
                           ),
                         ),
                       ],
@@ -265,18 +263,17 @@ class _ChallengesPageState extends State<ChallengesPage> with SingleTickerProvid
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFD1FAE5),
+                        color: AppColors.secondary.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: const Color(0xFF10B981),
+                          color: AppColors.secondary,
                           width: 1.5,
                         ),
                       ),
                       child: Text(
                         '2/3 Complete',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: const Color(0xFF065F46),
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.secondary,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -289,18 +286,17 @@ class _ChallengesPageState extends State<ChallengesPage> with SingleTickerProvid
                   child: LinearProgressIndicator(
                     value: 2 / 3,
                     minHeight: 8,
-                    backgroundColor: Colors.grey[200],
+                    backgroundColor: AppColors.darkBorder,
                     valueColor: const AlwaysStoppedAnimation<Color>(
-                      Color(0xFF10B981),
+                      AppColors.secondary,
                     ),
                   ),
                 ),
                 const SizedBox(height: 12),
                 Text(
                   'Complete one more challenge to earn today\'s bonus!',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey[600],
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.lightTextSecondary,
                   ),
                 ),
               ],
@@ -344,24 +340,22 @@ class _ChallengesPageState extends State<ChallengesPage> with SingleTickerProvid
                 // TODO: Navigate to leaderboards
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black87,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.white,
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
-                elevation: 0,
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Icon(Icons.emoji_events, size: 20),
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     'View Leaderboards',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                    style: AppTextStyles.titleSmall.copyWith(
+                      color: AppColors.white,
                     ),
                   ),
                 ],
@@ -376,6 +370,7 @@ class _ChallengesPageState extends State<ChallengesPage> with SingleTickerProvid
   }
 
   Widget _buildChallengeCard(Map<String, dynamic> challenge) {
+    final borderColor = _getDifficultyBorderColor(challenge['difficulty']);
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
@@ -383,10 +378,16 @@ class _ChallengesPageState extends State<ChallengesPage> with SingleTickerProvid
         color: AppColors.darkCard,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(
-          color: AppColors.darkBorder.withOpacity(0.5),
-          width: 1,
+          color: borderColor,
+          width: 2,
         ),
-        boxShadow: AppShadows.soft,
+        boxShadow: [
+          BoxShadow(
+            color: borderColor.withOpacity(0.15),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -588,6 +589,21 @@ class _ChallengesPageState extends State<ChallengesPage> with SingleTickerProvid
     }
   }
 
+  Color _getDifficultyBorderColor(String difficulty) {
+    switch (difficulty.toLowerCase()) {
+      case 'easy':
+        return const Color(0xFF10B981).withOpacity(0.5);
+      case 'medium':
+        return AppColors.primary.withOpacity(0.5);
+      case 'hard':
+        return AppColors.secondary.withOpacity(0.6);
+      case 'epic':
+        return AppColors.secondary;
+      default:
+        return AppColors.darkBorder;
+    }
+  }
+
   Widget _buildCompletedTab() {
     // Completed challenges data
     final List<Map<String, dynamic>> completedChallenges = [
@@ -647,24 +663,22 @@ class _ChallengesPageState extends State<ChallengesPage> with SingleTickerProvid
                 // TODO: Navigate to leaderboards
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black87,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.white,
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
-                elevation: 0,
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Icon(Icons.emoji_events, size: 20),
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     'View Leaderboards',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                    style: AppTextStyles.titleSmall.copyWith(
+                      color: AppColors.white,
                     ),
                   ),
                 ],
@@ -686,10 +700,16 @@ class _ChallengesPageState extends State<ChallengesPage> with SingleTickerProvid
         color: AppColors.darkCard,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(
-          color: AppColors.secondary.withOpacity(0.3),
-          width: 1,
+          color: AppColors.secondary.withOpacity(0.5),
+          width: 2,
         ),
-        boxShadow: AppShadows.soft,
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.secondary.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -812,101 +832,13 @@ class _ChallengesPageState extends State<ChallengesPage> with SingleTickerProvid
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Daily Progress Card
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.calendar_today,
-                          size: 20,
-                          color: Colors.grey[700],
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Daily Progress',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFD1FAE5),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: const Color(0xFF10B981),
-                          width: 1.5,
-                        ),
-                      ),
-                      child: Text(
-                        '2/3 Complete',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: const Color(0xFF065F46),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: LinearProgressIndicator(
-                    value: 2 / 3,
-                    minHeight: 8,
-                    backgroundColor: Colors.grey[200],
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                      Color(0xFF10B981),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Complete one more challenge to earn today\'s bonus!',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          const SizedBox(height: 24),
-          
           // Upcoming Challenges Header
           Row(
             children: [
               const Icon(
                 Icons.star_outline,
                 size: 20,
-                color: AppColors.lightText,
+                color: AppColors.secondary,
               ),
               const SizedBox(width: 6),
               Text(
@@ -935,24 +867,22 @@ class _ChallengesPageState extends State<ChallengesPage> with SingleTickerProvid
                 // TODO: Navigate to leaderboards
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black87,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.white,
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
-                elevation: 0,
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Icon(Icons.emoji_events, size: 20),
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     'View Leaderboards',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                    style: AppTextStyles.titleSmall.copyWith(
+                      color: AppColors.white,
                     ),
                   ),
                 ],
@@ -967,14 +897,15 @@ class _ChallengesPageState extends State<ChallengesPage> with SingleTickerProvid
   }
 
   Widget _buildUpcomingChallengeCard(Map<String, dynamic> challenge) {
+    final borderColor = _getDifficultyBorderColor(challenge['difficulty']);
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.darkCard.withOpacity(0.7),
+        color: AppColors.darkCard.withOpacity(0.5),
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(
-          color: AppColors.darkBorder,
+          color: borderColor.withOpacity(0.3),
           width: 1,
         ),
       ),

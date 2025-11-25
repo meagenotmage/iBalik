@@ -141,8 +141,8 @@ class _GameHubPageState extends State<GameHubPage> {
                 color: AppColors.darkCard,
                 borderRadius: BorderRadius.circular(AppRadius.lg),
                 border: Border.all(
-                  color: AppColors.darkBorder.withOpacity(0.5),
-                  width: 1,
+                  color: AppColors.primary,
+                  width: 2,
                 ),
                 boxShadow: AppShadows.soft,
               ),
@@ -470,8 +470,8 @@ class _GameHubPageState extends State<GameHubPage> {
                 color: AppColors.darkCard,
                 borderRadius: BorderRadius.circular(AppRadius.lg),
                 border: Border.all(
-                  color: AppColors.darkBorder.withOpacity(0.5),
-                  width: 1,
+                  color: AppColors.secondary.withOpacity(0.3),
+                  width: 1.5,
                 ),
                 boxShadow: AppShadows.soft,
               ),

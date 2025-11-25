@@ -333,8 +333,8 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
                   color: AppColors.darkCard,
                   borderRadius: BorderRadius.circular(AppRadius.lg),
                   border: Border.all(
-                    color: AppColors.primary.withOpacity(0.3),
-                    width: 1.5,
+                    color: AppColors.primary,
+                    width: 2,
                   ),
                   boxShadow: AppShadows.soft,
                 ),
@@ -633,6 +633,13 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
                         color: user['rank'] == 1 ? AppColors.secondary : AppColors.darkBorder,
                         width: user['rank'] == 1 ? 2 : 1,
                       ),
+                      boxShadow: user['rank'] == 1 ? [
+                        BoxShadow(
+                          color: AppColors.secondary.withOpacity(0.2),
+                          blurRadius: 12,
+                          offset: const Offset(0, 2),
+                        ),
+                      ] : null,
                     ),
                     child: Center(
                       child: Icon(
@@ -659,7 +666,7 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
         color: AppColors.darkCard,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(
-          color: AppColors.darkBorder.withOpacity(0.5),
+          color: AppColors.darkBorder,
           width: 1,
         ),
         boxShadow: AppShadows.soft,
