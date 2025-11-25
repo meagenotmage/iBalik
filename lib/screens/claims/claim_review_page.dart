@@ -26,15 +26,15 @@ class ClaimReviewPage extends StatelessWidget {
             Text(
               'Claim Details',
               style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+                fontSize: 22,
+                fontWeight: FontWeight.w600,
                 color: Colors.black87,
               ),
             ),
             Text(
               'Review and decide',
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 14,
                 color: Colors.black54,
               ),
             ),
@@ -79,8 +79,8 @@ class ClaimReviewPage extends StatelessWidget {
                         Text(
                           claimData['itemTitle'] ?? 'Student ID - Jane Smith',
                           style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
                             color: Colors.black87,
                           ),
                         ),

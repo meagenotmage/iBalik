@@ -5,6 +5,7 @@ import 'firebase_options.dart';
 import 'screens/auth/login_page.dart';
 import 'screens/home/home_page.dart';
 import 'services/storage_cleanup_service.dart';
+import 'utils/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,11 +36,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'iBalik',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        useMaterial3: true,
-        fontFamily: 'SF Pro Display',
-      ),
+      theme: AppTheme.lightTheme,
       debugShowCheckedModeBanner: false,
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),

@@ -105,8 +105,8 @@ class ItemDetailsPage extends StatelessWidget {
                         Text(
                           item['itemName'] ?? item['name'] ?? item['title'] ?? 'Untitled',
                           style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w600,
                             color: Colors.black87,
                           ),
                         ),

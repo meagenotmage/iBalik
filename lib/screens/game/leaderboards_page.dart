@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'challenges_page.dart';
 import '../../utils/page_transitions.dart';
+import '../../utils/app_theme.dart';
 
 class LeaderboardsPage extends StatefulWidget {
   const LeaderboardsPage({super.key});
@@ -241,28 +242,26 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: AppColors.darkBackground,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.darkSurface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          icon: const Icon(Icons.arrow_back, color: AppColors.lightText),
           onPressed: () => Navigator.pop(context),
         ),
         title: Row(
           children: [
             const Icon(
               Icons.emoji_events,
-              color: Colors.black87,
+              color: AppColors.lightText,
               size: 28,
             ),
             const SizedBox(width: 8),
-            const Text(
+            Text(
               'Leaderboards',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
+              style: AppTextStyles.titleLarge.copyWith(
+                color: AppColors.lightText,
               ),
             ),
           ],
@@ -276,7 +275,7 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
           children: [
             // Filters
             Container(
-              color: Colors.white,
+              color: AppColors.darkSurface,
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
@@ -286,9 +285,8 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
                       children: [
                         Text(
                           'College',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.lightTextSecondary,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -307,9 +305,8 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
                       children: [
                         Text(
                           'Time Period',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.lightTextSecondary,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -333,15 +330,13 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+                  color: AppColors.darkCard,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  border: Border.all(
+                    color: AppColors.primary,
+                    width: 2,
+                  ),
+                  boxShadow: AppShadows.soft,
                 ),
                 child: Row(
                   children: [
@@ -380,26 +375,22 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
                         children: [
                           Text(
                             userName,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
+                            style: AppTextStyles.titleSmall.copyWith(
+                              color: AppColors.lightText,
                             ),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             '${currentUser['rank']} • ${currentUser['karma']} karma',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey[600],
+                            style: AppTextStyles.bodySmall.copyWith(
+                              color: AppColors.lightTextSecondary,
                             ),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             currentUser['badge'],
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey[500],
+                            style: AppTextStyles.captionSmall.copyWith(
+                              color: AppColors.lightTextSecondary,
                             ),
                           ),
                         ],
@@ -413,24 +404,22 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
                           children: [
                             const Icon(
                               Icons.arrow_upward,
-                              color: Color(0xFF10B981),
+                              color: AppColors.secondary,
                               size: 16,
                             ),
                             Text(
                               currentUser['change'],
-                              style: const TextStyle(
-                                fontSize: 16,
+                              style: AppTextStyles.titleSmall.copyWith(
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF10B981),
+                                color: AppColors.secondary,
                               ),
                             ),
                           ],
                         ),
                         Text(
                           currentUser['changeLabel'],
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.grey[500],
+                          style: AppTextStyles.overline.copyWith(
+                            color: AppColors.lightTextSecondary,
                           ),
                         ),
                       ],
@@ -455,15 +444,13 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
                   const Icon(
                     Icons.emoji_events,
                     size: 20,
-                    color: Colors.black87,
+                    color: AppColors.lightText,
                   ),
                   const SizedBox(width: 6),
-                  const Text(
+                  Text(
                     'Full Rankings',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                    style: AppTextStyles.titleMedium.copyWith(
+                      color: AppColors.lightText,
                     ),
                   ),
                 ],
@@ -490,11 +477,11 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black87,
-                    foregroundColor: Colors.white,
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
                     elevation: 0,
                   ),
@@ -503,11 +490,10 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
                     children: [
                       const Icon(Icons.emoji_events, size: 20),
                       const SizedBox(width: 8),
-                      const Text(
+                      Text(
                         'View Active Challenges',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                        style: AppTextStyles.titleSmall.copyWith(
+                          color: AppColors.white,
                         ),
                       ),
                     ],
@@ -527,23 +513,23 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[300]!),
+        color: AppColors.darkCard,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        border: Border.all(color: AppColors.darkBorder),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: value,
           isExpanded: true,
-          icon: const Icon(Icons.keyboard_arrow_down, size: 20),
-          style: const TextStyle(
-            fontSize: 14,
-            color: Colors.black87,
+          icon: Icon(Icons.keyboard_arrow_down, size: 20, color: AppColors.lightTextSecondary),
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: AppColors.lightText,
           ),
+          dropdownColor: AppColors.darkCard,
           items: items.map((String item) {
             return DropdownMenuItem<String>(
               value: item,
-              child: Text(item),
+              child: Text(item, style: TextStyle(color: AppColors.lightText)),
             );
           }).toList(),
           onChanged: onChanged,
@@ -556,6 +542,11 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
     // Reorder to show 2nd, 1st, 3rd
     final orderedTop = [topThree[0], topThree[1], topThree[2]];
     final heights = [140.0, 160.0, 120.0]; // Heights for 2nd, 1st, 3rd
+    final podiumColors = [
+      AppColors.darkCard, // 2nd place
+      AppColors.primary,   // 1st place - brand blue
+      AppColors.darkCard,  // 3rd place
+    ];
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -578,6 +569,10 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
                     decoration: BoxDecoration(
                       color: user['bgColor'],
                       shape: BoxShape.circle,
+                      border: user['rank'] == 1 ? Border.all(
+                        color: AppColors.secondary,
+                        width: 2,
+                      ) : null,
                     ),
                     child: Center(
                       child: Text(
@@ -595,16 +590,15 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
                   Icon(
                     user['badgeIcon'],
                     size: 18,
-                    color: Colors.grey[600],
+                    color: user['rank'] == 1 ? AppColors.secondary : AppColors.lightTextSecondary,
                   ),
                   const SizedBox(height: 4),
                   // Name
                   Text(
                     user['name'].split(' ')[0],
-                    style: const TextStyle(
-                      fontSize: 13,
+                    style: AppTextStyles.bodySmall.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                      color: AppColors.lightText,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -612,10 +606,9 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
                     user['name'].split(' ').length > 1 
                         ? user['name'].split(' ').sublist(1).join(' ')
                         : '',
-                    style: const TextStyle(
-                      fontSize: 13,
+                    style: AppTextStyles.bodySmall.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                      color: AppColors.lightText,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -623,9 +616,8 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
                   // Karma
                   Text(
                     '${user['karma']} karma',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey[600],
+                    style: AppTextStyles.captionSmall.copyWith(
+                      color: AppColors.lightTextSecondary,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -633,15 +625,26 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
                   Container(
                     height: height,
                     decoration: BoxDecoration(
-                      color: user['bgColor'],
+                      color: podiumColors[index],
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(8),
                       ),
+                      border: Border.all(
+                        color: user['rank'] == 1 ? AppColors.secondary : AppColors.darkBorder,
+                        width: user['rank'] == 1 ? 2 : 1,
+                      ),
+                      boxShadow: user['rank'] == 1 ? [
+                        BoxShadow(
+                          color: AppColors.secondary.withOpacity(0.2),
+                          blurRadius: 12,
+                          offset: const Offset(0, 2),
+                        ),
+                      ] : null,
                     ),
                     child: Center(
                       child: Icon(
                         user['rank'] == 1 ? Icons.workspace_premium : Icons.emoji_events,
-                        color: Colors.white,
+                        color: user['rank'] == 1 ? AppColors.secondary : AppColors.lightTextSecondary,
                         size: user['rank'] == 1 ? 40 : 30,
                       ),
                     ),
@@ -660,15 +663,13 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
       margin: const EdgeInsets.only(bottom: 12, left: 16, right: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: AppColors.darkCard,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(
+          color: AppColors.darkBorder,
+          width: 1,
+        ),
+        boxShadow: AppShadows.soft,
       ),
       child: Column(
         children: [
@@ -679,10 +680,9 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
                 width: 30,
                 child: Text(
                   '#${user['rank']}',
-                  style: const TextStyle(
-                    fontSize: 14,
+                  style: AppTextStyles.bodyMedium.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    color: AppColors.lightText,
                   ),
                 ),
               ),
@@ -716,10 +716,8 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
                         Flexible(
                           child: Text(
                             user['name'],
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
+                            style: AppTextStyles.titleSmall.copyWith(
+                              color: AppColors.lightText,
                             ),
                           ),
                         ),
@@ -733,17 +731,15 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
                     const SizedBox(height: 2),
                     Text(
                       user['department'],
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey[600],
+                      style: AppTextStyles.captionSmall.copyWith(
+                        color: AppColors.lightTextSecondary,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       user['badge'],
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.grey[500],
+                      style: AppTextStyles.overline.copyWith(
+                        color: AppColors.lightTextSecondary,
                       ),
                     ),
                   ],
@@ -755,17 +751,15 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
                 children: [
                   Text(
                     '${user['karma']}',
-                    style: const TextStyle(
-                      fontSize: 18,
+                    style: AppTextStyles.titleMedium.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                      color: AppColors.lightText,
                     ),
                   ),
                   Text(
                     'karma',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey[600],
+                    style: AppTextStyles.captionSmall.copyWith(
+                      color: AppColors.lightTextSecondary,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -773,14 +767,13 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
                     children: [
                       const Icon(
                         Icons.arrow_upward,
-                        color: Color(0xFFEF4444),
+                        color: AppColors.secondary,
                         size: 12,
                       ),
                       Text(
                         user['karmaChange'],
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: Color(0xFFEF4444),
+                        style: AppTextStyles.captionSmall.copyWith(
+                          color: AppColors.secondary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -803,17 +796,15 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
                         children: [
                           Text(
                             '${user['found']}',
-                            style: const TextStyle(
-                              fontSize: 16,
+                            style: AppTextStyles.titleSmall.copyWith(
                               fontWeight: FontWeight.bold,
-                              color: Colors.black87,
+                              color: AppColors.lightText,
                             ),
                           ),
                           Text(
                             'Found',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey[600],
+                            style: AppTextStyles.captionSmall.copyWith(
+                              color: AppColors.lightTextSecondary,
                             ),
                           ),
                         ],
@@ -824,17 +815,15 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
                         children: [
                           Text(
                             '${user['returned']}',
-                            style: const TextStyle(
-                              fontSize: 16,
+                            style: AppTextStyles.titleSmall.copyWith(
                               fontWeight: FontWeight.bold,
-                              color: Colors.black87,
+                              color: AppColors.lightText,
                             ),
                           ),
                           Text(
                             'Returned',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey[600],
+                            style: AppTextStyles.captionSmall.copyWith(
+                              color: AppColors.lightTextSecondary,
                             ),
                           ),
                         ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../utils/page_transitions.dart';
+import '../../utils/app_theme.dart';
 import 'challenges_page.dart';
 import 'badges_page.dart';
 import 'leaderboards_page.dart';
@@ -15,7 +16,7 @@ class GameHubPage extends StatefulWidget {
 }
 
 class _GameHubPageState extends State<GameHubPage> {
-  int _selectedIndex = 3; // Game Hub tab is selected
+  int _selectedIndex = 2; // Game Hub tab is selected (center position)
   
   // User stats - TODO: Fetch from Firebase
   final int currentLevel = 3;
@@ -104,30 +105,30 @@ class _GameHubPageState extends State<GameHubPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: AppColors.darkBackground,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.darkSurface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          icon: const Icon(Icons.arrow_back, color: AppColors.lightText),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            const Text(
               'Game Hub',
               style: TextStyle(
                 fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
+                fontWeight: FontWeight.w600,
+                color: AppColors.lightText,
               ),
             ),
-            Text(
+            const Text(
               'Your campus hero journey',
               style: TextStyle(
-                fontSize: 13,
-                color: Colors.black54,
+                fontSize: 14,
+                color: AppColors.lightTextSecondary,
               ),
             ),
           ],
@@ -136,23 +137,17 @@ class _GameHubPageState extends State<GameHubPage> {
       ),
       body: SingleChildScrollView(
         physics: const ClampingScrollPhysics(),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Level Progress Card
             Container(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                color: AppColors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: AppShadows.soft,
               ),
               child: Column(
                 children: [
@@ -167,15 +162,11 @@ class _GameHubPageState extends State<GameHubPage> {
                             height: 50,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.grey[300],
-                              border: Border.all(
-                                color: Colors.blue[700]!,
-                                width: 2,
-                              ),
+                              color: AppColors.background,
                             ),
                             child: Icon(
                               Icons.person,
-                              color: Colors.grey[600],
+                              color: AppColors.textSecondary,
                               size: 30,
                             ),
                           ),
@@ -186,16 +177,16 @@ class _GameHubPageState extends State<GameHubPage> {
                               Text(
                                 'Level $currentLevel',
                                 style: const TextStyle(
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
                                 ),
                               ),
                               Text(
                                 levelTitle,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey[600],
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: AppColors.textSecondary,
                                 ),
                               ),
                             ],
@@ -208,54 +199,55 @@ class _GameHubPageState extends State<GameHubPage> {
                           const Text(
                             'Next Level',
                             style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.black54,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.textSecondary,
                             ),
                           ),
                           Text(
                             '${maxXP - currentXP} XP to go',
                             style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
                             ),
                           ),
                         ],
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
                   Column(
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(10),
                         child: LinearProgressIndicator(
                           value: currentXP / maxXP,
-                          minHeight: 14,
-                          backgroundColor: Colors.grey[200],
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.blue[600]!,
+                          minHeight: 12,
+                          backgroundColor: AppColors.lightGray,
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            AppColors.primary,
                           ),
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
                             '$currentXP XP',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey[600],
+                            style: const TextStyle(
+                              fontSize: 12,
                               fontWeight: FontWeight.w500,
+                              color: AppColors.textSecondary,
                             ),
                           ),
                           Text(
                             '$maxXP XP',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey[600],
+                            style: const TextStyle(
+                              fontSize: 12,
                               fontWeight: FontWeight.w500,
+                              color: AppColors.textSecondary,
                             ),
                           ),
                         ],
@@ -266,7 +258,7 @@ class _GameHubPageState extends State<GameHubPage> {
               ),
             ),
             
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             
             // Quick Actions Row
             Row(
@@ -275,8 +267,8 @@ class _GameHubPageState extends State<GameHubPage> {
                   child: _buildQuickActionButton(
                     'Challenges',
                     Icons.radio_button_checked,
-                    const Color(0xFFCDFF00),
-                    Colors.black87,
+                    AppColors.secondary,
+                    AppColors.black,
                     () {
                       Navigator.push(
                         context,
@@ -285,13 +277,13 @@ class _GameHubPageState extends State<GameHubPage> {
                     },
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 16),
                 Expanded(
                   child: _buildQuickActionButton(
                     'Leaderboard',
                     Icons.emoji_events,
-                    const Color(0xFF4ECDC4),
-                    Colors.white,
+                    AppColors.primary,
+                    AppColors.white,
                     () {
                       Navigator.push(
                         context,
@@ -303,37 +295,37 @@ class _GameHubPageState extends State<GameHubPage> {
               ],
             ),
             
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             
             // Karma and Points Cards
             Row(
               children: [
                 Expanded(
                   child: Container(
-                    padding: const EdgeInsets.all(14),
+                    padding: const EdgeInsets.all(AppSpacing.lg),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFDDD6FE),
-                      borderRadius: BorderRadius.circular(16),
+                      color: AppColors.darkCard,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
                       border: Border.all(
-                        color: const Color(0xFF3B82F6),
-                        width: 2,
+                        color: AppColors.primary.withOpacity(0.3),
+                        width: 1.5,
                       ),
                     ),
                     child: Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(AppSpacing.sm),
                           decoration: const BoxDecoration(
-                            color: Color(0xFF3B82F6),
+                            color: AppColors.primary,
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
                             Icons.bolt,
-                            color: Colors.white,
+                            color: AppColors.white,
                             size: 22,
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -344,9 +336,9 @@ class _GameHubPageState extends State<GameHubPage> {
                                   Text(
                                     points.toString(),
                                     style: const TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF1E40AF),
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.lightText,
                                     ),
                                   ),
                                   const SizedBox(width: 6),
@@ -355,19 +347,20 @@ class _GameHubPageState extends State<GameHubPage> {
                                     child: Text(
                                       'Points',
                                       style: TextStyle(
-                                        fontSize: 18,
-                                        color: Color(0xFF1E40AF),
+                                        fontSize: 14,
                                         fontWeight: FontWeight.w600,
+                                        color: AppColors.lightText,
                                       ),
                                     ),
                                   ),
                                 ],
                               ),
-                              Text(
+                              const Text(
                                 'Currency',
                                 style: TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.grey[700],
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.lightTextSecondary,
                                 ),
                               ),
                             ],
@@ -377,16 +370,16 @@ class _GameHubPageState extends State<GameHubPage> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 16),
                 Expanded(
                   child: Container(
-                    padding: const EdgeInsets.all(14),
+                    padding: const EdgeInsets.all(AppSpacing.lg),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFDDD6FE),
-                      borderRadius: BorderRadius.circular(16),
+                      color: AppColors.darkCard,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
                       border: Border.all(
-                        color: const Color(0xFF8B5CF6),
-                        width: 2,
+                        color: AppColors.secondary.withOpacity(0.3),
+                        width: 1.5,
                       ),
                     ),
                     child: Row(
@@ -394,16 +387,16 @@ class _GameHubPageState extends State<GameHubPage> {
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: const BoxDecoration(
-                            color: Color(0xFF8B5CF6),
+                            color: AppColors.secondary,
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
                             Icons.star,
-                            color: Colors.white,
+                            color: AppColors.black,
                             size: 22,
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -414,9 +407,9 @@ class _GameHubPageState extends State<GameHubPage> {
                                   Text(
                                     karma.toString(),
                                     style: const TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF6D28D9),
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.lightText,
                                     ),
                                   ),
                                   const SizedBox(width: 6),
@@ -425,19 +418,20 @@ class _GameHubPageState extends State<GameHubPage> {
                                     child: Text(
                                       'Karma',
                                       style: TextStyle(
-                                        fontSize: 18,
-                                        color: Color(0xFF6D28D9),
+                                        fontSize: 14,
                                         fontWeight: FontWeight.w600,
+                                        color: AppColors.lightText,
                                       ),
                                     ),
                                   ),
                                 ],
                               ),
-                              Text(
+                              const Text(
                                 'Public Rep',
                                 style: TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.grey[700],
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.lightTextSecondary,
                                 ),
                               ),
                             ],
@@ -458,18 +452,18 @@ class _GameHubPageState extends State<GameHubPage> {
               children: [
                 Row(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.workspace_premium,
                       size: 24,
-                      color: Colors.grey[800],
+                      color: AppColors.lightText,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       'Badges (${badges.where((b) => b['earned']).length}/${badges.length})',
                       style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.lightText,
                       ),
                     ),
                   ],
@@ -486,27 +480,26 @@ class _GameHubPageState extends State<GameHubPage> {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
                     ),
                   ),
                 ),
               ],
             ),
             
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             
             // Badges Grid
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                color: AppColors.darkCard,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.secondary.withOpacity(0.3),
+                  width: 1.5,
+                ),
+                boxShadow: AppShadows.soft,
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -519,24 +512,24 @@ class _GameHubPageState extends State<GameHubPage> {
             // Recent Achievements Section
             Row(
               children: [
-                Icon(
+                const Icon(
                   Icons.workspace_premium,
                   size: 24,
-                  color: Colors.grey[800],
+                  color: AppColors.lightText,
                 ),
                 const SizedBox(width: 8),
                 const Text(
                   'Recent Achievements',
                   style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.lightText,
                   ),
                 ),
               ],
             ),
             
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             
             // Recent Achievements List
             ...recentAchievements.map((achievement) => 
@@ -551,18 +544,18 @@ class _GameHubPageState extends State<GameHubPage> {
               children: [
                 Row(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.radio_button_checked,
                       size: 24,
-                      color: Colors.grey[800],
+                      color: AppColors.lightText,
                     ),
                     const SizedBox(width: 8),
                     const Text(
                       'Active Challenges',
                       style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.lightText,
                       ),
                     ),
                   ],
@@ -579,13 +572,14 @@ class _GameHubPageState extends State<GameHubPage> {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
                     ),
                   ),
                 ),
               ],
             ),
             
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             
             // Active Challenges List
             ...activeChallenges.map((challenge) => 
@@ -598,25 +592,19 @@ class _GameHubPageState extends State<GameHubPage> {
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
+          color: AppColors.black,
+          boxShadow: AppShadows.nav,
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildNavItem(Icons.home, 'Home', 0),
-                _buildNavItem(Icons.search, 'Posts', 1),
-                _buildNavItem(Icons.description_outlined, 'Claims', 2),
-                _buildNavItem(Icons.emoji_events_outlined, 'Game Hub', 3),
+                _buildNavItem(Icons.home_outlined, 'Home', 0),
+                _buildNavItem(Icons.article_outlined, 'Posts', 1),
+                _buildNavItem(Icons.emoji_events_outlined, 'Game Hub', 2),
+                _buildNavItem(Icons.description_outlined, 'Claims', 3),
                 _buildNavItem(Icons.person_outline, 'Profile', 4),
               ],
             ),
@@ -629,29 +617,26 @@ class _GameHubPageState extends State<GameHubPage> {
   void _onNavItemTapped(int index) {
     if (index == 0) {
       // Go back to Home
-      Navigator.pop(context);
+      Navigator.of(context).popUntil((route) => route.isFirst);
     } else if (index == 1) {
       // Navigate to Posts
-      Navigator.pop(context); // First go back to home
-      Navigator.push(
+      Navigator.pushReplacement(
         context,
         SmoothPageRoute(page: const PostsPage()),
       );
-    } else if (index == 2) {
+    } else if (index == 3) {
       // Navigate to Claims
-      Navigator.pop(context); // First go back to home
-      Navigator.push(
+      Navigator.pushReplacement(
         context,
         SmoothPageRoute(page: const ClaimsPage()),
       );
     } else if (index == 4) {
       // Navigate to Profile
-      Navigator.pop(context); // First go back to home
-      Navigator.push(
+      Navigator.pushReplacement(
         context,
         SmoothPageRoute(page: const ProfilePage()),
       );
-    } else if (index != 3) {
+    } else if (index != 2) {
       // For other tabs, just update the selected state
       setState(() {
         _selectedIndex = index;
@@ -668,7 +653,7 @@ class _GameHubPageState extends State<GameHubPage> {
         children: [
           Icon(
             icon,
-            color: isSelected ? const Color(0xFF4318FF) : Colors.grey,
+            color: isSelected ? AppColors.primary : AppColors.white.withOpacity(0.6),
             size: 26,
           ),
           const SizedBox(height: 4),
@@ -676,7 +661,7 @@ class _GameHubPageState extends State<GameHubPage> {
             label,
             style: TextStyle(
               fontSize: 11,
-              color: isSelected ? const Color(0xFF4318FF) : Colors.grey,
+              color: isSelected ? AppColors.primary : AppColors.white.withOpacity(0.6),
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
             ),
           ),
@@ -694,12 +679,12 @@ class _GameHubPageState extends State<GameHubPage> {
   ) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
+        padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
           color: bgColor,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
           children: [
@@ -713,7 +698,7 @@ class _GameHubPageState extends State<GameHubPage> {
               label,
               style: TextStyle(
                 fontSize: 16,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
                 color: textColor,
               ),
             ),
@@ -731,12 +716,16 @@ class _GameHubPageState extends State<GameHubPage> {
           width: 60,
           height: 60,
           decoration: BoxDecoration(
-            color: earned ? badge['color'] : Colors.grey[300],
+            color: earned ? AppColors.secondary : AppColors.darkBorder,
             shape: BoxShape.circle,
+            border: earned ? Border.all(
+              color: AppColors.secondary.withOpacity(0.5),
+              width: 2,
+            ) : null,
           ),
           child: Icon(
             badge['icon'],
-            color: earned ? Colors.white : Colors.grey[500],
+            color: earned ? AppColors.black : AppColors.lightTextSecondary,
             size: 30,
           ),
         ),
@@ -747,9 +736,9 @@ class _GameHubPageState extends State<GameHubPage> {
             badge['name'].split(' ')[0], // First word only
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 11,
-              color: earned ? Colors.black87 : Colors.grey[500],
-              fontWeight: earned ? FontWeight.w600 : FontWeight.normal,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: earned ? AppColors.lightText : AppColors.lightTextSecondary,
             ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -761,23 +750,27 @@ class _GameHubPageState extends State<GameHubPage> {
 
   Widget _buildAchievementCard(Map<String, dynamic> achievement) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: achievement['bgColor'],
-        borderRadius: BorderRadius.circular(16),
+        color: AppColors.darkCard,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.secondary.withOpacity(0.3),
+          width: 1.5,
+        ),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: achievement['color'],
+              color: AppColors.secondary,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               achievement['icon'],
-              color: Colors.white,
+              color: AppColors.black,
               size: 28,
             ),
           ),
@@ -793,15 +786,16 @@ class _GameHubPageState extends State<GameHubPage> {
                       achievement['name'],
                       style: const TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.lightText,
                       ),
                     ),
                     Text(
                       achievement['date'],
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 12,
-                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.lightTextSecondary,
                       ),
                     ),
                   ],
@@ -809,9 +803,9 @@ class _GameHubPageState extends State<GameHubPage> {
                 const SizedBox(height: 4),
                 Text(
                   achievement['description'],
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey[700],
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppColors.lightTextSecondary,
                   ),
                 ),
               ],
@@ -825,13 +819,13 @@ class _GameHubPageState extends State<GameHubPage> {
   Widget _buildChallengeCard(Map<String, dynamic> challenge) {
     final double progress = challenge['progress'] / challenge['total'];
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: challenge['bgColor'],
-        borderRadius: BorderRadius.circular(16),
+        color: AppColors.darkCard,
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: const Color(0xFF8B5CF6),
+          color: AppColors.primary.withOpacity(0.5),
           width: 2,
         ),
       ),
@@ -845,9 +839,9 @@ class _GameHubPageState extends State<GameHubPage> {
                 child: Text(
                   challenge['name'],
                   style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.lightText,
                   ),
                 ),
               ),
@@ -857,15 +851,15 @@ class _GameHubPageState extends State<GameHubPage> {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.darkSurface,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   challenge['type'],
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[700],
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.lightTextSecondary,
                   ),
                 ),
               ),
@@ -874,18 +868,18 @@ class _GameHubPageState extends State<GameHubPage> {
           const SizedBox(height: 8),
           Text(
             challenge['description'],
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 14,
-              color: Colors.grey[700],
+              color: AppColors.lightTextSecondary,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           const Text(
             'Progress',
             style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: AppColors.lightText,
             ),
           ),
           const SizedBox(height: 8),
@@ -893,10 +887,10 @@ class _GameHubPageState extends State<GameHubPage> {
             borderRadius: BorderRadius.circular(10),
             child: LinearProgressIndicator(
               value: progress,
-              minHeight: 10,
-              backgroundColor: Colors.white,
+              minHeight: 8,
+              backgroundColor: AppColors.darkBorder,
               valueColor: const AlwaysStoppedAnimation<Color>(
-                Color(0xFF8B5CF6),
+                AppColors.primary,
               ),
             ),
           ),
@@ -908,9 +902,10 @@ class _GameHubPageState extends State<GameHubPage> {
                 children: [
                   Text(
                     challenge['timeLeft'],
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey[700],
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.lightTextSecondary,
                     ),
                   ),
                 ],
@@ -919,8 +914,8 @@ class _GameHubPageState extends State<GameHubPage> {
                 challenge['reward'],
                 style: const TextStyle(
                   fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF8B5CF6),
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.secondary,
                 ),
               ),
             ],
@@ -931,9 +926,9 @@ class _GameHubPageState extends State<GameHubPage> {
             child: Text(
               '${challenge['progress']} / ${challenge['total']}',
               style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: AppColors.lightText,
               ),
             ),
           ),
