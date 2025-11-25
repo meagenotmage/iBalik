@@ -897,7 +897,6 @@ class _ChallengesPageState extends State<ChallengesPage> with SingleTickerProvid
   }
 
   Widget _buildUpcomingChallengeCard(Map<String, dynamic> challenge) {
-    final borderColor = _getDifficultyBorderColor(challenge['difficulty']);
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
@@ -905,7 +904,7 @@ class _ChallengesPageState extends State<ChallengesPage> with SingleTickerProvid
         color: AppColors.darkCard.withOpacity(0.5),
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(
-          color: borderColor.withOpacity(0.3),
+          color: AppColors.darkBorder,
           width: 1,
         ),
       ),
