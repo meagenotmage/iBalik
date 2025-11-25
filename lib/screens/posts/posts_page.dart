@@ -23,6 +23,46 @@ class _PostsPageState extends State<PostsPage> {
   // Filter states
   String _selectedCategory = 'All';
   String _selectedLocation = 'All Locations';
+  
+  // Available filter options
+  final List<String> _categories = [
+    'All',
+    'Electronics',
+    'Personal Items',
+    'Bags',
+    'Documents',
+    'Accessories',
+    'Clothes',
+    'Shoes',
+    'Others',
+  ];
+
+  final List<String> _locations = [
+    'All Locations',
+    'Library',
+    'CO-OP',
+    'College of ICT',
+    'College of Nursing',
+    'College of Law',
+    'Research Building',
+    'Binhi',
+    'Medicine Gym',
+    'Rizal Hall',
+    'Admin Building',
+    'Mini Forest',
+    'Jubilee Park',
+    'Quezon Hall',
+    'Grandstand',
+    'College of Communications',
+    'Audio Visual Hall',
+    'Cultural Center',
+    'Foreign Languages Building',
+    'College of Education',
+    'College of Business and Management',
+    'College of PESCAR',
+    'CTE Building',
+    'Elementary CO-OP',
+  ];
 
   @override
   void initState() {
@@ -69,13 +109,20 @@ class _PostsPageState extends State<PostsPage> {
 
   // Filter items based on selected category and location
   List<Map<String, dynamic>> _getFilteredItems(List<Map<String, dynamic>> items) {
+    final query = _searchController.text.trim().toLowerCase();
     return items.where((item) {
-      bool matchesCategory = _selectedCategory == 'All' || item['category'] == _selectedCategory;
-      bool matchesLocation = _selectedLocation == 'All Locations' || item['location'] == _selectedLocation;
-      bool matchesSearch = _searchController.text.isEmpty || 
-          item['itemName'].toLowerCase().contains(_searchController.text.toLowerCase()) ||
-          item['description'].toLowerCase().contains(_searchController.text.toLowerCase());
-      
+      final itemName = (item['itemName'] ?? '').toString().toLowerCase();
+      final description = (item['description'] ?? '').toString().toLowerCase();
+      final location = (item['location'] ?? '').toString().toLowerCase();
+
+      bool matchesCategory = _selectedCategory == 'All' || (item['category'] ?? '') == _selectedCategory;
+      bool matchesLocation = _selectedLocation == 'All Locations' || (item['location'] ?? '') == _selectedLocation;
+
+      bool matchesSearch = query.isEmpty ||
+          itemName.contains(query) ||
+          description.contains(query) ||
+          location.contains(query);
+
       return matchesCategory && matchesLocation && matchesSearch;
     }).toList();
   }
@@ -179,27 +226,7 @@ class _PostsPageState extends State<PostsPage> {
                             spacing: 8,
                             runSpacing: 8,
                             children: [
-                              _buildFilterChip('All', localCategory, (value) {
-                                setModalState(() => localCategory = value);
-                                setState(() => _selectedCategory = value);
-                              }),
-                              _buildFilterChip('Electronics', localCategory, (value) {
-                                setModalState(() => localCategory = value);
-                                setState(() => _selectedCategory = value);
-                              }),
-                              _buildFilterChip('Personal Items', localCategory, (value) {
-                                setModalState(() => localCategory = value);
-                                setState(() => _selectedCategory = value);
-                              }),
-                              _buildFilterChip('Bags', localCategory, (value) {
-                                setModalState(() => localCategory = value);
-                                setState(() => _selectedCategory = value);
-                              }),
-                              _buildFilterChip('Documents', localCategory, (value) {
-                                setModalState(() => localCategory = value);
-                                setState(() => _selectedCategory = value);
-                              }),
-                              _buildFilterChip('Accessories', localCategory, (value) {
+                              for (var cat in _categories) _buildFilterChip(cat, localCategory, (value) {
                                 setModalState(() => localCategory = value);
                                 setState(() => _selectedCategory = value);
                               }),
@@ -220,31 +247,7 @@ class _PostsPageState extends State<PostsPage> {
                             spacing: 8,
                             runSpacing: 8,
                             children: [
-                              _buildFilterChip('All Locations', localLocation, (value) {
-                                setModalState(() => localLocation = value);
-                                setState(() => _selectedLocation = value);
-                              }),
-                              _buildFilterChip('Library', localLocation, (value) {
-                                setModalState(() => localLocation = value);
-                                setState(() => _selectedLocation = value);
-                              }),
-                              _buildFilterChip('Cafeteria', localLocation, (value) {
-                                setModalState(() => localLocation = value);
-                                setState(() => _selectedLocation = value);
-                              }),
-                              _buildFilterChip('Engineering Building', localLocation, (value) {
-                                setModalState(() => localLocation = value);
-                                setState(() => _selectedLocation = value);
-                              }),
-                              _buildFilterChip('Main Parking', localLocation, (value) {
-                                setModalState(() => localLocation = value);
-                                setState(() => _selectedLocation = value);
-                              }),
-                              _buildFilterChip('Main Building', localLocation, (value) {
-                                setModalState(() => localLocation = value);
-                                setState(() => _selectedLocation = value);
-                              }),
-                              _buildFilterChip('Gym', localLocation, (value) {
+                              for (var loc in _locations) _buildFilterChip(loc, localLocation, (value) {
                                 setModalState(() => localLocation = value);
                                 setState(() => _selectedLocation = value);
                               }),

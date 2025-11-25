@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
+import '../../services/lost_item_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../utils/page_transitions.dart';
 import '../auth/login_page.dart';
 import '../notifications/notifications_page.dart';
@@ -21,6 +23,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final AuthService _authService = AuthService();
+  final LostItemService _lostItemService = LostItemService();
   int _selectedIndex = 0;
   String _userName = '';
 
@@ -61,6 +64,47 @@ class _HomePageState extends State<HomePage> {
     } else {
       return 'Good evening';
     }
+  }
+
+  // Format Firestore Timestamp, ISO string, or epoch into a relative "time ago" string
+  String _formatTimeAgo(dynamic value) {
+    if (value == null) return '';
+
+    DateTime? dateTime;
+    try {
+      if (value is Timestamp) {
+        dateTime = value.toDate();
+      } else if (value is String) {
+        // Attempt to parse ISO string
+        dateTime = DateTime.tryParse(value);
+      } else if (value is int) {
+        // epoch milliseconds
+        dateTime = DateTime.fromMillisecondsSinceEpoch(value);
+      } else if (value is double) {
+        dateTime = DateTime.fromMillisecondsSinceEpoch(value.toInt());
+      }
+    } catch (_) {
+      dateTime = null;
+    }
+
+    if (dateTime == null) return '';
+
+    final now = DateTime.now();
+    final diff = now.difference(dateTime);
+
+    if (diff.inSeconds < 60) return '${diff.inSeconds}s ago';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
+
+    // Older than a week -> show short date (e.g., Nov 12)
+    return '${_shortMonth(dateTime.month)} ${dateTime.day}';
+  }
+
+  String _shortMonth(int month) {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    if (month < 1 || month > 12) return '';
+    return months[month - 1];
   }
 
   Future<void> _handleSignOut() async {
@@ -300,50 +344,86 @@ class _HomePageState extends State<HomePage> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           const Text(
-                            'Recent Finds',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
+                          'Recent Finds',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
                           ),
                           TextButton(
-                            onPressed: () {},
-                            child: const Text(
-                              'View all',
-                              style: TextStyle(
-                                color: Color(0xFF4318FF),
-                                fontWeight: FontWeight.w600,
-                              ),
+                          onPressed: () {
+                            Navigator.push(
+                            context,
+                            SmoothPageRoute(page: const PostsPage()),
+                            );
+                          },
+                          child: const Text(
+                            'View all',
+                            style: TextStyle(
+                            color: Color(0xFF4318FF),
+                            fontWeight: FontWeight.w600,
                             ),
+                          ),
                           ),
                         ],
                       ),
                     ),
-                    // Items List
-                    _buildItemCard(
-                      'Black iPhone 1',
-                      'Found near the computer section, has a cracked screen',
-                      '2h ago',
-                      'Library',
-                      'Available',
-                      Icons.phone_iphone,
-                    ),
-                    _buildItemCard(
-                      'Blue',
-                      'Dark blue umbrella with wooden handle, left at table',
-                      '4h ago',
-                      'Cafeteria',
-                      'Available',
-                      Icons.umbrella,
-                    ),
-                    _buildItemCard(
-                      'Red Backpack',
-                      'Medium-sized red backup with laptop',
-                      '6h ago',
-                      'Engineering Building',
-                      'Available',
-                      Icons.backpack,
+                    // Items List (load recent available items from Firestore)
+                    StreamBuilder<QuerySnapshot>(
+                      stream: _lostItemService.getLostItems(status: 'available', limit: 3),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                            child: CircularProgressIndicator(),
+                          ));
+                        }
+
+                        if (snapshot.hasError) {
+                          // Log and show fallback message
+                          print('Error loading recent finds: ${snapshot.error}');
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                            child: Text('Unable to load recent finds', style: TextStyle(color: Colors.grey[600])),
+                          );
+                        }
+
+                        final docs = snapshot.data?.docs ?? [];
+                        if (docs.isEmpty) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                            child: Text('No recent finds', style: TextStyle(color: Colors.grey[600])),
+                          );
+                        }
+
+                        return Column(
+                          children: docs.map((doc) {
+                            final data = doc.data() as Map<String, dynamic>;
+                            final title = data['itemName'] ?? data['itemTitle'] ?? data['itemId'] ?? 'Found Item';
+                            final description = data['description'] ?? '';
+                            final timeSource = data['datePosted'] ?? data['dateFound'];
+                            final time = _formatTimeAgo(timeSource);
+                            final location = data['location'] ?? '';
+                            final status = (data['status'] ?? 'available').toString().toLowerCase() == 'available' ? 'Available' : (data['status'] ?? '');
+                            // Simple icon selection
+                            final category = (data['category'] ?? '').toString().toLowerCase();
+                            IconData icon = Icons.image;
+                            if (category.contains('elect')) icon = Icons.phone_iphone;
+                            else if (category.contains('bag') || category.contains('backpack')) icon = Icons.backpack;
+                            else if (category.contains('umbrella')) icon = Icons.umbrella;
+
+                            return _buildItemCard(
+                              title,
+                              description,
+                              time.toString(),
+                              location,
+                              status,
+                              icon,
+                            );
+                          }).toList(),
+                        );
+                      },
                     ),
                     const SizedBox(height: 16),
                     // Game Hub Section
@@ -367,7 +447,12 @@ class _HomePageState extends State<HomePage> {
                             ],
                           ),
                           TextButton(
-                            onPressed: () {},
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                SmoothPageRoute(page: const GameHubPage()),
+                              );
+                            },
                             child: const Text(
                               'View All',
                               style: TextStyle(
