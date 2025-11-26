@@ -24,7 +24,7 @@ class CloudinaryService {
         CloudinaryFile.fromFile(
           imageFile.path,
           resourceType: CloudinaryResourceType.Image,
-          folder: 'ibalik_lost_items/$itemId',
+          folder: 'lost_items/$itemId',
           publicId: DateTime.now().millisecondsSinceEpoch.toString(),
         ),
       );
@@ -80,6 +80,6 @@ class CloudinaryService {
   
   /// Check if Cloudinary is configured
   bool isConfigured() {
-    return _cloudName != 'dbovqpb8x' && _uploadPreset != 'ml_default';
+    return _cloudName != 'YOUR_CLOUD_NAME' && _uploadPreset != 'YOUR_UPLOAD_PRESET';
   }
 }

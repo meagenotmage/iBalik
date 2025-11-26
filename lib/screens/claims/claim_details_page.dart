@@ -1,13 +1,223 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-class ClaimDetailsPage extends StatelessWidget {
+class ClaimDetailsPage extends StatefulWidget {
   final Map<String, dynamic> claimData;
 
   const ClaimDetailsPage({super.key, required this.claimData});
 
   @override
+  State<ClaimDetailsPage> createState() => _ClaimDetailsPageState();
+}
+
+class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
+  late Map<String, dynamic> _data;
+  bool _processing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _data = Map<String, dynamic>.from(widget.claimData);
+    _loadFounderIfNeeded();
+    _resolveLostItemIfNeeded();
+  }
+
+  Future<void> _resolveLostItemIfNeeded() async {
+    try {
+      // If claim already has key fields, skip
+      final hasTitle = (_data['itemTitle'] ?? _data['title'] ?? _data['itemName'] ?? _data['name']) != null;
+      final hasFoundAt = _data['foundAt'] != null || _data['foundWhen'] != null;
+      final hasLocation = _data['location'] != null || _data['pickupLocation'] != null || _data['foundAtLocation'] != null;
+      if (hasTitle && hasFoundAt && hasLocation) return;
+
+      final fs = FirebaseFirestore.instance;
+      final itemIdRaw = _data['itemId'] ?? _data['lostItemId'] ?? _data['lost_item_id'];
+      String? docId;
+      if (itemIdRaw != null) docId = itemIdRaw.toString();
+
+      DocumentSnapshot<Map<String, dynamic>>? itemDoc;
+      if (docId != null) {
+        try {
+          final doc = await fs.collection('lost_items').doc(docId).get();
+          if (doc.exists) itemDoc = doc;
+        } catch (_) {}
+      }
+
+      if (itemDoc == null && itemIdRaw != null) {
+        try {
+          final q = await fs.collection('lost_items').where('itemId', isEqualTo: itemIdRaw).limit(1).get();
+          if (q.docs.isNotEmpty) itemDoc = q.docs.first;
+        } catch (_) {}
+      }
+
+      if (itemDoc != null && itemDoc.exists) {
+        final d = itemDoc.data() as Map<String, dynamic>? ?? {};
+        setState(() {
+          // copy fields if missing
+          _data['itemTitle'] = _data['itemTitle'] ?? d['title'] ?? d['name'] ?? d['itemName'];
+          _data['itemDescription'] = _data['itemDescription'] ?? d['description'] ?? d['details'] ?? d['foundDescription'];
+          _data['foundAt'] = _data['foundAt'] ?? d['foundAt'] ?? d['createdAt'] ?? d['timestamp'];
+          _data['location'] = _data['location'] ?? d['location'] ?? d['pickupLocation'] ?? d['foundAtLocation'];
+          _data['pickupInstructions'] = _data['pickupInstructions'] ?? d['pickupInstructions'] ?? d['pickupInfo'];
+          // if founder info missing, try copying from lost_item
+          _data['founderName'] = _data['founderName'] ?? d['founderName'] ?? d['founderDisplayName'];
+          _data['founderPhone'] = _data['founderPhone'] ?? d['founderPhone'] ?? d['finderPhone'];
+          _data['founderEmail'] = _data['founderEmail'] ?? d['founderEmail'] ?? d['finderEmail'];
+          _data['founderMessenger'] = _data['founderMessenger'] ?? d['founderMessenger'] ?? d['finderMessenger'];
+        });
+      }
+    } catch (_) {}
+  }
+
+  String _formatTimestamp(dynamic ts) {
+    try {
+      DateTime dt;
+      if (ts is Timestamp) dt = ts.toDate();
+      else if (ts is DateTime) dt = ts;
+      else if (ts is int) dt = DateTime.fromMillisecondsSinceEpoch(ts);
+      else return '';
+
+      final date = '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year.toString().substring(2)}';
+      final time = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      return '$date • $time';
+    } catch (_) { return ''; }
+  }
+
+  Future<void> _launchPhone(String? phone) async {
+    if (phone == null || phone.trim().isEmpty) return;
+    final uri = Uri(scheme: 'tel', path: phone);
+    try { await launchUrl(uri); } catch (_) {}
+  }
+
+  Future<void> _launchWhatsapp(String? phone) async {
+    if (phone == null || phone.trim().isEmpty) return;
+    final normalized = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+    final uri = Uri.parse('https://wa.me/$normalized');
+    try { await launchUrl(uri, mode: LaunchMode.externalApplication); } catch (_) {}
+  }
+
+  Future<void> _launchEmail(String? email) async {
+    if (email == null || email.trim().isEmpty) return;
+    final uri = Uri(scheme: 'mailto', path: email);
+    try { await launchUrl(uri); } catch (_) {}
+  }
+
+  Future<void> _launchMessenger(String? handle) async {
+    if (handle == null || handle.trim().isEmpty) return;
+    // Try common patterns: if it looks like @username, open messenger profile link
+    String url = handle;
+    if (handle.startsWith('@')) {
+      url = 'https://m.me/${handle.substring(1)}';
+    } else if (!handle.startsWith('http')) {
+      // fallback try messenger via m.me
+      url = 'https://m.me/$handle';
+    }
+    try { await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication); } catch (_) {}
+  }
+
+  Future<void> _loadFounderIfNeeded() async {
+    try {
+      final founderId = (_data['founderId'] ?? _data['posterId'])?.toString();
+      if (( _data['founderName'] == null || (_data['founderName'] as String).isEmpty) && founderId != null && founderId.isNotEmpty) {
+        final doc = await FirebaseFirestore.instance.collection('users').doc(founderId).get();
+        if (doc.exists) {
+          final d = doc.data();
+          setState(() {
+            _data['founderName'] = _data['founderName'] ?? (d?['displayName'] ?? d?['name'] ?? d?['userName']);
+            _data['founderPhone'] = _data['founderPhone'] ?? d?['phone'];
+            _data['founderEmail'] = _data['founderEmail'] ?? d?['email'];
+            _data['founderAffiliation'] = _data['founderAffiliation'] ?? d?['affiliation'];
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _copyToClipboard(BuildContext context, String text) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied to clipboard')));
+  }
+
+  Future<void> _markSuccessfulClaim() async {
+    final claimId = _data['docId'] as String?;
+    final itemId = _data['itemId'];
+    final claimerId = _data['claimerId'] as String?;
+    if (claimId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cannot locate claim document')));
+      return;
+    }
+
+    final confirm = await showDialog<bool>(context: context, builder: (context) => AlertDialog(
+      title: const Text('Confirm Successful Return'),
+      content: const Text('Mark this claim as successfully returned? This will complete the claim.'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Confirm')),
+      ],
+    ));
+
+    if (confirm != true) return;
+
+    setState(() { _processing = true; });
+    final fs = FirebaseFirestore.instance;
+    try {
+      // Update claim
+      await fs.collection('claims').doc(claimId).update({
+        'status': 'completed',
+        'completedBy': FirebaseAuth.instance.currentUser?.uid,
+        'completedAt': FieldValue.serverTimestamp(),
+      });
+
+      // Update lost_items: try by doc id first, then fallback to itemId field
+      if (itemId != null) {
+        try {
+          await fs.collection('lost_items').doc(itemId.toString()).update({
+            'status': 'returned',
+            'returnedTo': claimerId,
+            'returnedAt': FieldValue.serverTimestamp(),
+          });
+        } catch (_) {
+          try {
+            final q = await fs.collection('lost_items').where('itemId', isEqualTo: itemId).limit(1).get();
+            if (q.docs.isNotEmpty) {
+              await q.docs.first.reference.update({
+                'status': 'returned',
+                'returnedTo': claimerId,
+                'returnedAt': FieldValue.serverTimestamp(),
+              });
+            }
+          } catch (_) {}
+        }
+      }
+
+      setState(() { _data['status'] = 'completed'; _processing = false; });
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Claim marked completed')));
+    } catch (e) {
+      setState(() { _processing = false; });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final statusRaw = (_data['status'] ?? '').toString().toLowerCase();
+    final isPending = statusRaw == 'pending';
+    final isApproved = statusRaw == 'approved';
+    final isRejected = statusRaw == 'rejected';
+                    
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    final founderId = (_data['founderId'] ?? _data['posterId'])?.toString();
+    final claimerId = (_data['claimerId'] ?? _data['claimer'])?.toString();
+    final viewerIsFounder = currentUserId != null && founderId != null && currentUserId == founderId;
+    final viewerIsClaimer = currentUserId != null && claimerId != null && currentUserId == claimerId;
+
+    // Resolve pickup display values
+    final pickupLoc = _data['pickupLocation'] ?? _data['location'] ?? ( _data['founderName'] != null ? 'With ${_data['founderName']}' : 'Location unknown');
+    final pickupInstr = _data['pickupInstructions'] ?? 'Pick up from $pickupLoc. Contact ${_data['founderName'] ?? 'the finder'} at ${_data['founderPhone'] ?? _data['founderEmail'] ?? ''} to arrange time. Bring a valid ID for verification.';
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: SafeArea(
@@ -18,60 +228,61 @@ class ClaimDetailsPage extends StatelessWidget {
                 physics: const ClampingScrollPhysics(),
                 child: Column(
                   children: [
-                    // Success Header with gradient background
-                    Container(
-                      width: double.infinity,
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Color(0xFF2196F3),
-                            Color(0xFF1565C0),
+                    // Status Header
+                    if (isPending)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 24),
+                        color: Colors.amber[700],
+                        child: Column(
+                          children: const [
+                            Icon(Icons.hourglass_top, color: Colors.white, size: 48),
+                            SizedBox(height: 12),
+                            Text('Under Review', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                            SizedBox(height: 6),
+                            Text('The founder is reviewing your claim. Please wait for their response.', style: TextStyle(color: Colors.white), textAlign: TextAlign.center),
+                          ],
+                        ),
+                      )
+                    else if (isApproved)
+                      Container(
+                        width: double.infinity,
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Color(0xFF2196F3), Color(0xFF1565C0)],
+                          ),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 24),
+                        child: Column(
+                          children: const [
+                            Icon(Icons.check_circle, color: Colors.white, size: 56),
+                            SizedBox(height: 16),
+                            Text('Claim Approved!', style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold)),
+                            SizedBox(height: 6),
+                            Text('Your claim has been approved. Contact the finder to arrange pickup.', style: TextStyle(color: Colors.white), textAlign: TextAlign.center),
+                          ],
+                        ),
+                      )
+                    else if (isRejected)
+                      Container(
+                        width: double.infinity,
+                        color: Colors.red[600],
+                        padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 24),
+                        child: Column(
+                          children: const [
+                            Icon(Icons.cancel, color: Colors.white, size: 48),
+                            SizedBox(height: 12),
+                            Text('Claim Rejected', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                            SizedBox(height: 6),
+                            Text('The founder has rejected this claim. You may contact them for more information.', style: TextStyle(color: Colors.white), textAlign: TextAlign.center),
                           ],
                         ),
                       ),
-                      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
-                      child: Column(
-                        children: [
-                          // Success Icon
-                          Container(
-                            width: 80,
-                            height: 80,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFCDDC39),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.check_circle,
-                              color: Colors.white,
-                              size: 50,
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          const Text(
-                            'Claim Approved!',
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Your claim has been approved. Contact the\nfinder below to arrange pickup.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // Item Details Card
                     Container(
                       margin: const EdgeInsets.symmetric(horizontal: 24),
@@ -81,7 +292,7 @@ class ClaimDetailsPage extends StatelessWidget {
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
+                            color: Colors.black.withOpacity(0.08),
                             blurRadius: 15,
                             offset: const Offset(0, 3),
                           ),
@@ -109,7 +320,7 @@ class ClaimDetailsPage extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  claimData['title'] ?? 'Black iPhone 13',
+                                  (_data['itemTitle'] ?? _data['title'] ?? _data['itemName'] ?? _data['name']) ?? 'Black iPhone 13',
                                   style: const TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
@@ -118,12 +329,28 @@ class ClaimDetailsPage extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
-                                  claimData['description'] ?? 'Found in the library, has a cracked screen protector',
+                                  (_data['itemDescription'] ?? _data['claimDescription'] ?? _data['description'] ?? _data['details']) ?? 'Found in the library, has a cracked screen protector',
                                   style: TextStyle(
                                     fontSize: 13,
                                     color: Colors.grey[600],
                                   ),
                                 ),
+                                const SizedBox(height: 8),
+                                // Found timestamp
+                                if ((_data['foundAt'] ?? _data['foundWhen'] ?? _data['createdAt']) != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 8.0),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.calendar_today, size: 14, color: Colors.grey[600]),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          _formatTimestamp(_data['foundAt'] ?? _data['foundWhen'] ?? _data['createdAt']),
+                                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 const SizedBox(height: 8),
                                 Row(
                                   children: [
@@ -134,7 +361,7 @@ class ClaimDetailsPage extends StatelessWidget {
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      'Found at Library',
+                                      (_data['location'] ?? _data['pickupLocation'] ?? _data['foundAt']) ?? 'Found at Library',
                                       style: TextStyle(
                                         fontSize: 13,
                                         color: Colors.grey[600],
@@ -148,10 +375,10 @@ class ClaimDetailsPage extends StatelessWidget {
                         ],
                       ),
                     ),
-                    
+
                     const SizedBox(height: 24),
-                    
-                    // Item Finder Card
+
+                    // Contact Card: show the other party's profile depending on who is viewing
                     Container(
                       margin: const EdgeInsets.symmetric(horizontal: 24),
                       padding: const EdgeInsets.all(20),
@@ -177,22 +404,25 @@ class ClaimDetailsPage extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              const Expanded(
+                              Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Item Finder',
-                                      style: TextStyle(
+                                      // If the viewer is the founder, show claimer info; otherwise show founder info
+                                      viewerIsFounder
+                                          ? (_data['claimerName'] ?? 'Claimer')
+                                          : (_data['founderName'] ?? 'Item Finder'),
+                                      style: const TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
                                         color: Color(0xFF2196F3),
                                       ),
                                     ),
-                                    SizedBox(height: 2),
+                                    const SizedBox(height: 2),
                                     Text(
-                                      'Contact them to arrange pickup',
-                                      style: TextStyle(
+                                      viewerIsFounder ? 'Claimer — contact them to verify ownership' : 'Contact them to arrange pickup',
+                                      style: const TextStyle(
                                         fontSize: 13,
                                         color: Colors.black54,
                                       ),
@@ -202,40 +432,74 @@ class ClaimDetailsPage extends StatelessWidget {
                               ),
                             ],
                           ),
-                          
+
                           const SizedBox(height: 20),
-                          
-                          // Finder Details
-                          _buildContactRow(
-                            icon: Icons.person_outline,
-                            title: 'John Doe',
-                            subtitle: 'College of Engineering',
-                            isVerified: true,
-                          ),
-                          
+
+                          // Details: show claimer contact when founder views, otherwise show founder contact
+                          if (viewerIsFounder)
+                            _buildContactRow(
+                              icon: Icons.person_outline,
+                              title: _data['claimerName'] ?? 'Claimer',
+                              subtitle: '',
+                              isVerified: false,
+                            )
+                          else
+                            _buildContactRow(
+                              icon: Icons.person_outline,
+                              title: _data['founderName'] ?? 'Finder',
+                              subtitle: _data['founderAffiliation'] ?? '',
+                              isVerified: true,
+                            ),
+
                           const SizedBox(height: 16),
-                          
-                          _buildContactRow(
-                            icon: Icons.phone_outlined,
-                            title: '+63 912 345 6789',
-                            subtitle: 'Mobile number',
-                            onCopy: () => _copyToClipboard(context, '+63 912 345 6789'),
-                          ),
-                          
+
+                          if (viewerIsFounder)
+                            _buildContactRow(
+                              icon: Icons.phone_outlined,
+                              title: _data['claimerProvidedContactValue'] ?? _data['claimerPhone'] ?? '',
+                              subtitle: _data['claimerProvidedContactMethod'] ?? 'Contact method',
+                              onCopy: () => _copyToClipboard(context, _data['claimerProvidedContactValue'] ?? _data['claimerPhone'] ?? ''),
+                            )
+                          else
+                            _buildContactRow(
+                              icon: Icons.phone_outlined,
+                              title: _data['founderPhone'] ?? '',
+                              subtitle: 'Mobile number',
+                              onCopy: () => _copyToClipboard(context, _data['founderPhone'] ?? ''),
+                            ),
+
                           const SizedBox(height: 16),
-                          
-                          _buildContactRow(
-                            icon: Icons.email_outlined,
-                            title: 'john.doe@wvsu.edu.ph',
-                            subtitle: 'WVSU email',
-                            onCopy: () => _copyToClipboard(context, 'john.doe@wvsu.edu.ph'),
-                          ),
+
+                          if (viewerIsFounder)
+                            _buildContactRow(
+                              icon: Icons.email_outlined,
+                              title: _data['claimerEmail'] ?? '',
+                              subtitle: 'Email',
+                              onCopy: () => _copyToClipboard(context, _data['claimerEmail'] ?? ''),
+                            )
+                          else
+                            _buildContactRow(
+                              icon: Icons.email_outlined,
+                              title: _data['founderEmail'] ?? '',
+                              subtitle: 'Email',
+                              onCopy: () => _copyToClipboard(context, _data['founderEmail'] ?? ''),
+                            ),
+
+                          if ((!viewerIsFounder && (_data['founderMessenger'] ?? '').toString().isNotEmpty) || (viewerIsFounder && (_data['claimerMessenger'] ?? '').toString().isNotEmpty)) ...[
+                            const SizedBox(height: 16),
+                            _buildContactRow(
+                              icon: Icons.message_outlined,
+                              title: viewerIsFounder ? (_data['claimerMessenger'] ?? '') : (_data['founderMessenger'] ?? ''),
+                              subtitle: 'Messenger',
+                              onCopy: () => _copyToClipboard(context, viewerIsFounder ? (_data['claimerMessenger'] ?? '') : (_data['founderMessenger'] ?? '')),
+                            ),
+                          ],
                         ],
                       ),
                     ),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // Quick Contact Card
                     Container(
                       margin: const EdgeInsets.symmetric(horizontal: 24),
@@ -245,7 +509,7 @@ class ClaimDetailsPage extends StatelessWidget {
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
+                            color: Colors.black.withOpacity(0.05),
                             blurRadius: 10,
                             offset: const Offset(0, 2),
                           ),
@@ -267,20 +531,18 @@ class ClaimDetailsPage extends StatelessWidget {
                             children: [
                               Expanded(
                                 child: ElevatedButton.icon(
-                                  onPressed: () {
-                                    // TODO: Open WhatsApp
-                                  },
+                                  onPressed: () => _launchWhatsapp(_data['founderPhone'] ?? _data['founderPhoneRaw']),
                                   icon: const Icon(Icons.chat, color: Colors.white, size: 20),
-                                  label: const Text(
-                                    'WhatsApp',
-                                    style: TextStyle(
+                                  label: Text(
+                                    (_data['founderMessenger'] != null && (_data['founderMessenger'] as String).isNotEmpty) ? 'Messenger' : 'WhatsApp',
+                                    style: const TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.white,
                                     ),
                                   ),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF25D366),
+                                    backgroundColor: (_data['founderMessenger'] != null && (_data['founderMessenger'] as String).isNotEmpty) ? const Color(0xFF0084FF) : const Color(0xFF25D366),
                                     padding: const EdgeInsets.symmetric(vertical: 16),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
@@ -292,9 +554,7 @@ class ClaimDetailsPage extends StatelessWidget {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: OutlinedButton.icon(
-                                  onPressed: () {
-                                    // TODO: Make phone call
-                                  },
+                                  onPressed: () => _launchPhone(_data['founderPhone']),
                                   icon: const Icon(Icons.phone, color: Colors.black87, size: 20),
                                   label: const Text(
                                     'Call',
@@ -318,9 +578,9 @@ class ClaimDetailsPage extends StatelessWidget {
                         ],
                       ),
                     ),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // Pickup Information Card
                     Container(
                       margin: const EdgeInsets.symmetric(horizontal: 24),
@@ -360,9 +620,9 @@ class ClaimDetailsPage extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'Pickup Location: Library',
-                                  style: TextStyle(
+                                Text(
+                                  'Pickup Location: $pickupLoc',
+                                  style: const TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.black87,
@@ -370,7 +630,7 @@ class ClaimDetailsPage extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  'Visit the Library information desk during library hours with a valid ID.',
+                                  pickupInstr,
                                   style: TextStyle(
                                     fontSize: 13,
                                     color: Colors.grey[700],
@@ -389,7 +649,7 @@ class ClaimDetailsPage extends StatelessWidget {
                               ),
                               const SizedBox(width: 6),
                               Text(
-                                'Approved 15/01/2024',
+                                _data['approvedAt'] != null ? 'Approved ${_formatTimestamp(_data['approvedAt'])}' : (_data['status'] == 'approved' ? 'Approved' : ''),
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: Colors.grey[600],
@@ -400,9 +660,9 @@ class ClaimDetailsPage extends StatelessWidget {
                         ],
                       ),
                     ),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // Meeting Guidelines Card
                     Container(
                       margin: const EdgeInsets.symmetric(horizontal: 24),
@@ -431,13 +691,13 @@ class ClaimDetailsPage extends StatelessWidget {
                         ],
                       ),
                     ),
-                    
+
                     const SizedBox(height: 100),
                   ],
                 ),
               ),
             ),
-            
+
             // Fixed Bottom Buttons
             Container(
               padding: const EdgeInsets.all(24),
@@ -445,7 +705,7 @@ class ClaimDetailsPage extends StatelessWidget {
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
+                    color: Colors.black.withOpacity(0.05),
                     blurRadius: 10,
                     offset: const Offset(0, -2),
                   ),
@@ -457,10 +717,12 @@ class ClaimDetailsPage extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () {
-                        // TODO: Mark as successfully received
-                        _showSuccessDialog(context);
-                      },
+                      onPressed: (() {
+                        final current = FirebaseAuth.instance.currentUser?.uid;
+                        final isClaimer = current != null && current == (_data['claimerId'] ?? _data['claimer']);
+                        final enabled = !_processing && isApproved && isClaimer;
+                        return enabled ? _markSuccessfulClaim : null;
+                      })(),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF2196F3),
                         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -469,9 +731,17 @@ class ClaimDetailsPage extends StatelessWidget {
                         ),
                         elevation: 0,
                       ),
-                      child: const Text(
-                        'Mark as Successfully Received',
-                        style: TextStyle(
+                      child: _processing ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : Text(
+                        (() {
+                          final current = FirebaseAuth.instance.currentUser?.uid;
+                          final isClaimer = current != null && current == (_data['claimerId'] ?? _data['claimer']);
+                          if (isApproved && isClaimer) return 'Mark as Successfully Received';
+                          if (isApproved && !isClaimer) return 'Awaiting Claimer';
+                          if (isPending) return 'Under Review';
+                          if (isRejected) return 'Claim Rejected';
+                          return 'Not available';
+                        })(),
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
@@ -546,11 +816,11 @@ class ClaimDetailsPage extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF4CAF50).withValues(alpha: 0.1),
+                          color: const Color(0xFF4CAF50).withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Row(
-                          children: [
+                        child: Row(
+                          children: const [
                             Icon(
                               Icons.verified,
                               size: 14,
@@ -620,54 +890,6 @@ class ClaimDetailsPage extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-
-  void _copyToClipboard(BuildContext context, String text) {
-    Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Copied $text to clipboard'),
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  void _showSuccessDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: const Row(
-          children: [
-            Icon(Icons.check_circle, color: Color(0xFF4CAF50), size: 28),
-            SizedBox(width: 12),
-            Text('Item Received!'),
-          ],
-        ),
-        content: const Text(
-          'Thank you for confirming! The claim has been marked as successfully completed.',
-          style: TextStyle(fontSize: 14),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context); // Close dialog
-              Navigator.pop(context); // Go back to claims
-            },
-            child: const Text(
-              'OK',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

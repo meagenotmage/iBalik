@@ -33,10 +33,14 @@ class _LoginPageState extends State<LoginPage> {
       });
 
       // Call Firebase authentication
-      final result = await _authService.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
+        // Call Firebase authentication
+        // If the user typed only the local part, append the WVSU domain
+        String rawEmail = _emailController.text.trim();
+        final email = rawEmail.contains('@') ? rawEmail : '$rawEmail@wvsu.edu.ph';
+        final result = await _authService.signInWithEmailAndPassword(
+          email: email,
+          password: _passwordController.text,
+        );
 
       setState(() {
         _isLoading = false;
@@ -116,7 +120,7 @@ class _LoginPageState extends State<LoginPage> {
               controller: emailController,
               keyboardType: TextInputType.emailAddress,
               decoration: const InputDecoration(
-                hintText: 'yourname@wvsu.edu.ph',
+                hintText: 'yourname or yourname@wvsu.edu.ph',
                 border: OutlineInputBorder(),
               ),
             ),
@@ -141,8 +145,10 @@ class _LoginPageState extends State<LoginPage> {
 
               Navigator.pop(context);
               
+              final raw = emailController.text.trim();
+              final emailToSend = raw.contains('@') ? raw : '$raw@wvsu.edu.ph';
               final result = await _authService.resetPassword(
-                email: emailController.text.trim(),
+                email: emailToSend,
               );
 
               if (mounted) {
@@ -313,7 +319,8 @@ class _LoginPageState extends State<LoginPage> {
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
                         decoration: InputDecoration(
-                          hintText: 'yourname@wvsu.edu.ph',
+                          hintText: 'yourname or yourname@wvsu.edu.ph',
+                          helperText: 'You can type just the username (no domain) or the full WVSU email',
                           hintStyle: const TextStyle(color: Colors.grey),
                           filled: true,
                           fillColor: const Color(0xFFF5F5F5),
@@ -330,8 +337,10 @@ class _LoginPageState extends State<LoginPage> {
                           if (value == null || value.isEmpty) {
                             return 'Please enter your email';
                           }
-                          if (!value.endsWith('@wvsu.edu.ph')) {
-                            return 'Please use your WVSU email';
+                          final v = value.trim();
+                          // allow entering local part only (no @) or full WVSU email
+                          if (v.contains('@')) {
+                            if (!v.endsWith('@wvsu.edu.ph')) return 'Please use your WVSU email';
                           }
                           return null;
                         },
