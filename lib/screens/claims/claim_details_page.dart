@@ -16,11 +16,13 @@ class ClaimDetailsPage extends StatefulWidget {
 class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
   late Map<String, dynamic> _data;
   bool _processing = false;
+  late Stream<DocumentSnapshot<Map<String, dynamic>>> _claimStream;
 
   @override
   void initState() {
     super.initState();
     _data = Map<String, dynamic>.from(widget.claimData);
+    _claimStream = FirebaseFirestore.instance.collection('claims').doc(_data['docId']).snapshots();
     _loadFounderIfNeeded();
     _resolveLostItemIfNeeded();
   }
@@ -203,31 +205,38 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final statusRaw = (_data['status'] ?? '').toString().toLowerCase();
-    final isPending = statusRaw == 'pending';
-    final isApproved = statusRaw == 'approved';
-    final isRejected = statusRaw == 'rejected';
-                    
-    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
-    final founderId = (_data['founderId'] ?? _data['posterId'])?.toString();
-    final claimerId = (_data['claimerId'] ?? _data['claimer'])?.toString();
-    final viewerIsFounder = currentUserId != null && founderId != null && currentUserId == founderId;
-    final viewerIsClaimer = currentUserId != null && claimerId != null && currentUserId == claimerId;
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: _claimStream,
+      builder: (context, snapshot) {
+        if (snapshot.hasData && snapshot.data!.exists) {
+          _data = {..._data, ...?snapshot.data!.data()};
+        }
+        final statusRaw = (_data['status'] ?? '').toString().toLowerCase();
+        final isPending = statusRaw == 'pending';
+        final isApproved = statusRaw == 'approved';
+        final isRejected = statusRaw == 'rejected';
+        final isCompleted = statusRaw == 'completed';
 
-    // Resolve pickup display values
-    final pickupLoc = _data['pickupLocation'] ?? _data['location'] ?? ( _data['founderName'] != null ? 'With ${_data['founderName']}' : 'Location unknown');
-    final pickupInstr = _data['pickupInstructions'] ?? 'Pick up from $pickupLoc. Contact ${_data['founderName'] ?? 'the finder'} at ${_data['founderPhone'] ?? _data['founderEmail'] ?? ''} to arrange time. Bring a valid ID for verification.';
+        final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+        final founderId = (_data['founderId'] ?? _data['posterId'])?.toString();
+        final claimerId = (_data['claimerId'] ?? _data['claimer'])?.toString();
+        final viewerIsFounder = currentUserId != null && founderId != null && currentUserId == founderId;
+        final viewerIsClaimer = currentUserId != null && claimerId != null && currentUserId == claimerId;
 
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const ClampingScrollPhysics(),
-                child: Column(
-                  children: [
+        // Resolve pickup display values
+        final pickupLoc = _data['pickupLocation'] ?? _data['location'] ?? ( _data['founderName'] != null ? 'With ${_data['founderName']}' : 'Location unknown');
+        final pickupInstr = _data['pickupInstructions'] ?? 'Pick up from $pickupLoc. Contact ${_data['founderName'] ?? 'the finder'} at ${_data['founderPhone'] ?? _data['founderEmail'] ?? ''} to arrange time. Bring a valid ID for verification.';
+
+        return Scaffold(
+          backgroundColor: Colors.grey[50],
+          body: SafeArea(
+            child: Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const ClampingScrollPhysics(),
+                    child: Column(
+                      children: [
                     // Status Header
                     if (isPending)
                       Container(
@@ -262,6 +271,21 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
                             Text('Claim Approved!', style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold)),
                             SizedBox(height: 6),
                             Text('Your claim has been approved. Contact the finder to arrange pickup.', style: TextStyle(color: Colors.white), textAlign: TextAlign.center),
+                          ],
+                        ),
+                      )
+                    else if (isCompleted)
+                      Container(
+                        width: double.infinity,
+                        color: Colors.green[900],
+                        padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 24),
+                        child: Column(
+                          children: const [
+                            Icon(Icons.verified, color: Colors.white, size: 48),
+                            SizedBox(height: 12),
+                            Text('Claim Completed', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                            SizedBox(height: 6),
+                            Text('This claim is completed. The item has been returned.', style: TextStyle(color: Colors.white), textAlign: TextAlign.center),
                           ],
                         ),
                       )
@@ -714,41 +738,75 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: (() {
-                        final current = FirebaseAuth.instance.currentUser?.uid;
-                        final isClaimer = current != null && current == (_data['claimerId'] ?? _data['claimer']);
-                        final enabled = !_processing && isApproved && isClaimer;
-                        return enabled ? _markSuccessfulClaim : null;
-                      })(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2196F3),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                  if (isApproved && viewerIsClaimer)
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _processing ? null : () async {
+                          await _markSuccessfulClaim();
+                          // Award karma/points to founder
+                          if (founderId != null && founderId.isNotEmpty) {
+                            final fs = FirebaseFirestore.instance;
+                            final userRef = fs.collection('users').doc(founderId);
+                            await fs.runTransaction((tx) async {
+                              final snap = await tx.get(userRef);
+                              final data = snap.data() ?? {};
+                              final int oldKarma = (data['karma'] ?? 0) as int;
+                              final int oldPoints = (data['points'] ?? 0) as int;
+                              tx.update(userRef, {
+                                'karma': oldKarma + 1,
+                                'points': oldPoints + 10,
+                              });
+                            });
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2196F3),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
                         ),
-                        elevation: 0,
+                        child: _processing
+                            ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            : const Text(
+                                'Claim Item',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
                       ),
-                      child: _processing ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : Text(
-                        (() {
-                          final current = FirebaseAuth.instance.currentUser?.uid;
-                          final isClaimer = current != null && current == (_data['claimerId'] ?? _data['claimer']);
-                          if (isApproved && isClaimer) return 'Mark as Successfully Received';
-                          if (isApproved && !isClaimer) return 'Awaiting Claimer';
-                          if (isPending) return 'Under Review';
-                          if (isRejected) return 'Claim Rejected';
-                          return 'Not available';
-                        })(),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                    )
+                  else
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isPending
+                              ? Colors.amber[700]
+                              : (isRejected ? Colors.red[600] : (isCompleted ? Colors.green[900] : Colors.grey[400])),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          isPending
+                              ? 'Under Review'
+                              : (isRejected ? 'Claim Rejected' : (isCompleted ? 'Claim Completed' : (isApproved ? 'Awaiting Claimer' : 'Not available'))),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
-                  ),
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
