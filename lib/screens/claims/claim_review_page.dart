@@ -7,8 +7,31 @@ class ClaimReviewPage extends StatelessWidget {
 
   const ClaimReviewPage({super.key, required this.claimData});
 
+  String _formatSubmitted(dynamic ts) {
+    if (ts == null) return 'Unknown';
+    try {
+      DateTime dt;
+      if (ts is Timestamp) {
+        dt = ts.toDate();
+      } else if (ts is DateTime) {
+        dt = ts;
+      } else {
+        dt = DateTime.parse(ts.toString());
+      }
+      final date =
+          '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year.toString().substring(2)}';
+      final time =
+          '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      return '$date • $time';
+    } catch (_) {
+      // Fallback: just return plain string without nanoseconds if possible
+      return ts.toString().split('.').first;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final submittedStr = _formatSubmitted(claimData['submittedDate']);
     final bool hasImage = claimData['proofImage'] != null;
     
     return Scaffold(
@@ -94,7 +117,7 @@ class ClaimReviewPage extends StatelessWidget {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              'Claim submitted\n${claimData['submittedDate'] ?? '1/15/2024'}',
+                              'Claim submitted\n$submittedStr',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.grey[600],
@@ -254,7 +277,7 @@ class ClaimReviewPage extends StatelessWidget {
               const SizedBox(height: 20),
             ],
             
-            // Additional Information Card
+            // Seeker (founder) Contact Information Card
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -272,7 +295,7 @@ class ClaimReviewPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Additional Information',
+                    'Seeker Information',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -280,19 +303,43 @@ class ClaimReviewPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _buildInfoItem(
-                    'When did you lose this item?',
-                    claimData['lostTime'] ?? 'Yesterday around 4 PM after basketball practice at the gymnasium',
+                  Row(
+                    children: [
+                      const Icon(Icons.person, color: Colors.blueGrey, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          claimData['founderName'] ?? claimData['founderDisplayName'] ?? 'Unknown',
+                          style: const TextStyle(fontSize: 15),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  _buildInfoItem(
-                    'Can you describe any unique features?',
-                    claimData['uniqueFeatures'] ?? 'It has a small scratch on the bottom right corner and my photo shows me wearing the blue WVSU shirt',
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Icon(Icons.phone, color: Colors.blueGrey, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          claimData['founderPhone'] ?? 'No phone provided',
+                          style: const TextStyle(fontSize: 15),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  _buildInfoItem(
-                    'What\'s your student number?',
-                    claimData['studentNumber'] ?? '2021-12345',
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Icon(Icons.email, color: Colors.blueGrey, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          claimData['founderEmail'] ?? 'No email provided',
+                          style: const TextStyle(fontSize: 15),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -346,7 +393,7 @@ class ClaimReviewPage extends StatelessWidget {
             
             const SizedBox(height: 24),
             
-            // Action Buttons
+            // Action Buttons styled as in screenshot
             Row(
               children: [
                 Expanded(
@@ -356,8 +403,8 @@ class ClaimReviewPage extends StatelessWidget {
                     },
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.red,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      side: const BorderSide(color: Colors.red),
+                      side: const BorderSide(color: Colors.red, width: 1.5),
+                      padding: const EdgeInsets.symmetric(vertical: 18),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -372,6 +419,7 @@ class ClaimReviewPage extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
+                            color: Colors.red,
                           ),
                         ),
                       ],
@@ -380,32 +428,44 @@ class ClaimReviewPage extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      _showApproveDialog(context);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2196F3),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF2196F3), Color(0xFF3F51B5)],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
                       ),
-                      elevation: 0,
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.check_circle, size: 20),
-                        SizedBox(width: 8),
-                        Text(
-                          'Approve Claim',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                    child: ElevatedButton(
+                      onPressed: () {
+                        _showApproveDialog(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                      ],
+                        elevation: 0,
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.check_circle, size: 20),
+                          SizedBox(width: 8),
+                          Text(
+                            'Approve Claim',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -507,20 +567,91 @@ class ClaimReviewPage extends StatelessWidget {
           TextButton(
             onPressed: () async {
               Navigator.pop(context); // Close dialog
+              
+              // Show loading indicator
+              if (context.mounted) {
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) => const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                );
+              }
+              
               // Attempt to mark claim as rejected in Firestore
               final claimId = claimData['docId'] as String?;
+              final claimerId = claimData['claimerId'] as String?;
+              final itemId = claimData['itemId'];
+              
               if (claimId != null) {
                 try {
-                  await FirebaseFirestore.instance.collection('claims').doc(claimId).update({
+                  final fs = FirebaseFirestore.instance;
+                  
+                  // Update claim status
+                  await fs.collection('claims').doc(claimId).update({
                     'status': 'rejected',
                     'rejectedBy': FirebaseAuth.instance.currentUser?.uid,
                     'rejectedAt': FieldValue.serverTimestamp(),
                   });
-                } catch (_) {
-                  // ignore errors
+
+                  // Notify claimer
+                  if (claimerId != null) {
+                    try {
+                      await fs.collection('notifications').add({
+                        'userId': claimerId,
+                        'type': 'claim_rejected',
+                        'title': 'Claim Rejected',
+                        'message': 'Your claim for "${claimData['itemTitle'] ?? ''}" was rejected.',
+                        'createdAt': FieldValue.serverTimestamp(),
+                        'isRead': false,
+                        'meta': {'claimId': claimId, 'itemId': itemId},
+                      });
+                    } catch (_) {}
+                  }
+                  
+                  // Close loading dialog
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                  }
+                  
+                  // Show success message
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Claim rejected successfully'),
+                        backgroundColor: Colors.red,
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  // Close loading dialog
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                  }
+                  
+                  // Show error message
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Failed to reject claim: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              } else {
+                // Close loading dialog if it was shown
+                if (context.mounted) {
+                  Navigator.pop(context);
                 }
               }
-              Navigator.pop(context); // Go back to claims page
+              
+              // Go back to claims page (StreamBuilder will automatically update)
+              if (context.mounted) {
+                Navigator.pop(context);
+              }
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text(
@@ -559,6 +690,18 @@ class ClaimReviewPage extends StatelessWidget {
           TextButton(
             onPressed: () async {
               Navigator.pop(context); // Close dialog
+              
+              // Show loading indicator
+              if (context.mounted) {
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) => const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                );
+              }
+              
               // Approve claim: update claim doc and update lost_items to 'claimed'
               final claimId = claimData['docId'] as String?;
               final claimerId = claimData['claimerId'] as String?;
@@ -568,7 +711,8 @@ class ClaimReviewPage extends StatelessWidget {
               if (claimId != null) {
                 try {
                   final fs = FirebaseFirestore.instance;
-                  // Update claim status
+                  
+                  // Update claim status (this will trigger StreamBuilder updates for both users)
                   await fs.collection('claims').doc(claimId).update({
                     'status': 'approved',
                     'approvedBy': currentUid,
@@ -604,7 +748,7 @@ class ClaimReviewPage extends StatelessWidget {
                   // Notify claimer
                   if (claimerId != null) {
                     try {
-                      await FirebaseFirestore.instance.collection('notifications').add({
+                      await fs.collection('notifications').add({
                         'userId': claimerId,
                         'type': 'claim_approved',
                         'title': 'Claim Approved',
@@ -615,12 +759,49 @@ class ClaimReviewPage extends StatelessWidget {
                       });
                     } catch (_) {}
                   }
-                } catch (_) {
-                  // ignore errors
+                  
+                  // Close loading dialog
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                  }
+                  
+                  // Show success message
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Claim approved successfully'),
+                        backgroundColor: Colors.green,
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  // Close loading dialog
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                  }
+                  
+                  // Show error message
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Failed to approve claim: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              } else {
+                // Close loading dialog if it was shown
+                if (context.mounted) {
+                  Navigator.pop(context);
                 }
               }
 
-              Navigator.pop(context); // Go back to claims page
+              // Go back to claims page (StreamBuilder will automatically update in real-time)
+              if (context.mounted) {
+                Navigator.pop(context);
+              }
             },
             style: TextButton.styleFrom(
               foregroundColor: const Color(0xFF4CAF50),

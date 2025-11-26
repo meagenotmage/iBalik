@@ -738,7 +738,7 @@ class _ClaimItemPageState extends State<ClaimItemPage> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       // Normalize item fields and copy founder contact info into the claim
-      final claimData = {
+      final claimData = <String, dynamic>{
         'itemId': widget.item['itemId'] ?? widget.item['id'] ?? widget.item['docId'],
         'itemTitle': widget.item['itemName'] ?? widget.item['title'] ?? widget.item['name'] ?? widget.item['itemTitle'],
         'itemDescription': widget.item['description'] ?? widget.item['details'] ?? widget.item['itemDescription'],
@@ -761,6 +761,50 @@ class _ClaimItemPageState extends State<ClaimItemPage> {
       };
 
       final firestore = FirebaseFirestore.instance;
+
+      // Extra safety: if founderId or founderName are missing, resolve them directly from lost_items
+      try {
+        final dynamic rawItemId = claimData['itemId'];
+        if (rawItemId != null &&
+            (claimData['founderId'] == null ||
+                (claimData['founderName'] ?? '').toString().isEmpty)) {
+          final itemIdStr = rawItemId.toString();
+          final fs = FirebaseFirestore.instance;
+
+          DocumentSnapshot<Map<String, dynamic>>? itemDoc;
+
+          // Try by document id
+          try {
+            final doc = await fs.collection('lost_items').doc(itemIdStr).get();
+            if (doc.exists) itemDoc = doc;
+          } catch (_) {}
+
+          // Fallback: query by itemId field
+          if (itemDoc == null) {
+            try {
+              final q = await fs
+                  .collection('lost_items')
+                  .where('itemId', isEqualTo: rawItemId)
+                  .limit(1)
+                  .get();
+              if (q.docs.isNotEmpty) {
+                itemDoc = q.docs.first;
+              }
+            } catch (_) {}
+          }
+
+          if (itemDoc != null && itemDoc.exists) {
+            final d = itemDoc.data() ?? {};
+            claimData['founderId'] ??= d['userId'] ?? d['foundById'] ?? d['posterId'];
+            claimData['founderName'] ??= d['userName'] ?? d['posterName'] ?? d['foundBy'];
+            claimData['founderPhone'] ??= d['userPhone'] ?? d['posterPhone'] ?? d['founderPhone'] ?? d['phone'];
+            claimData['founderEmail'] ??= d['userEmail'] ?? d['posterEmail'] ?? d['founderEmail'] ?? d['email'];
+            claimData['founderMessenger'] ??= d['founderMessenger'] ?? d['posterMessenger'];
+          }
+        }
+      } catch (_) {
+        // If lookup fails, we still proceed with whatever founder data we have
+      }
 
       // Create claim document
       final claimRef = await firestore.collection('claims').add(claimData);

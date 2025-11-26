@@ -410,10 +410,15 @@ class _HomePageState extends State<HomePage> {
                             IconData icon = Icons.image;
                             if (category.contains('elect')) {
                               icon = Icons.phone_iphone;
-                            } else if (category.contains('bag') || category.contains('backpack')) icon = Icons.backpack;
-                            else if (category.contains('umbrella')) icon = Icons.umbrella;
+                            } else if (category.contains('bag') || category.contains('backpack')) {
+                              icon = Icons.backpack;
+                            } else if (category.contains('umbrella')) {
+                              icon = Icons.umbrella;
+                            }
 
+                            // Pass full Firestore item data so founder name etc. stay correct
                             return _buildItemCard(
+                              data,
                               title,
                               description,
                               time.toString(),
@@ -597,6 +602,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildItemCard(
+    Map<String, dynamic> data,
     String title,
     String description,
     String time,
@@ -604,17 +610,15 @@ class _HomePageState extends State<HomePage> {
     String status,
     IconData icon,
   ) {
-    // Create item map for details page
-    final item = {
+    // Merge Firestore data with UI overrides so ItemDetailsPage sees the real founder/user fields
+    final item = <String, dynamic>{
+      ...data,
       'name': title,
       'description': description,
       'time': time,
       'location': location,
       'status': status,
       'image': icon,
-      'category': 'Personal Items',
-      'foundBy': 'Maria Santos',
-      'date': 'November 4, 2024',
     };
 
     return InkWell(

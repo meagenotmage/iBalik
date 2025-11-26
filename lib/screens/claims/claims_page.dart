@@ -446,7 +446,7 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
             child: Row(
               children: [
                 Expanded(child: _buildSwitchTab('My Claims', 0)),
-                Expanded(child: _buildSwitchTab('Found Claims', 1)),
+                Expanded(child: _buildSwitchTab('Claim Requests', 1)),
               ],
             ),
           ),
