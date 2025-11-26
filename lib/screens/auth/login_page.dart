@@ -33,11 +33,8 @@ class _LoginPageState extends State<LoginPage> {
         _isLoading = true;
       });
 
-      // Call Firebase authentication
-        // Call Firebase authentication
-        // If the user typed only the local part, append the WVSU domain
-        String rawEmail = _emailController.text.trim();
-        final email = rawEmail.contains('@') ? rawEmail : '$rawEmail@wvsu.edu.ph';
+      // Append WVSU domain to username
+        final email = '${_emailController.text.trim()}@wvsu.edu.ph';
         final result = await _authService.signInWithEmailAndPassword(
           email: email,
           password: _passwordController.text,
@@ -122,7 +119,9 @@ class _LoginPageState extends State<LoginPage> {
               controller: emailController,
               keyboardType: TextInputType.emailAddress,
               decoration: InputDecoration(
-                hintText: 'yourname@wvsu.edu.ph',
+                hintText: 'yourname',
+                suffixText: '@wvsu.edu.ph',
+                suffixStyle: TextStyle(color: AppColors.textSecondary),
                 filled: true,
                 fillColor: AppColors.background,
                 border: OutlineInputBorder(
@@ -152,8 +151,7 @@ class _LoginPageState extends State<LoginPage> {
 
               Navigator.pop(context);
               
-              final raw = emailController.text.trim();
-              final emailToSend = raw.contains('@') ? raw : '$raw@wvsu.edu.ph';
+              final emailToSend = '${emailController.text.trim()}@wvsu.edu.ph';
               final result = await _authService.resetPassword(
                 email: emailToSend,
               );
@@ -317,11 +315,13 @@ class _LoginPageState extends State<LoginPage> {
                         const SizedBox(height: AppSpacing.sm),
                         TextFormField(
                           controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
+                          keyboardType: TextInputType.text,
                           style: const TextStyle(fontSize: 16, color: AppColors.darkGray),
                           decoration: InputDecoration(
-                            hintText: 'yourname@wvsu.edu.ph',
+                            hintText: 'yourname',
                             hintStyle: TextStyle(color: AppColors.textTertiary, fontSize: 15),
+                            suffixText: '@wvsu.edu.ph',
+                            suffixStyle: TextStyle(color: AppColors.textSecondary, fontSize: 15),
                             filled: true,
                             fillColor: AppColors.white,
                             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -344,11 +344,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Please enter your email';
-                            }
-                            final v = value.trim();
-                            if (v.contains('@')) {
-                              if (!v.endsWith('@wvsu.edu.ph')) return 'Please use your WVSU email';
+                              return 'Please enter your WVSU username';
                             }
                             return null;
                           },
