@@ -73,8 +73,11 @@ class _SignUpPageState extends State<SignUpPage> {
         _isLoading = true;
       });
 
+      // Append WVSU domain to username
+      final email = '${_emailController.text.trim()}@wvsu.edu.ph';
+      
       final result = await _authService.signUpWithEmailAndPassword(
-        email: _emailController.text.trim(),
+        email: email,
         password: _passwordController.text,
         fullName: _nameController.text.trim(),
         username: _usernameController.text.trim(),
@@ -413,15 +416,36 @@ class _SignUpPageState extends State<SignUpPage> {
                         const SizedBox(height: AppSpacing.sm),
                         TextFormField(
                           controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
+                          keyboardType: TextInputType.text,
                           style: const TextStyle(fontSize: 16, color: AppColors.darkGray),
-                          decoration: _buildInputDecoration(hintText: 'yourname@wvsu.edu.ph'),
+                          decoration: InputDecoration(
+                            hintText: 'yourname',
+                            hintStyle: TextStyle(color: AppColors.textTertiary, fontSize: 15),
+                            suffixText: '@wvsu.edu.ph',
+                            suffixStyle: TextStyle(color: AppColors.textSecondary, fontSize: 15),
+                            filled: true,
+                            fillColor: AppColors.white,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                              borderSide: BorderSide(color: AppColors.lightGray, width: 1),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                              borderSide: BorderSide(color: AppColors.lightGray, width: 1),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                            ),
+                            errorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                              borderSide: const BorderSide(color: AppColors.error, width: 1),
+                            ),
+                          ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Please enter your email';
-                            }
-                            if (!value.endsWith('@wvsu.edu.ph')) {
-                              return 'Please use your WVSU email';
+                              return 'Please enter your WVSU username';
                             }
                             return null;
                           },
