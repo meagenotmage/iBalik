@@ -363,7 +363,6 @@ class _HomePageState extends State<HomePage> {
                               ),
                             ),
                           ),
-                          ),
                         ],
                       ),
                     ),
@@ -538,7 +537,7 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
-    )
+    );
   }
 
   Widget _buildStatCard(
