@@ -1,3 +1,5 @@
+// ignore_for_file: unnecessary_cast, unused_element, dead_code, unused_local_variable, unused_parameter
+
 import 'package:flutter/material.dart';
 import '../../utils/page_transitions.dart';
 import '../../utils/app_theme.dart';
@@ -46,24 +48,219 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
     final founderName = (data['founderName'] ?? data['posterName'] ?? data['userName'])?.toString();
     final founderId = data['founderId']?.toString();
     final itemId = data['itemId'];
+    final description = (data['itemDescription'] ?? data['claimDescription'] ?? data['description'] ?? data['details'])?.toString() ?? '';
+    final pickup = (data['location'] ?? data['pickupLocation'] ?? data['foundAt'])?.toString() ?? '';
 
-    if (founderName != null && founderName.isNotEmpty) {
-      return Text('Found by $founderName\nStatus: $status\nSubmitted: $submittedStr', maxLines: 2, overflow: TextOverflow.ellipsis);
+    Widget founderWidget() {
+      if (founderName != null && founderName.isNotEmpty) return Text(founderName, style: TextStyle(color: Colors.grey[800]));
+      if ((founderId == null || founderId.isEmpty) && (itemId == null)) return const Text('Unknown', style: TextStyle(color: Colors.grey));
+      return FutureBuilder<String>(
+        future: _resolveFounderDisplayName(founderId, itemId),
+        builder: (context, snapshot) {
+          String display = 'Unknown';
+          if (snapshot.hasData && snapshot.data!.isNotEmpty) display = snapshot.data!;
+          return Text(display, style: TextStyle(color: Colors.grey[800]));
+        },
+      );
     }
 
-    if ((founderId == null || founderId.isEmpty) && (itemId == null)) {
-      return Text('Found by Unknown\nStatus: $status\nSubmitted: $submittedStr', maxLines: 2, overflow: TextOverflow.ellipsis);
-    }
+    final submittedTs = data['submittedDate'];
+    final shortDate = _formatShortDate(submittedTs);
+    final relative = _formatRelativeCompact(submittedTs);
+    final timeOfDay = _formatTimeOfDay(submittedTs);
+    final dropOff = (data['dropOffLocation'] ?? data['dropoffLocation'] ?? data['founderLocation'] ?? pickup)?.toString() ?? '';
 
-    // Resolve display name with fallbacks: users/{founderId} -> lost_items by docId -> lost_items by itemId
-    return FutureBuilder<String>(
-      future: _resolveFounderDisplayName(founderId, itemId),
-      builder: (context, snapshot) {
-        String display = 'Unknown';
-        if (snapshot.hasData && snapshot.data!.isNotEmpty) display = snapshot.data!;
-        return Text('Found by $display\nStatus: $status\nSubmitted: $submittedStr', maxLines: 2, overflow: TextOverflow.ellipsis);
-      },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (description.isNotEmpty) Text(description, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.grey[800])),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            const Icon(Icons.person_outline, size: 14, color: Colors.grey),
+            const SizedBox(width: 6),
+            Expanded(child: founderWidget()),
+          ],
+        ),
+        const SizedBox(height: 6),
+        // Claimed time (when the user submitted the claim)
+        Row(
+          children: [
+            const Icon(Icons.access_time, size: 14, color: Colors.grey),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                (() {
+                  final parts = <String>[];
+                  if (shortDate.isNotEmpty) parts.add(shortDate);
+                  if (relative.isNotEmpty) parts.add(relative);
+                  return ' ' + parts.join(' ');
+                })(),
+                style: TextStyle(color: Colors.grey[700], fontSize: 12),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        // Drop-off / location info (either explicit dropOff or fallback to pickup/founder)
+        Row(
+          children: [
+            const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
+            const SizedBox(width: 6),
+            Expanded(
+              child: (() {
+                if (dropOff.isNotEmpty && dropOff != 'null') {
+                  return Text(dropOff, style: TextStyle(color: Colors.grey[700], fontSize: 12), overflow: TextOverflow.ellipsis);
+                }
+                if (pickup.isNotEmpty && pickup != 'null') {
+                  return Text(pickup, style: TextStyle(color: Colors.grey[700], fontSize: 12), overflow: TextOverflow.ellipsis);
+                }
+                // Try resolving from lost_items asynchronously
+                return FutureBuilder<String?>(
+                  future: _resolveLocationFromItem(data['itemId'] ?? data['itemDocId'] ?? data['item']),
+                  builder: (context, snap) {
+                    if (snap.connectionState == ConnectionState.waiting) return Text('Resolving location...', style: TextStyle(color: Colors.grey[600], fontSize: 12));
+                    final loc = snap.data;
+                    if (loc != null && loc.isNotEmpty) return Text(loc, style: TextStyle(color: Colors.grey[700], fontSize: 12), overflow: TextOverflow.ellipsis);
+                    final fName = (data['founderName'] ?? data['posterName'] ?? data['userName'])?.toString();
+                    if (fName != null && fName.isNotEmpty) return Text('With $fName', style: TextStyle(color: Colors.grey[700], fontSize: 12));
+                    return Text('Location unknown', style: TextStyle(color: Colors.grey[700], fontSize: 12));
+                  },
+                );
+              })(),
+            ),
+          ],
+        ),
+      ],
     );
+  }
+
+  Widget _buildClaimerSubtitle(Map<String, dynamic> data, String status, String submittedStr) {
+    final claimerName = (data['claimerName'] ?? data['claimerDisplayName'] ?? data['claimerEmail'])?.toString();
+    final claimerId = data['claimerId']?.toString();
+    final itemId = data['itemId'];
+    final description = (data['claimDescription'] ?? data['itemDescription'] ?? data['description'] ?? data['details'])?.toString() ?? '';
+    final pickup = (data['location'] ?? data['pickupLocation'] ?? data['foundAt'])?.toString() ?? '';
+
+    Widget claimerWidget() {
+      if (claimerName != null && claimerName.isNotEmpty) return Text(claimerName, style: TextStyle(color: Colors.grey[800]));
+      if ((claimerId == null || claimerId.isEmpty) && (itemId == null)) return const Text('Unknown', style: TextStyle(color: Colors.grey));
+      return FutureBuilder<String>(
+        future: _resolveClaimerDisplayName(claimerId, itemId),
+        builder: (context, snapshot) {
+          String display = 'Unknown';
+          if (snapshot.hasData && snapshot.data!.isNotEmpty) display = snapshot.data!;
+          return Text(display, style: TextStyle(color: Colors.grey[800]));
+        },
+      );
+    }
+
+    final submittedTs = data['submittedDate'];
+    final shortDate = _formatShortDate(submittedTs);
+    final relative = _formatRelativeCompact(submittedTs);
+    final timeOfDay = _formatTimeOfDay(submittedTs);
+    final dropOff = (data['dropOffLocation'] ?? data['dropoffLocation'] ?? data['founderLocation'] ?? pickup)?.toString() ?? '';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (description.isNotEmpty) Text(description, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.grey[800])),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            const Icon(Icons.person_outline, size: 14, color: Colors.grey),
+            const SizedBox(width: 6),
+            Expanded(child: claimerWidget()),
+          ],
+        ),
+        const SizedBox(height: 6),
+        // Claimed time (when the user submitted the claim)
+        Row(
+          children: [
+            const Icon(Icons.access_time, size: 14, color: Colors.grey),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                (() {
+                  final parts = <String>[];
+                  if (shortDate.isNotEmpty) parts.add(shortDate);
+                  if (relative.isNotEmpty) parts.add(relative);
+                  return ' ' + parts.join(' ');
+                })(),
+                style: TextStyle(color: Colors.grey[700], fontSize: 12),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        // Drop-off / location info
+        Row(
+          children: [
+            const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
+            const SizedBox(width: 6),
+            Expanded(
+              child: (() {
+                if (dropOff.isNotEmpty && dropOff != 'null') {
+                  return Text(dropOff, style: TextStyle(color: Colors.grey[700], fontSize: 12), overflow: TextOverflow.ellipsis);
+                }
+                if (pickup.isNotEmpty && pickup != 'null') {
+                  return Text(pickup, style: TextStyle(color: Colors.grey[700], fontSize: 12), overflow: TextOverflow.ellipsis);
+                }
+                return FutureBuilder<String?>(
+                  future: _resolveLocationFromItem(data['itemId'] ?? data['itemDocId'] ?? data['item']),
+                  builder: (context, snap) {
+                    if (snap.connectionState == ConnectionState.waiting) return Text('Resolving location...', style: TextStyle(color: Colors.grey[600], fontSize: 12));
+                    final loc = snap.data;
+                    if (loc != null && loc.isNotEmpty) return Text(loc, style: TextStyle(color: Colors.grey[700], fontSize: 12), overflow: TextOverflow.ellipsis);
+                    final cName = (data['claimerName'] ?? data['claimerDisplayName'] ?? data['claimerEmail'])?.toString();
+                    if (cName != null && cName.isNotEmpty) return Text('With $cName', style: TextStyle(color: Colors.grey[700], fontSize: 12));
+                    return Text('Location unknown', style: TextStyle(color: Colors.grey[700], fontSize: 12));
+                  },
+                );
+              })(),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Future<String> _resolveClaimerDisplayName(String? claimerId, dynamic itemId) async {
+    try {
+      if (claimerId != null && claimerId.isNotEmpty) {
+        final userDoc = await FirebaseFirestore.instance.collection('users').doc(claimerId).get();
+        if (userDoc.exists) {
+          final u = userDoc.data() as Map<String, dynamic>?;
+          final name = (u?['displayName'] ?? u?['name'] ?? u?['userName'])?.toString();
+          if (name != null && name.isNotEmpty) return name;
+        }
+      }
+
+      if (itemId != null) {
+        try {
+          final itemRef = FirebaseFirestore.instance.collection('lost_items').doc(itemId.toString());
+          final itemDoc = await itemRef.get();
+          if (itemDoc.exists) {
+            final it = itemDoc.data() as Map<String, dynamic>?;
+            final posterName = (it?['userName'] ?? it?['posterName'] ?? it?['foundBy'])?.toString();
+            if (posterName != null && posterName.isNotEmpty) return posterName;
+          }
+        } catch (_) {}
+
+        try {
+          final q = await FirebaseFirestore.instance.collection('lost_items').where('itemId', isEqualTo: itemId).limit(1).get();
+          if (q.docs.isNotEmpty) {
+            final it = q.docs.first.data() as Map<String, dynamic>?;
+            final posterName = (it?['userName'] ?? it?['posterName'] ?? it?['foundBy'])?.toString();
+            if (posterName != null && posterName.isNotEmpty) return posterName;
+          }
+        } catch (_) {}
+      }
+    } catch (_) {}
+    if (claimerId != null && claimerId.isNotEmpty) return claimerId;
+    return 'Unknown';
   }
 
   Future<String> _resolveFounderDisplayName(String? founderId, dynamic itemId) async {
@@ -106,10 +303,110 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
     return 'Unknown';
   }
 
+  Future<String?> _resolveLocationFromItem(dynamic itemId) async {
+    if (itemId == null) return null;
+    try {
+      final fs = FirebaseFirestore.instance;
+      // Try doc id first
+      final docRef = fs.collection('lost_items').doc(itemId.toString());
+      final doc = await docRef.get();
+      if (doc.exists) {
+        final d = doc.data();
+        final loc = (d?['location'] ?? d?['pickupLocation'] ?? d?['foundAt'])?.toString();
+        if (loc != null && loc.isNotEmpty) return loc;
+      }
+
+      // Fallback: query by itemId field
+      final q = await fs.collection('lost_items').where('itemId', isEqualTo: itemId).limit(1).get();
+      if (q.docs.isNotEmpty) {
+        final d = q.docs.first.data();
+        final loc = (d['location'] ?? d['pickupLocation'] ?? d['foundAt'])?.toString();
+        if (loc != null && loc.isNotEmpty) return loc;
+      }
+    } catch (_) {}
+    return null;
+  }
+
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  String _formatTimestamp(dynamic ts) {
+    if (ts == null) return '';
+    DateTime dt;
+    if (ts is Timestamp) {
+      dt = ts.toDate().toLocal();
+    } else if (ts is DateTime) {
+      dt = ts.toLocal();
+    } else {
+      try {
+        dt = DateTime.parse(ts.toString()).toLocal();
+      } catch (_) {
+        return ts.toString();
+      }
+    }
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return '${monthNames[dt.month-1]} ${dt.day}, ${dt.year}';
+  }
+
+  String _formatShortDate(dynamic ts) {
+    if (ts == null) return '';
+    DateTime dt;
+    if (ts is Timestamp) dt = ts.toDate().toLocal();
+    else if (ts is DateTime) dt = ts.toLocal();
+    else {
+      try {
+        dt = DateTime.parse(ts.toString()).toLocal();
+      } catch (_) {
+        return ts.toString();
+      }
+    }
+    String dd = dt.day.toString().padLeft(2, '0');
+    String mm = dt.month.toString().padLeft(2, '0');
+    String yy = dt.year.toString().substring(2);
+    return '$dd/$mm/$yy';
+  }
+
+  String _formatRelativeCompact(dynamic ts) {
+    if (ts == null) return '';
+    DateTime dt;
+    if (ts is Timestamp) dt = ts.toDate().toLocal();
+    else if (ts is DateTime) dt = ts.toLocal();
+    else {
+      try {
+        dt = DateTime.parse(ts.toString()).toLocal();
+      } catch (_) {
+        return '';
+      }
+    }
+    final diff = DateTime.now().toLocal().difference(dt);
+    if (diff.inSeconds < 60) return '${diff.inSeconds}s ago';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    if (diff.inDays < 30) return '${diff.inDays}d ago';
+    final months = (diff.inDays / 30).floor();
+    if (months < 12) return '${months}mo ago';
+    final years = (diff.inDays / 365).floor();
+    return '${years}y ago';
+  }
+
+  String _formatTimeOfDay(dynamic ts) {
+    if (ts == null) return '';
+    DateTime dt;
+    if (ts is Timestamp) dt = ts.toDate().toLocal();
+    else if (ts is DateTime) dt = ts.toLocal();
+    else {
+      try {
+        dt = DateTime.parse(ts.toString()).toLocal();
+      } catch (_) {
+        return '';
+      }
+    }
+    final h = dt.hour.toString().padLeft(2, '0');
+    final m = dt.minute.toString().padLeft(2, '0');
+    return '$h:$m';
   }
 
   @override
@@ -293,12 +590,12 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
   Widget _buildMyClaimsTab() {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Text('Please sign in to view your claims.', style: TextStyle(color: Colors.grey[700])),
-        ),
-      );
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Text('Please sign in to view your claims.', style: TextStyle(color: Colors.grey[700])),
+              ),
+            );
     }
 
     final Stream<QuerySnapshot> myClaimsStream = FirebaseFirestore.instance
@@ -333,8 +630,11 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
         for (final doc in docs) {
           final data = Map<String, dynamic>.from(doc.data() as Map);
           data['docId'] = doc.id;
-          data['itemTitle'] = data['itemTitle'] ?? data['title'] ?? data['itemName'] ?? data['name'];
-          data['title'] = data['title'] ?? data['itemTitle'];
+          // Normalize item fields: prefer values copied into the claim, then fall back
+          data['itemTitle'] = (data['itemTitle'] ?? data['title'] ?? data['itemName'] ?? data['name'])?.toString();
+          data['itemDescription'] = (data['itemDescription'] ?? data['description'] ?? data['details'] ?? data['claimDescription'])?.toString();
+          data['location'] = (data['location'] ?? data['pickupLocation'] ?? data['foundAt'] ?? data['dropOffLocation'])?.toString();
+          data['title'] = (data['title'] ?? data['itemTitle'])?.toString();
           
           final status = (data['status'] ?? 'pending').toString().toLowerCase();
           final category = _normalizeStatus(status);
@@ -451,9 +751,12 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
         for (final doc in docs) {
           final data = Map<String, dynamic>.from(doc.data() as Map);
           data['docId'] = doc.id;
-          data['itemTitle'] = data['itemTitle'] ?? data['title'] ?? data['itemName'] ?? data['name'];
-          data['title'] = data['title'] ?? data['itemTitle'];
-          data['claimerName'] = data['claimerName'] ?? data['claimerDisplayName'] ?? data['claimerEmail'];
+          // Normalize item fields: prefer values copied into the claim, then fall back
+          data['itemTitle'] = (data['itemTitle'] ?? data['title'] ?? data['itemName'] ?? data['name'])?.toString();
+          data['itemDescription'] = (data['itemDescription'] ?? data['description'] ?? data['details'] ?? data['claimDescription'])?.toString();
+          data['location'] = (data['location'] ?? data['pickupLocation'] ?? data['foundAt'] ?? data['dropOffLocation'])?.toString();
+          data['title'] = (data['title'] ?? data['itemTitle'])?.toString();
+          data['claimerName'] = (data['claimerName'] ?? data['claimerDisplayName'] ?? data['claimerEmail'])?.toString();
           
           final status = (data['status'] ?? 'pending').toString().toLowerCase();
           final category = _normalizeStatus(status);
@@ -1200,6 +1503,8 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
     required String claimedBy,
     required String submittedDate,
     required String claimDescription,
+    String? claimerEmail,
+    String? claimerId,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -1218,9 +1523,9 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header: item image, title, submitted date, claimer name/email
             Row(
               children: [
-                // Item Image
                 Container(
                   width: 80,
                   height: 80,
@@ -1234,79 +1539,38 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
                     size: 40,
                   ),
                 ),
-                
                 const SizedBox(width: 16),
-                
-                // Item Details
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              title,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFFA726).withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: const Text(
-                              'Needs Review',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFFF57C00),
-                              ),
-                            ),
-                          ),
-                        ],
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          Icon(
-                            Icons.person_outline,
-                            size: 16,
-                            color: Colors.grey[600],
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Claimed by $claimedBy',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[600],
-                            ),
-                          ),
+                          const Icon(Icons.access_time, size: 14, color: Colors.grey),
+                          const SizedBox(width: 6),
+                          Text('Claim submitted', style: TextStyle(color: Colors.grey[700], fontSize: 12)),
+                          const SizedBox(width: 8),
+                          Text(submittedDate, style: TextStyle(color: Colors.grey[700], fontSize: 12)),
                         ],
                       ),
-                      const SizedBox(height: 4),
-                      Row(
+                      const SizedBox(height: 8),
+                      if (claimedBy.isNotEmpty) Row(
                         children: [
-                          Icon(
-                            Icons.access_time,
-                            size: 16,
-                            color: Colors.grey[600],
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Submitted $submittedDate',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[600],
+                          const Icon(Icons.person_outline, size: 14, color: Colors.grey),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              '$claimedBy' + (claimerEmail != null && claimerEmail.isNotEmpty ? ' (${claimerEmail})' : ''),
+                              style: TextStyle(color: Colors.grey[800]),
                             ),
                           ),
                         ],
@@ -1316,10 +1580,10 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 16),
-            
-            // Yellow warning box
+
+            // Yellow warning box with claim description
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -1362,9 +1626,9 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 12),
-            
+
             // Review Claim Button
             SizedBox(
               width: double.infinity,
@@ -1377,13 +1641,10 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
                         claimData: {
                           'itemTitle': title,
                           'claimerName': claimedBy,
-                          'claimerEmail': 'jane.smith@wvsu.edu.ph',
+                          'claimerEmail': claimerEmail ?? '',
                           'submittedDate': submittedDate,
                           'claimDescription': claimDescription,
-                          'lostTime': 'Yesterday around 4 PM after basketball practice at the gymnasium',
-                          'uniqueFeatures': 'It has a small scratch on the bottom right corner and my photo shows me wearing the blue WVSU shirt',
-                          'studentNumber': '2021-12345',
-                          'proofImage': null, // Set to image URL if available
+                          'claimerId': claimerId ?? '',
                         },
                       ),
                     ),

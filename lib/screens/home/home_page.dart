@@ -1,3 +1,4 @@
+// ignore_for_file: unused_element
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../services/lost_item_service.dart';
@@ -39,7 +40,8 @@ class _HomePageState extends State<HomePage> {
     if (user != null) {
       // Try to get username from Firestore first
       final username = await _authService.getUserUsername(user.uid);
-      
+      if (!mounted) return;
+
       if (username != null && username.isNotEmpty) {
         setState(() {
           _userName = username;

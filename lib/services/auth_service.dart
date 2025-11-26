@@ -33,6 +33,7 @@ class AuthService {
     required String password,
     required String fullName,
     required String username,
+    String? phone,
   }) async {
     try {
       // Validate WVSU email
@@ -95,6 +96,7 @@ class AuthService {
             'email': email,
             'fullName': fullName,
             'username': usernameLower,
+            'phone': phone,
             'createdAt': FieldValue.serverTimestamp(),
             'updatedAt': FieldValue.serverTimestamp(),
           });

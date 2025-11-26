@@ -17,6 +17,7 @@ class _SignUpPageState extends State<SignUpPage> {
   final _confirmPasswordController = TextEditingController();
   final _nameController = TextEditingController();
   final _usernameController = TextEditingController();
+  final _phoneController = TextEditingController();
   final AuthService _authService = AuthService();
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
@@ -31,6 +32,7 @@ class _SignUpPageState extends State<SignUpPage> {
     _confirmPasswordController.dispose();
     _nameController.dispose();
     _usernameController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
@@ -79,7 +81,9 @@ class _SignUpPageState extends State<SignUpPage> {
         password: _passwordController.text,
         fullName: _nameController.text.trim(),
         username: _usernameController.text.trim(),
+        phone: _phoneController.text.trim(),
       );
+      
 
       setState(() {
         _isLoading = false;
@@ -171,26 +175,12 @@ class _SignUpPageState extends State<SignUpPage> {
                         color: const Color(0xFF1A1A2E),
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          const Icon(
-                            Icons.location_on,
-                            color: Colors.white,
-                            size: 40,
-                          ),
-                          Positioned(
-                            bottom: 20,
-                            child: Container(
-                              width: 16,
-                              height: 16,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF00FF00),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ),
-                        ],
+                      child: Center(
+                        child: Icon(
+                          Icons.find_in_page,
+                          color: Colors.white,
+                          size: 40,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -425,6 +415,47 @@ class _SignUpPageState extends State<SignUpPage> {
                           if (!value.endsWith('@wvsu.edu.ph')) {
                             return 'Please use your WVSU email';
                           }
+                          return null;
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Phone field
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Mobile Number',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF1A1A2E),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _phoneController,
+                        keyboardType: TextInputType.phone,
+                        decoration: InputDecoration(
+                          hintText: '09XXXXXXXXX',
+                          hintStyle: const TextStyle(color: Colors.grey),
+                          filled: true,
+                          fillColor: const Color(0xFFF5F5F5),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return 'Please enter your mobile number';
+                          // Basic local format check (allow optional + and 10-15 digits)
+                          if (!RegExp(r'^\+?\d{10,15} $').hasMatch(value.trim())) return 'Enter a valid phone number';
                           return null;
                         },
                       ),
