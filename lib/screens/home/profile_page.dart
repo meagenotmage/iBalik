@@ -2,8 +2,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../utils/page_transitions.dart';
-import '../../utils/app_theme.dart';
-import '../posts/posts_page.dart';
+import '../../utils/app_theme.dart';import '../posts/posts_page.dart';
 import '../game/game_hub_page.dart';
 import '../game/leaderboards_page.dart';
 import '../game/challenges_page.dart';

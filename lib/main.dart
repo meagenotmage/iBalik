@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
-import 'screens/auth/login_page.dart';
+import 'screens/auth/welcome_page.dart';
 import 'screens/home/home_page.dart';
 import 'services/storage_cleanup_service.dart';
 import 'utils/app_theme.dart';
@@ -55,7 +55,7 @@ class MyApp extends StatelessWidget {
           if (snapshot.hasData && snapshot.data!.emailVerified) {
             page = const HomePage();
           } else {
-            page = const LoginPage();
+            page = const WelcomePage();
           }
           
           return AnimatedSwitcher(
