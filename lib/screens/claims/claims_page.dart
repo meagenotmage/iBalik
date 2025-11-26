@@ -23,6 +23,18 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
   bool _showReceivedReturnedItems = false;
   String? _expandedClaimId;
   int _selectedIndex = 3; // Claims tab is selected (new position)
+  
+  // Collapsible section states for My Claims
+  bool _pendingExpanded = true;
+  bool _approvedExpanded = true;
+  bool _rejectedExpanded = true;
+  bool _completedExpanded = false; // Collapsed by default
+  
+  // Collapsible section states for Found Claims
+  bool _foundPendingExpanded = true;
+  bool _foundApprovedExpanded = true;
+  bool _foundRejectedExpanded = true;
+  bool _foundCompletedExpanded = false; // Collapsed by default
 
   @override
   void initState() {
@@ -122,38 +134,22 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
       ),
       body: Column(
         children: [
-          // Custom Tab Bar
+          // Tab Switcher (Profile-style)
           Container(
+            margin: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.sm),
+            padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: AppColors.white,
-              boxShadow: AppShadows.soft,
+              color: AppColors.lightGray.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(
+                color: AppColors.lightGray.withValues(alpha: 0.3),
+                width: 1,
+              ),
             ),
-            padding: const EdgeInsets.all(AppSpacing.lg),
             child: Row(
               children: [
-                Expanded(
-                  child: _buildTabButton(
-                    label: 'My Claims',
-                    isSelected: _tabController.index == 0,
-                    onTap: () {
-                      setState(() {
-                        _tabController.animateTo(0);
-                      });
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildTabButton(
-                    label: 'Found Claims',
-                    isSelected: _tabController.index == 1,
-                    onTap: () {
-                      setState(() {
-                        _tabController.animateTo(1);
-                      });
-                    },
-                  ),
-                ),
+                Expanded(child: _buildSwitchTab('My Claims', 0)),
+                Expanded(child: _buildSwitchTab('Found Claims', 1)),
               ],
             ),
           ),
@@ -177,36 +173,34 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildTabButton({
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildSwitchTab(String label, int index) {
+    final isSelected = _tabController.index == index;
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        setState(() {
+          _tabController.animateTo(index);
+        });
+      },
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        margin: const EdgeInsets.all(2),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.grey[100],
-          borderRadius: BorderRadius.circular(25),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
+          color: isSelected ? AppColors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          border: isSelected ? Border.all(
+            color: AppColors.primary.withValues(alpha: 0.2),
+            width: 1,
+          ) : null,
+          boxShadow: isSelected ? AppShadows.soft : null,
         ),
-        child: Center(
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              color: isSelected ? Colors.black87 : Colors.grey[600],
-            ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            color: isSelected ? AppColors.primary : AppColors.textSecondary,
+            letterSpacing: 0.2,
           ),
         ),
       ),
@@ -293,6 +287,9 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
     }
   }
 
+  // =============================================
+  // MY CLAIMS TAB - Categorized by Status
+  // =============================================
   Widget _buildMyClaimsTab() {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {
@@ -320,79 +317,101 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
         }
 
         var docs = snapshot.data?.docs ?? [];
-        // Client-side sort by submittedDate (newest first) to avoid requiring
-        // a Firestore composite index on server-side ordering for older data.
-        try {
-          docs = docs.toList()
-            ..sort((a, b) {
-              final aTs = (a.data() as Map)['submittedDate'];
-              final bTs = (b.data() as Map)['submittedDate'];
-              DateTime aDt = DateTime.fromMillisecondsSinceEpoch(0);
-              DateTime bDt = DateTime.fromMillisecondsSinceEpoch(0);
-              if (aTs is Timestamp) aDt = aTs.toDate();
-              if (bTs is Timestamp) bDt = bTs.toDate();
-              return bDt.compareTo(aDt);
-            });
-        } catch (_) {}
+        
         if (docs.isEmpty) {
-          return SingleChildScrollView(
-            physics: const ClampingScrollPhysics(),
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                SizedBox(height: 40),
-                Icon(Icons.inbox, size: 64, color: Colors.grey[300]),
-                const SizedBox(height: 16),
-                Text('No claims yet', style: TextStyle(color: Colors.grey[700])),
-              ],
-            ),
-          );
+          return _buildEmptyState('No claims yet', Icons.inbox);
         }
 
-        return ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: docs.length,
-          shrinkWrap: true,
-          physics: const ClampingScrollPhysics(),
-          separatorBuilder: (_, __) => const SizedBox(height: 12),
-          itemBuilder: (context, index) {
-            final doc = docs[index];
-            final data = Map<String, dynamic>.from(doc.data() as Map);
-            data['docId'] = doc.id;
-            // Normalize item title and prefer a human-friendly founder name
-            data['itemTitle'] = data['itemTitle'] ?? data['title'] ?? data['itemName'] ?? data['name'];
-            data['title'] = data['title'] ?? data['itemTitle'];
-            final title = (data['itemTitle'] ?? data['title'] ?? 'Untitled').toString();
-            final status = (data['status'] ?? 'pending').toString();
-            final submitted = data['submittedDate'];
-            final submittedStr = submitted is Timestamp ? (submitted.toDate().toLocal().toString()) : (submitted?.toString() ?? '');
+        // Group claims by status
+        final Map<String, List<Map<String, dynamic>>> groupedClaims = {
+          'pending': [],
+          'approved': [],
+          'rejected': [],
+          'completed': [],
+        };
 
-            return ListTile(
-              tileColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              contentPadding: const EdgeInsets.all(12),
-              leading: Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: Colors.grey[100]),
-                child: Icon(Icons.image, color: Colors.grey[400]),
-              ),
-              title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: _buildFoundBySubtitle(data, status, submittedStr),
-              isThreeLine: true,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  SmoothPageRoute(page: ClaimDetailsPage(claimData: data)),
-                );
-              },
-            );
-          },
+        for (final doc in docs) {
+          final data = Map<String, dynamic>.from(doc.data() as Map);
+          data['docId'] = doc.id;
+          data['itemTitle'] = data['itemTitle'] ?? data['title'] ?? data['itemName'] ?? data['name'];
+          data['title'] = data['title'] ?? data['itemTitle'];
+          
+          final status = (data['status'] ?? 'pending').toString().toLowerCase();
+          final category = _normalizeStatus(status);
+          groupedClaims[category]?.add(data);
+        }
+
+        // Sort each group by recency
+        for (final key in groupedClaims.keys) {
+          _sortByRecency(groupedClaims[key]!);
+        }
+
+        return SingleChildScrollView(
+          physics: const ClampingScrollPhysics(),
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            children: [
+              // Pending Section
+              if (groupedClaims['pending']!.isNotEmpty)
+                _buildCollapsibleSection(
+                  title: 'Pending',
+                  count: groupedClaims['pending']!.length,
+                  isExpanded: _pendingExpanded,
+                  onToggle: () => setState(() => _pendingExpanded = !_pendingExpanded),
+                  statusColor: const Color(0xFFF57C00),
+                  icon: Icons.schedule,
+                  claims: groupedClaims['pending']!,
+                  isMyClaims: true,
+                ),
+              
+              // Approved Section
+              if (groupedClaims['approved']!.isNotEmpty)
+                _buildCollapsibleSection(
+                  title: 'Approved',
+                  count: groupedClaims['approved']!.length,
+                  isExpanded: _approvedExpanded,
+                  onToggle: () => setState(() => _approvedExpanded = !_approvedExpanded),
+                  statusColor: const Color(0xFF4CAF50),
+                  icon: Icons.check_circle_outline,
+                  claims: groupedClaims['approved']!,
+                  isMyClaims: true,
+                ),
+              
+              // Rejected Section
+              if (groupedClaims['rejected']!.isNotEmpty)
+                _buildCollapsibleSection(
+                  title: 'Rejected',
+                  count: groupedClaims['rejected']!.length,
+                  isExpanded: _rejectedExpanded,
+                  onToggle: () => setState(() => _rejectedExpanded = !_rejectedExpanded),
+                  statusColor: const Color(0xFFF44336),
+                  icon: Icons.cancel_outlined,
+                  claims: groupedClaims['rejected']!,
+                  isMyClaims: true,
+                ),
+              
+              // Completed Section (collapsed by default)
+              if (groupedClaims['completed']!.isNotEmpty)
+                _buildCollapsibleSection(
+                  title: 'Completed',
+                  count: groupedClaims['completed']!.length,
+                  isExpanded: _completedExpanded,
+                  onToggle: () => setState(() => _completedExpanded = !_completedExpanded),
+                  statusColor: const Color(0xFF2196F3),
+                  icon: Icons.task_alt,
+                  claims: groupedClaims['completed']!,
+                  isMyClaims: true,
+                ),
+            ],
+          ),
         );
       },
     );
   }
 
+  // =============================================
+  // FOUND CLAIMS TAB - Categorized by Status
+  // =============================================
   Widget _buildReceivedTab() {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {
@@ -404,9 +423,6 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
       );
     }
 
-    // For received/found claims we now read from the `claims` collection where
-    // the current user is the founder of the item. Claim documents are created
-    // by seekers (claimers) and have status 'pending' initially.
     final Stream<QuerySnapshot> receivedStream = FirebaseFirestore.instance
       .collection('claims')
       .where('founderId', isEqualTo: uid)
@@ -419,74 +435,762 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
         if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
 
         var docs = snapshot.data?.docs ?? [];
-        try {
-          docs = docs.toList()
-            ..sort((a, b) {
-              final aTs = (a.data() as Map)['submittedDate'];
-              final bTs = (b.data() as Map)['submittedDate'];
-              DateTime aDt = DateTime.fromMillisecondsSinceEpoch(0);
-              DateTime bDt = DateTime.fromMillisecondsSinceEpoch(0);
-              if (aTs is Timestamp) aDt = aTs.toDate();
-              if (bTs is Timestamp) bDt = bTs.toDate();
-              return bDt.compareTo(aDt);
-            });
-        } catch (_) {}
+        
         if (docs.isEmpty) {
-          return SingleChildScrollView(
-            physics: const ClampingScrollPhysics(),
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                SizedBox(height: 40),
-                Icon(Icons.inbox_outlined, size: 64, color: Colors.grey[300]),
-                const SizedBox(height: 16),
-                Text('No received claims', style: TextStyle(color: Colors.grey[700])),
-              ],
-            ),
-          );
+          return _buildEmptyState('No received claims', Icons.inbox_outlined);
         }
 
-        return ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: docs.length,
-          shrinkWrap: true,
-          physics: const ClampingScrollPhysics(),
-          separatorBuilder: (_, __) => const SizedBox(height: 12),
-          itemBuilder: (context, index) {
-            final doc = docs[index];
-            final data = Map<String, dynamic>.from(doc.data() as Map);
-            data['docId'] = doc.id;
-            data['itemTitle'] = data['itemTitle'] ?? data['title'] ?? data['itemName'] ?? data['name'];
-            data['title'] = data['title'] ?? data['itemTitle'];
-            data['claimerName'] = data['claimerName'] ?? data['claimerDisplayName'] ?? data['claimerEmail'];
-            final title = (data['itemTitle'] ?? 'Untitled').toString();
-            final claimer = (data['claimerName'] ?? data['claimerEmail'] ?? '').toString();
-            final submitted = data['submittedDate'];
-            final submittedStr = submitted is Timestamp ? (submitted.toDate().toLocal().toString()) : (submitted?.toString() ?? '');
+        // Group claims by status
+        final Map<String, List<Map<String, dynamic>>> groupedClaims = {
+          'pending': [],
+          'approved': [],
+          'rejected': [],
+          'completed': [],
+        };
 
-            return ListTile(
-              tileColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              contentPadding: const EdgeInsets.all(12),
-              leading: Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: Colors.grey[100]),
-                child: Icon(Icons.person_outline, color: Colors.grey[400]),
-              ),
-              title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text('Claimed by: $claimer\nSubmitted: $submittedStr', maxLines: 2, overflow: TextOverflow.ellipsis),
-              isThreeLine: true,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  SmoothPageRoute(page: ClaimDetailsPage(claimData: data)),
-                );
-              },
-            );
-          },
+        for (final doc in docs) {
+          final data = Map<String, dynamic>.from(doc.data() as Map);
+          data['docId'] = doc.id;
+          data['itemTitle'] = data['itemTitle'] ?? data['title'] ?? data['itemName'] ?? data['name'];
+          data['title'] = data['title'] ?? data['itemTitle'];
+          data['claimerName'] = data['claimerName'] ?? data['claimerDisplayName'] ?? data['claimerEmail'];
+          
+          final status = (data['status'] ?? 'pending').toString().toLowerCase();
+          final category = _normalizeStatus(status);
+          groupedClaims[category]?.add(data);
+        }
+
+        // Sort each group by recency
+        for (final key in groupedClaims.keys) {
+          _sortByRecency(groupedClaims[key]!);
+        }
+
+        return SingleChildScrollView(
+          physics: const ClampingScrollPhysics(),
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            children: [
+              // Pending Section (Needs Review)
+              if (groupedClaims['pending']!.isNotEmpty)
+                _buildCollapsibleSection(
+                  title: 'Needs Review',
+                  count: groupedClaims['pending']!.length,
+                  isExpanded: _foundPendingExpanded,
+                  onToggle: () => setState(() => _foundPendingExpanded = !_foundPendingExpanded),
+                  statusColor: const Color(0xFFF57C00),
+                  icon: Icons.rate_review_outlined,
+                  claims: groupedClaims['pending']!,
+                  isMyClaims: false,
+                ),
+              
+              // Approved Section (Awaiting Return)
+              if (groupedClaims['approved']!.isNotEmpty)
+                _buildCollapsibleSection(
+                  title: 'Awaiting Return',
+                  count: groupedClaims['approved']!.length,
+                  isExpanded: _foundApprovedExpanded,
+                  onToggle: () => setState(() => _foundApprovedExpanded = !_foundApprovedExpanded),
+                  statusColor: const Color(0xFF4CAF50),
+                  icon: Icons.handshake_outlined,
+                  claims: groupedClaims['approved']!,
+                  isMyClaims: false,
+                ),
+              
+              // Rejected Section
+              if (groupedClaims['rejected']!.isNotEmpty)
+                _buildCollapsibleSection(
+                  title: 'Rejected',
+                  count: groupedClaims['rejected']!.length,
+                  isExpanded: _foundRejectedExpanded,
+                  onToggle: () => setState(() => _foundRejectedExpanded = !_foundRejectedExpanded),
+                  statusColor: const Color(0xFFF44336),
+                  icon: Icons.cancel_outlined,
+                  claims: groupedClaims['rejected']!,
+                  isMyClaims: false,
+                ),
+              
+              // Completed Section (Returned Items)
+              if (groupedClaims['completed']!.isNotEmpty)
+                _buildCollapsibleSection(
+                  title: 'Returned',
+                  count: groupedClaims['completed']!.length,
+                  isExpanded: _foundCompletedExpanded,
+                  onToggle: () => setState(() => _foundCompletedExpanded = !_foundCompletedExpanded),
+                  statusColor: const Color(0xFF2196F3),
+                  icon: Icons.task_alt,
+                  claims: groupedClaims['completed']!,
+                  isMyClaims: false,
+                ),
+            ],
+          ),
         );
       },
+    );
+  }
+
+  // =============================================
+  // HELPER METHODS
+  // =============================================
+  
+  String _normalizeStatus(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+      case 'submitted':
+      case 'under_review':
+        return 'pending';
+      case 'approved':
+      case 'accepted':
+        return 'approved';
+      case 'rejected':
+      case 'denied':
+        return 'rejected';
+      case 'completed':
+      case 'returned':
+      case 'done':
+        return 'completed';
+      default:
+        return 'pending';
+    }
+  }
+
+  void _sortByRecency(List<Map<String, dynamic>> claims) {
+    claims.sort((a, b) {
+      final aTs = a['submittedDate'];
+      final bTs = b['submittedDate'];
+      DateTime aDt = DateTime.fromMillisecondsSinceEpoch(0);
+      DateTime bDt = DateTime.fromMillisecondsSinceEpoch(0);
+      if (aTs is Timestamp) aDt = aTs.toDate();
+      if (bTs is Timestamp) bDt = bTs.toDate();
+      return bDt.compareTo(aDt); // Newest first
+    });
+  }
+
+  Widget _buildEmptyState(String message, IconData icon) {
+    return SingleChildScrollView(
+      physics: const ClampingScrollPhysics(),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          const SizedBox(height: 60),
+          Icon(icon, size: 72, color: Colors.grey[300]),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Claims you submit or receive will appear here',
+            style: TextStyle(fontSize: 14, color: Colors.grey[400]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // =============================================
+  // COLLAPSIBLE SECTION WIDGET
+  // =============================================
+  Widget _buildCollapsibleSection({
+    required String title,
+    required int count,
+    required bool isExpanded,
+    required VoidCallback onToggle,
+    required Color statusColor,
+    required IconData icon,
+    required List<Map<String, dynamic>> claims,
+    required bool isMyClaims,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        boxShadow: AppShadows.soft,
+      ),
+      child: Column(
+        children: [
+          // Section Header (Tap to expand/collapse)
+          InkWell(
+            onTap: onToggle,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm + 2),
+              child: Row(
+                children: [
+                  // Status Icon
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                    ),
+                    child: Icon(icon, color: statusColor, size: 20),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  
+                  // Title and Count
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        Text(
+                          '$count claim${count == 1 ? '' : 's'}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // Expand/Collapse Icon
+                  AnimatedRotation(
+                    turns: isExpanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(
+                      Icons.keyboard_arrow_down,
+                      color: AppColors.textSecondary,
+                      size: 24,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
+          // Claims List (Animated)
+          AnimatedCrossFade(
+            firstChild: const SizedBox.shrink(),
+            secondChild: Column(
+              children: [
+                Divider(height: 1, color: Colors.grey[200]),
+                Padding(
+                  padding: const EdgeInsets.all(AppSpacing.sm),
+                  child: Column(
+                    children: claims.asMap().entries.map((entry) {
+                      final claim = entry.value;
+                      return _buildCompactClaimCard(
+                        claim: claim,
+                        isMyClaims: isMyClaims,
+                        statusColor: statusColor,
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ),
+            crossFadeState: isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 200),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // =============================================
+  // COMPACT EXPANDABLE CLAIM CARD
+  // =============================================
+  Widget _buildCompactClaimCard({
+    required Map<String, dynamic> claim,
+    required bool isMyClaims,
+    required Color statusColor,
+  }) {
+    final isExpanded = _expandedClaimId == claim['docId'];
+    final title = (claim['itemTitle'] ?? claim['title'] ?? 'Untitled').toString();
+    final status = (claim['status'] ?? 'pending').toString();
+    final normalizedStatus = _normalizeStatus(status);
+    final submitted = claim['submittedDate'];
+    final submittedDate = submitted is Timestamp ? submitted.toDate() : DateTime.now();
+    final timeAgo = _getTimeAgo(submittedDate);
+    final imageUrl = claim['imageUrl'] ?? claim['proofImage'];
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        boxShadow: isExpanded ? AppShadows.soft : [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Compact View (Always visible)
+          InkWell(
+            onTap: () {
+              setState(() {
+                _expandedClaimId = isExpanded ? null : claim['docId'];
+              });
+            },
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.sm + 2),
+              child: Row(
+                children: [
+                  // Thumbnail
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                    ),
+                    clipBehavior: Clip.hardEdge,
+                    child: imageUrl != null && imageUrl.toString().isNotEmpty
+                        ? Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Icon(
+                              Icons.image,
+                              color: Colors.grey[400],
+                              size: 24,
+                            ),
+                          )
+                        : Icon(
+                            isMyClaims ? Icons.inventory_2_outlined : Icons.person_outline,
+                            color: AppColors.textSecondary,
+                            size: 22,
+                          ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  
+                  // Title and Info
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          isMyClaims 
+                              ? 'Submitted $timeAgo'
+                              : 'From ${claim['claimerName'] ?? 'Unknown'} • $timeAgo',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // Status Badge
+                  _buildStatusBadge(normalizedStatus, statusColor),
+                  
+                  const SizedBox(width: AppSpacing.xs),
+                  
+                  // Expand Icon
+                  AnimatedRotation(
+                    turns: isExpanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(
+                      Icons.expand_more,
+                      color: AppColors.textSecondary,
+                      size: 22,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
+          // Expanded Details (Animated)
+          AnimatedCrossFade(
+            firstChild: const SizedBox.shrink(),
+            secondChild: _buildExpandedDetails(claim, isMyClaims, normalizedStatus, statusColor),
+            crossFadeState: isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 200),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge(String status, Color color) {
+    String label;
+    switch (status) {
+      case 'pending':
+        label = 'Pending';
+        break;
+      case 'approved':
+        label = 'Approved';
+        break;
+      case 'rejected':
+        label = 'Rejected';
+        break;
+      case 'completed':
+        label = 'Done';
+        break;
+      default:
+        label = 'Pending';
+    }
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ),
+    );
+  }
+
+  String _getTimeAgo(DateTime date) {
+    final now = DateTime.now();
+    final diff = now.difference(date);
+    
+    if (diff.inDays > 30) {
+      return '${(diff.inDays / 30).floor()}mo ago';
+    } else if (diff.inDays > 0) {
+      return '${diff.inDays}d ago';
+    } else if (diff.inHours > 0) {
+      return '${diff.inHours}h ago';
+    } else if (diff.inMinutes > 0) {
+      return '${diff.inMinutes}m ago';
+    } else {
+      return 'Just now';
+    }
+  }
+
+  // =============================================
+  // EXPANDED DETAILS VIEW
+  // =============================================
+  Widget _buildExpandedDetails(
+    Map<String, dynamic> claim,
+    bool isMyClaims,
+    String status,
+    Color statusColor,
+  ) {
+    final description = claim['claimDescription'] ?? claim['description'] ?? '';
+    final imageUrl = claim['imageUrl'] ?? claim['proofImage'];
+    
+    return Container(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Divider(color: Colors.grey[200]),
+          const SizedBox(height: AppSpacing.sm),
+          
+          // Item Image (if available)
+          if (imageUrl != null && imageUrl.toString().isNotEmpty) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+              child: Image.network(
+                imageUrl,
+                width: double.infinity,
+                height: 140,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  height: 100,
+                  color: Colors.grey[200],
+                  child: Icon(Icons.image, color: Colors.grey[400], size: 40),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
+          
+          // Description
+          if (description.toString().isNotEmpty) ...[
+            Text(
+              'Claim Details',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              description.toString(),
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[700],
+                height: 1.4,
+              ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
+          
+          // Additional Info
+          if (isMyClaims)
+            _buildClaimerAdditionalInfo(claim)
+          else
+            _buildFounderAdditionalInfo(claim),
+          
+          const SizedBox(height: AppSpacing.md),
+          
+          // CTA Buttons
+          _buildCTAButtons(claim, isMyClaims, status, statusColor),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildClaimerAdditionalInfo(Map<String, dynamic> claim) {
+    return FutureBuilder<String>(
+      future: _resolveFounderDisplayName(claim['founderId'], claim['itemId']),
+      builder: (context, snapshot) {
+        final founderName = snapshot.data ?? 'Loading...';
+        return Row(
+          children: [
+            Icon(Icons.person_outline, size: 16, color: Colors.grey[500]),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                'Found by $founderName',
+                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildFounderAdditionalInfo(Map<String, dynamic> claim) {
+    final claimerName = claim['claimerName'] ?? claim['claimerEmail'] ?? 'Unknown';
+    return Row(
+      children: [
+        Icon(Icons.person_outline, size: 16, color: Colors.grey[500]),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            'Claimed by $claimerName',
+            style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // =============================================
+  // CTA BUTTONS BASED ON STATUS
+  // =============================================
+  Widget _buildCTAButtons(
+    Map<String, dynamic> claim,
+    bool isMyClaims,
+    String status,
+    Color statusColor,
+  ) {
+    if (isMyClaims) {
+      return _buildMyClaimsCTA(claim, status, statusColor);
+    } else {
+      return _buildFoundClaimsCTA(claim, status, statusColor);
+    }
+  }
+
+  Widget _buildMyClaimsCTA(Map<String, dynamic> claim, String status, Color statusColor) {
+    switch (status) {
+      case 'pending':
+        return _buildSingleCTA(
+          label: 'Track Status',
+          icon: Icons.visibility_outlined,
+          color: statusColor,
+          onTap: () => _navigateToDetails(claim),
+        );
+      
+      case 'approved':
+        return Row(
+          children: [
+            Expanded(
+              child: _buildSingleCTA(
+                label: 'Pickup Details',
+                icon: Icons.location_on_outlined,
+                color: statusColor,
+                onTap: () => _navigateToDetails(claim),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: _buildSingleCTA(
+                label: 'Contact Finder',
+                icon: Icons.chat_outlined,
+                color: Colors.grey[700]!,
+                outlined: true,
+                onTap: () => _navigateToDetails(claim),
+              ),
+            ),
+          ],
+        );
+      
+      case 'rejected':
+        return _buildSingleCTA(
+          label: 'View Reason',
+          icon: Icons.info_outline,
+          color: statusColor,
+          onTap: () => _navigateToDetails(claim),
+        );
+      
+      case 'completed':
+        return _buildSingleCTA(
+          label: 'View Details',
+          icon: Icons.receipt_long_outlined,
+          color: statusColor,
+          onTap: () => _navigateToDetails(claim),
+        );
+      
+      default:
+        return _buildSingleCTA(
+          label: 'View Details',
+          icon: Icons.arrow_forward,
+          color: statusColor,
+          onTap: () => _navigateToDetails(claim),
+        );
+    }
+  }
+
+  Widget _buildFoundClaimsCTA(Map<String, dynamic> claim, String status, Color statusColor) {
+    switch (status) {
+      case 'pending':
+        return _buildSingleCTA(
+          label: 'Review Claim',
+          icon: Icons.rate_review_outlined,
+          color: statusColor,
+          onTap: () => _navigateToReview(claim),
+        );
+      
+      case 'approved':
+        return Row(
+          children: [
+            Expanded(
+              child: _buildSingleCTA(
+                label: 'Confirm Return',
+                icon: Icons.check_circle_outline,
+                color: statusColor,
+                onTap: () => _navigateToConfirmReturn(claim),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: _buildSingleCTA(
+                label: 'View Details',
+                icon: Icons.info_outline,
+                color: Colors.grey[700]!,
+                outlined: true,
+                onTap: () => _navigateToDetails(claim),
+              ),
+            ),
+          ],
+        );
+      
+      case 'rejected':
+        return _buildSingleCTA(
+          label: 'View Details',
+          icon: Icons.info_outline,
+          color: statusColor,
+          onTap: () => _navigateToDetails(claim),
+        );
+      
+      case 'completed':
+        return _buildSingleCTA(
+          label: 'View Details',
+          icon: Icons.receipt_long_outlined,
+          color: statusColor,
+          onTap: () => _navigateToDetails(claim),
+        );
+      
+      default:
+        return _buildSingleCTA(
+          label: 'View Details',
+          icon: Icons.arrow_forward,
+          color: statusColor,
+          onTap: () => _navigateToDetails(claim),
+        );
+    }
+  }
+
+  Widget _buildSingleCTA({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+    bool outlined = false,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: outlined ? Colors.transparent : color,
+          foregroundColor: outlined ? color : Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            side: outlined ? BorderSide(color: color) : BorderSide.none,
+          ),
+        ),
+        icon: Icon(icon, size: 18),
+        label: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _navigateToDetails(Map<String, dynamic> claim) {
+    Navigator.push(
+      context,
+      SmoothPageRoute(page: ClaimDetailsPage(claimData: claim)),
+    );
+  }
+
+  void _navigateToReview(Map<String, dynamic> claim) {
+    Navigator.push(
+      context,
+      SmoothPageRoute(page: ClaimReviewPage(claimData: claim)),
+    );
+  }
+
+  void _navigateToConfirmReturn(Map<String, dynamic> claim) {
+    Navigator.push(
+      context,
+      SmoothPageRoute(page: ConfirmReturnPage(itemData: claim)),
     );
   }
 
