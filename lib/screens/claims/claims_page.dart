@@ -111,27 +111,14 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
           icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Claims',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            Text(
-              'Manage your claim requests',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
+        title: const Text(
+          'Claims',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
         ),
-        toolbarHeight: 80,
       ),
       body: Column(
         children: [
@@ -228,26 +215,24 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
 
   Widget _buildBottomNavBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
+        color: AppColors.black,
+        boxShadow: AppShadows.nav,
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildNavItem(Icons.home, 'Home', 0),
-          _buildNavItem(Icons.article, 'Posts', 1),
-          _buildNavItem(Icons.assignment_return, 'Claims', 2),
-          _buildNavItem(Icons.videogame_asset, 'Game', 3),
-          _buildNavItem(Icons.person, 'Profile', 4),
-        ],
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildNavItem(Icons.home_outlined, 'Home', 0),
+              _buildNavItem(Icons.article_outlined, 'Posts', 1),
+              _buildNavItem(Icons.emoji_events_outlined, 'Game Hub', 2),
+              _buildNavItem(Icons.description_outlined, 'Claims', 3),
+              _buildNavItem(Icons.person_outline, 'Profile', 4),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -301,7 +286,7 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
         SmoothPageRoute(page: const ProfilePage()),
       );
     } else if (index != 3) {
-      // For other tabs, just update the selected state
+      // Claims tab is already selected
       setState(() {
         _selectedIndex = index;
       });

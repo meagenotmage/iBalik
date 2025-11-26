@@ -307,82 +307,77 @@ class _PostsPageState extends State<PostsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            Container(
-              decoration: BoxDecoration(
-                color: AppColors.white,
-                boxShadow: AppShadows.soft,
-              ),
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                      const Expanded(
-                        child: Text(
-                          'Found Items',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.tune, color: AppColors.textPrimary),
-                        onPressed: _showFilterBottomSheet,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  StreamBuilder<QuerySnapshot>(
-                    stream: _lostItemService.getLostItems(status: 'available'),
-                    builder: (context, snapshot) {
-                      int itemCount = snapshot.hasData ? snapshot.data!.docs.length : 0;
-                      return Padding(
-                        padding: const EdgeInsets.only(left: 56),
-                        child: Text(
-                          '$itemCount items',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  // Search Bar
-                  TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText: 'Search items, descriptions, locations...',
-                      hintStyle: const TextStyle(
-                        color: AppColors.textTertiary,
-                        fontSize: 14,
-                      ),
-                      prefixIcon: const Icon(Icons.search, color: AppColors.textTertiary),
-                      filled: true,
-                      fillColor: AppColors.background,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.md),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
-                    ),
-                  ),
-                ],
-              ),
+      appBar: AppBar(
+        backgroundColor: AppColors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Found Items',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.tune, color: AppColors.textPrimary),
+            onPressed: _showFilterBottomSheet,
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Search Section
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              boxShadow: AppShadows.soft,
             ),
-            // Items List
+            padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.lg),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                StreamBuilder<QuerySnapshot>(
+                  stream: _lostItemService.getLostItems(status: 'available'),
+                  builder: (context, snapshot) {
+                    int itemCount = snapshot.hasData ? snapshot.data!.docs.length : 0;
+                    return Text(
+                      '$itemCount items',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textSecondary,
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+                // Search Bar
+                TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Search items, descriptions, locations...',
+                    hintStyle: const TextStyle(
+                      color: AppColors.textTertiary,
+                      fontSize: 14,
+                    ),
+                    prefixIcon: const Icon(Icons.search, color: AppColors.textTertiary),
+                    filled: true,
+                    fillColor: AppColors.background,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Items List
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
                 stream: _lostItemService.getLostItems(status: 'available', limit: 50),
@@ -523,7 +518,6 @@ class _PostsPageState extends State<PostsPage> {
             ),
           ],
         ),
-      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.push(
