@@ -739,12 +739,12 @@ class _ClaimItemPageState extends State<ClaimItemPage> {
       final user = FirebaseAuth.instance.currentUser;
       // Normalize item fields and copy founder contact info into the claim
       final claimData = {
-        'itemId': widget.item['itemId'] ?? widget.item['id'] ?? widget.item['docId'] ?? null,
-        'itemTitle': widget.item['itemName'] ?? widget.item['title'] ?? widget.item['name'] ?? widget.item['itemTitle'] ?? null,
-        'itemDescription': widget.item['description'] ?? widget.item['details'] ?? widget.item['itemDescription'] ?? null,
+        'itemId': widget.item['itemId'] ?? widget.item['id'] ?? widget.item['docId'],
+        'itemTitle': widget.item['itemName'] ?? widget.item['title'] ?? widget.item['name'] ?? widget.item['itemTitle'],
+        'itemDescription': widget.item['description'] ?? widget.item['details'] ?? widget.item['itemDescription'],
         'claimerId': user?.uid,
-        'claimerName': user?.displayName ?? null,
-        'claimerEmail': user?.email ?? null,
+        'claimerName': user?.displayName,
+        'claimerEmail': user?.email,
         'claimerProvidedContactMethod': _selectedContactMethod,
         'claimerProvidedContactValue': contactValue,
         'claimDescription': _detailsController.text.trim(),
@@ -753,11 +753,11 @@ class _ClaimItemPageState extends State<ClaimItemPage> {
         'submittedDate': FieldValue.serverTimestamp(),
         'status': 'pending',
         // founder contact copied from the lost item where possible so claim details don't need extra lookups
-        'founderId': widget.item['userId'] ?? widget.item['foundById'] ?? widget.item['posterId'] ?? null,
-        'founderName': widget.item['userName'] ?? widget.item['foundBy'] ?? widget.item['posterName'] ?? widget.item['founderName'] ?? null,
-        'founderPhone': widget.item['userPhone'] ?? widget.item['posterPhone'] ?? widget.item['founderPhone'] ?? widget.item['phone'] ?? null,
-        'founderEmail': widget.item['userEmail'] ?? widget.item['posterEmail'] ?? widget.item['founderEmail'] ?? widget.item['email'] ?? null,
-        'founderMessenger': widget.item['founderMessenger'] ?? widget.item['posterMessenger'] ?? null,
+        'founderId': widget.item['userId'] ?? widget.item['foundById'] ?? widget.item['posterId'],
+        'founderName': widget.item['userName'] ?? widget.item['foundBy'] ?? widget.item['posterName'] ?? widget.item['founderName'],
+        'founderPhone': widget.item['userPhone'] ?? widget.item['posterPhone'] ?? widget.item['founderPhone'] ?? widget.item['phone'],
+        'founderEmail': widget.item['userEmail'] ?? widget.item['posterEmail'] ?? widget.item['founderEmail'] ?? widget.item['email'],
+        'founderMessenger': widget.item['founderMessenger'] ?? widget.item['posterMessenger'],
       };
 
       final firestore = FirebaseFirestore.instance;

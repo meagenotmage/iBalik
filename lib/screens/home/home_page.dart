@@ -408,8 +408,9 @@ class _HomePageState extends State<HomePage> {
                             // Simple icon selection
                             final category = (data['category'] ?? '').toString().toLowerCase();
                             IconData icon = Icons.image;
-                            if (category.contains('elect')) icon = Icons.phone_iphone;
-                            else if (category.contains('bag') || category.contains('backpack')) icon = Icons.backpack;
+                            if (category.contains('elect')) {
+                              icon = Icons.phone_iphone;
+                            } else if (category.contains('bag') || category.contains('backpack')) icon = Icons.backpack;
                             else if (category.contains('umbrella')) icon = Icons.umbrella;
 
                             return _buildItemCard(
