@@ -204,17 +204,13 @@ class _HomePageState extends State<HomePage> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               // Logo
-                              Container(
-                                width: AppIconSize.xxl,
-                                height: AppIconSize.xxl,
-                                decoration: BoxDecoration(
-                                  color: AppColors.darkGray,
-                                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                                ),
-                                child: const Icon(
-                                  Icons.location_on,
-                                  color: AppColors.white,
-                                  size: AppIconSize.lg,
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(AppRadius.sm),
+                                child: Image.asset(
+                                  'assets/logo_icon.png',
+                                  width: 44,
+                                  height: 44,
+                                  fit: BoxFit.contain,
                                 ),
                               ),
                               // Notification Bell
