@@ -60,7 +60,7 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
       if (founderId != null && founderId.isNotEmpty) {
         final userDoc = await FirebaseFirestore.instance.collection('users').doc(founderId).get();
         if (userDoc.exists) {
-          final u = userDoc.data() as Map<String, dynamic>?;
+          final u = userDoc.data();
           final name = (u?['displayName'] ?? u?['name'] ?? u?['userName'])?.toString();
           if (name != null && name.isNotEmpty) return name;
         }
@@ -72,7 +72,7 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
           final itemRef = FirebaseFirestore.instance.collection('lost_items').doc(itemId.toString());
           final itemDoc = await itemRef.get();
           if (itemDoc.exists) {
-            final it = itemDoc.data() as Map<String, dynamic>?;
+            final it = itemDoc.data();
             final posterName = (it?['userName'] ?? it?['posterName'] ?? it?['foundBy'])?.toString();
             if (posterName != null && posterName.isNotEmpty) return posterName;
           }
@@ -1076,10 +1076,8 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
     required String foundBy,
     required String claimedDate,
     String? pickupLocation,
-    String? imagePath,
     Color? backgroundColor,
     required String claimRequest,
-    String? submittedDate,
     String? approvedDate,
   }) {
     final isExpanded = _expandedClaimId == id;

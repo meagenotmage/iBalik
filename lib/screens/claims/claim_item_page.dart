@@ -738,11 +738,11 @@ class _ClaimItemPageState extends State<ClaimItemPage> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       final claimData = {
-        'itemId': widget.item['itemId'] ?? widget.item['id'] ?? widget.item['docId'] ?? null,
-        'itemTitle': widget.item['itemName'] ?? widget.item['title'] ?? null,
+        'itemId': widget.item['itemId'] ?? widget.item['id'] ?? widget.item['docId'],
+        'itemTitle': widget.item['itemName'] ?? widget.item['title'],
         'claimerId': user?.uid,
-        'claimerName': user?.displayName ?? null,
-        'claimerEmail': user?.email ?? null,
+        'claimerName': user?.displayName,
+        'claimerEmail': user?.email,
         'claimerProvidedContactMethod': _selectedContactMethod,
         'claimerProvidedContactValue': contactValue,
         'claimDescription': _detailsController.text.trim(),
@@ -750,8 +750,8 @@ class _ClaimItemPageState extends State<ClaimItemPage> {
         'proofImage': null,
         'submittedDate': FieldValue.serverTimestamp(),
         'status': 'pending',
-        'founderId': widget.item['userId'] ?? widget.item['foundById'] ?? null,
-        'founderName': widget.item['userName'] ?? widget.item['foundBy'] ?? widget.item['posterName'] ?? null,
+        'founderId': widget.item['userId'] ?? widget.item['foundById'],
+        'founderName': widget.item['userName'] ?? widget.item['foundBy'] ?? widget.item['posterName'],
       };
 
       final firestore = FirebaseFirestore.instance;

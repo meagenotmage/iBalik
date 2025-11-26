@@ -205,12 +205,10 @@ class AppTheme {
         primary: AppColors.primary,
         secondary: AppColors.secondary,
         surface: AppColors.white,
-        background: AppColors.background,
         error: AppColors.error,
         onPrimary: AppColors.white,
         onSecondary: AppColors.black,
         onSurface: AppColors.textPrimary,
-        onBackground: AppColors.textPrimary,
       ),
       
       // Scaffold

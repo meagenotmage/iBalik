@@ -20,7 +20,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
   final LostItemService _lostItemService = LostItemService();
   final ImagePicker _imagePicker = ImagePicker();
   
-  List<File> _selectedImages = [];
+  final List<File> _selectedImages = [];
   bool _isUploading = false;
   
   String _selectedCategory = 'Select category';
