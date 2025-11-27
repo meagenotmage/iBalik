@@ -40,6 +40,13 @@ class _ProfilePageState extends State<ProfilePage> {
   int streak = 5;
   int level = 3;
 
+  // Settings state
+  bool pushNotifications = true;
+  bool emailNotifications = true;
+  bool claimNotifications = true;
+  bool publicProfile = true;
+  bool showStatistics = true;
+
   // Department to courses mapping
   final Map<String, List<String>> _departmentCourses = {
     'College of Information and Communications Technology': [
@@ -123,79 +130,104 @@ class _ProfilePageState extends State<ProfilePage> {
     _loadUserData();
   }
 
-  Future<void> _loadUserData() async {
-    try {
-      final user = firebase_auth.FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
-
-        if (userDoc.exists && userDoc.data() != null) {
-          final data = userDoc.data()!;
-          setState(() {
-            final username = data['username'] as String?;
-            final fullName = data['name'] as String?;
-            userName =
-                username ??
-                fullName ??
-                user.displayName ??
-                user.email?.split('@').first ??
-                'User Name';
-
-            department = (data['department'] as String?) ?? 'CICT';
-            course = (data['course'] as String?) ?? 'BS Information Technology';
-            year = (data['year'] as String?) ?? '3rd Year';
-            bio = (data['bio'] as String?) ?? 
-                  'Passionate about helping the WVSU community. Always happy to help reunite lost items with their owners!';
-            profileImageUrl = data['profileImageUrl'] as String?;
-            karma = (data['karma'] as int?) ?? 90;
-            points = (data['points'] as int?) ?? 245;
-            rank = (data['rank'] as int?) ?? 8;
-            returned = (data['returned'] as int?) ?? 12;
-            streak = (data['streak'] as int?) ?? 5;
-            level = (data['level'] as int?) ?? 3;
-          });
-        } else {
-          _createUserDocument(user);
-        }
-      }
-    } catch (e) {
-      debugPrint('Error loading user data: $e');
-      setState(() {
-        userName = 'User Name';
-        department = 'CICT';
-        course = 'BS Information Technology';
-        year = '3rd Year';
-        bio = 'Passionate about helping the WVSU community. Always happy to help reunite lost items with their owners!';
-      });
-    }
-  }
-
-  Future<void> _createUserDocument(firebase_auth.User user) async {
-    try {
-      await FirebaseFirestore.instance
+ Future<void> _loadUserData() async {
+  try {
+    final user = firebase_auth.FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
-          .set({
-        'username': user.displayName ?? user.email?.split('@').first ?? 'User',
-        'department': 'CICT',
-        'course': 'BS Information Technology',
-        'year': '3rd Year',
-        'bio': 'Passionate about helping the WVSU community. Always happy to help reunite lost items with their owners!',
-        'karma': 90,
-        'points': 245,
-        'rank': 8,
-        'returned': 12,
-        'streak': 5,
-        'level': 3,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-    } catch (e) {
-      debugPrint('Error creating user document: $e');
+          .get();
+
+      if (userDoc.exists && userDoc.data() != null) {
+        final data = userDoc.data()!;
+        setState(() {
+          final username = data['username'] as String?;
+          final fullName = data['name'] as String?;
+          userName =
+              username ??
+              fullName ??
+              user.displayName ??
+              user.email?.split('@').first ??
+              'User Name';
+
+          // Handle department mapping - convert "CICT" to full name
+          final storedDept = (data['department'] as String?) ?? 'CICT';
+          department = _mapDepartmentToFullName(storedDept);
+          
+          course = (data['course'] as String?) ?? 'BS Information Technology';
+          year = (data['year'] as String?) ?? '3rd Year';
+          bio = (data['bio'] as String?) ?? 
+                'Passionate about helping the WVSU community. Always happy to help reunite lost items with their owners!';
+          profileImageUrl = data['profileImageUrl'] as String?;
+          karma = (data['karma'] as int?) ?? 90;
+          points = (data['points'] as int?) ?? 245;
+          rank = (data['rank'] as int?) ?? 8;
+          returned = (data['returned'] as int?) ?? 12;
+          streak = (data['streak'] as int?) ?? 5;
+          level = (data['level'] as int?) ?? 3;
+
+          // Load settings
+          final settings = data['settings'] as Map<String, dynamic>?;
+          final notifications = settings?['notifications'] as Map<String, dynamic>?;
+          final privacy = settings?['privacy'] as Map<String, dynamic>?;
+
+          pushNotifications = notifications?['pushNotifications'] as bool? ?? true;
+          emailNotifications = notifications?['emailNotifications'] as bool? ?? true;
+          claimNotifications = notifications?['claimNotifications'] as bool? ?? true;
+          publicProfile = privacy?['publicProfile'] as bool? ?? true;
+          showStatistics = privacy?['showStatistics'] as bool? ?? true;
+        });
+      } else {
+        _createUserDocument(user);
+      }
     }
+  } catch (e) {
+    debugPrint('Error loading user data: $e');
+    setState(() {
+      userName = 'User Name';
+      department = 'College of Information and Communications Technology';
+      course = 'BS Information Technology';
+      year = '3rd Year';
+      bio = 'Passionate about helping the WVSU community. Always happy to help reunite lost items with their owners!';
+    });
   }
+}
+
+ Future<void> _createUserDocument(firebase_auth.User user) async {
+  try {
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .set({
+      'username': user.displayName ?? user.email?.split('@').first ?? 'User',
+      'department': 'College of Information and Communications Technology', // Use full name
+      'course': 'BS Information Technology',
+      'year': '3rd Year',
+      'bio': 'Passionate about helping the WVSU community. Always happy to help reunite lost items with their owners!',
+      'karma': 90,
+      'points': 245,
+      'rank': 8,
+      'returned': 12,
+      'streak': 5,
+      'level': 3,
+      'settings': {
+        'notifications': {
+          'pushNotifications': true,
+          'emailNotifications': true,
+          'claimNotifications': true,
+        },
+        'privacy': {
+          'publicProfile': true,
+          'showStatistics': true,
+        }
+      },
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  } catch (e) {
+    debugPrint('Error creating user document: $e');
+  }
+}
 
   Future<void> _pickAndUploadImage() async {
     try {
@@ -487,13 +519,105 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Future<void> _updateProfile(
-    String newName,
-    String newDepartment,
-    String newCourse,
-    String newYear,
-    String newBio,
-  ) async {
+Future<void> _recordUserActivity({
+  required String type,
+  required String title,
+  required String description,
+  Map<String, dynamic>? metadata,
+}) async {
+  try {
+    final user = firebase_auth.FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('activities')
+        .add({
+      'type': type,
+      'title': title,
+      'description': description,
+      'metadata': metadata ?? {},
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+
+    // Keep only the last 50 activities to prevent unlimited growth
+    final activitiesSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('activities')
+        .orderBy('timestamp', descending: true)
+        .get();
+
+    if (activitiesSnapshot.docs.length > 50) {
+      final activitiesToDelete = activitiesSnapshot.docs.sublist(50);
+      final batch = FirebaseFirestore.instance.batch();
+      for (final doc in activitiesToDelete) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+    }
+  } catch (e) {
+    debugPrint('Error recording activity: $e');
+  }
+}
+
+Future<void> _updateProfile(
+  String newName,
+  String newDepartment,
+  String newCourse,
+  String newYear,
+  String newBio,
+) async {
+  try {
+    final user = firebase_auth.FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .update({
+      'username': newName,
+      'department': newDepartment,
+      'course': newCourse,
+      'year': newYear,
+      'bio': newBio,
+    });
+
+    setState(() {
+      userName = newName;
+      department = newDepartment;
+      course = newCourse;
+      year = newYear;
+      bio = newBio;
+    });
+
+    // Record activity
+    await _recordUserActivity(
+      type: 'profile_updated',
+      title: 'Profile Updated',
+      description: 'Updated your profile information',
+    );
+
+    _showSnackBar('Profile updated successfully!');
+  } catch (e) {
+    debugPrint('Error updating profile: $e');
+    _showSnackBar('Error updating profile: $e');
+  }
+}
+
+  // Helper to map department abbreviations to full names
+  String _mapDepartmentToFullName(String dept) {
+    switch (dept) {
+      case 'CICT':
+        return 'College of Information and Communications Technology';
+      default:
+        return dept;
+    }
+  }
+
+  // Settings Methods
+  Future<void> _updateNotificationSettings(String setting, bool value) async {
     try {
       final user = firebase_auth.FirebaseAuth.instance.currentUser;
       if (user == null) return;
@@ -502,25 +626,324 @@ class _ProfilePageState extends State<ProfilePage> {
           .collection('users')
           .doc(user.uid)
           .update({
-        'username': newName,
-        'department': newDepartment,
-        'course': newCourse,
-        'year': newYear,
-        'bio': newBio,
+        'settings.notifications.$setting': value,
       });
 
-      setState(() {
-        userName = newName;
-        department = newDepartment;
-        course = newCourse;
-        year = newYear;
-        bio = newBio;
-      });
-
-      _showSnackBar('Profile updated successfully!');
+      _showSnackBar('Notification settings updated');
     } catch (e) {
-      debugPrint('Error updating profile: $e');
-      _showSnackBar('Error updating profile: $e');
+      debugPrint('Error updating notification settings: $e');
+      _showSnackBar('Error updating settings');
+    }
+  }
+
+  Future<void> _updatePrivacySettings(String setting, bool value) async {
+    try {
+      final user = firebase_auth.FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .update({
+        'settings.privacy.$setting': value,
+      });
+
+      _showSnackBar('Privacy settings updated');
+    } catch (e) {
+      debugPrint('Error updating privacy settings: $e');
+      _showSnackBar('Error updating settings');
+    }
+  }
+
+  void _exportUserData() {
+    _showSnackBar('Preparing your data for export...');
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Export Data'),
+        content: const Text('Your data export is being prepared. You will receive a download link via email when it\'s ready.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showHelpAndSupport() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Help & Support'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildHelpItem(
+                'How to post a found item?',
+                'Go to the Posts tab and tap the + button to post a found item with details and photos.',
+              ),
+              const SizedBox(height: 12),
+              _buildHelpItem(
+                'How to claim an item?',
+                'Browse items in the Posts tab, tap on an item to view details, and use the Claim button.',
+              ),
+              const SizedBox(height: 12),
+              _buildHelpItem(
+                'What are karma points?',
+                'Karma points are earned by helping others find their lost items and being an active community member.',
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Need more help? Contact us:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text('support@lostandfound.wvsu.edu.ph'),
+              const Text('(033) 123-4567'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHelpItem(String question, String answer) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          question,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          answer,
+          style: TextStyle(
+            color: Colors.grey[700],
+            fontSize: 14,
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showAboutApp() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('About Lost & Found WVSU'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Lost & Found WVSU',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Version 1.0.0',
+                style: TextStyle(color: Colors.grey),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'A community-driven platform for West Visayas State University students and staff to help reunite lost items with their owners.',
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Features:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              _buildFeatureItem('Post found items with photos'),
+              _buildFeatureItem('Claim lost items securely'),
+              _buildFeatureItem('Gamification with points and badges'),
+              _buildFeatureItem('Real-time notifications'),
+              _buildFeatureItem('Community karma system'),
+              const SizedBox(height: 16),
+              const Text(
+                'Developed with ❤️ for the WVSU Community',
+                style: TextStyle(
+                  fontStyle: FontStyle.italic,
+                  color: Colors.grey,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeatureItem(String feature) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.check_circle, size: 16, color: Colors.green),
+          const SizedBox(width: 8),
+          Expanded(child: Text(feature)),
+        ],
+      ),
+    );
+  }
+
+  void _showTermsOfService() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Terms of Service'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Last updated: ${DateTime.now().toString().split(' ')[0]}',
+                style: TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'By using Lost & Found WVSU, you agree to:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              _buildTermItem('Post accurate and truthful information about found items'),
+              _buildTermItem('Respect other users\' privacy and personal information'),
+              _buildTermItem('Not post inappropriate or offensive content'),
+              _buildTermItem('Return found items to their rightful owners promptly'),
+              _buildTermItem('Use the platform for its intended purpose only'),
+              const SizedBox(height: 12),
+              const Text(
+                'The university reserves the right to suspend accounts that violate these terms.',
+                style: TextStyle(fontStyle: FontStyle.italic),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('I Understand'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPrivacyPolicy() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Privacy Policy'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Last updated: ${DateTime.now().toString().split(' ')[0]}',
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'We value your privacy and are committed to protecting your personal information:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              _buildPolicyItem('We collect only necessary information for the app to function'),
+              _buildPolicyItem('Your personal data is stored securely and not shared with third parties'),
+              _buildPolicyItem('Photos and item descriptions are visible only to the WVSU community'),
+              _buildPolicyItem('You can control your privacy settings in this settings tab'),
+              _buildPolicyItem('You can request data deletion by contacting support'),
+              const SizedBox(height: 12),
+              const Text(
+                'For questions about our privacy practices, contact our data protection officer.',
+                style: TextStyle(fontStyle: FontStyle.italic),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTermItem(String term) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('• ', style: TextStyle(fontWeight: FontWeight.bold)),
+          Expanded(child: Text(term)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPolicyItem(String policy) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.security, size: 16, color: Colors.blue),
+          const SizedBox(width: 8),
+          Expanded(child: Text(policy)),
+        ],
+      ),
+    );
+  }
+
+  String _getTimeAgo(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inMinutes < 1) {
+      return 'Just now';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}m ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays}d ago';
+    } else if (difference.inDays < 30) {
+      final weeks = (difference.inDays / 7).floor();
+      return '${weeks}w ago';
+    } else {
+      final months = (difference.inDays / 30).floor();
+      return '${months}mo ago';
     }
   }
 
@@ -915,7 +1338,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-
   Widget _buildCompactStatCard({
     required IconData icon,
     required String value,
@@ -1103,38 +1525,6 @@ class _ProfilePageState extends State<ProfilePage> {
           ],
         ),
         const SizedBox(height: 16),
-
-        // Recent Items Section
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Recent Items',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                // TODO: View all items
-              },
-              child: const Text(
-                'View All',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF3B82F6),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-
-        // Recent Items List
-        const SizedBox(height: 8),
       ],
     );
   }
@@ -1392,77 +1782,149 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildActivityTab() {
-    // Sample activity data - TODO: Fetch from Firebase
-    final activities = [
-      {
-        'type': 'returned',
-        'icon': Icons.check_circle,
-        'iconColor': Color(0xFF10B981),
-        'bgColor': Color(0xFFD1FAE5),
-        'title': 'Item Successfully Returned',
-        'description': 'Blue Umbrella was claimed and returned',
-        'time': '2 days ago',
-      },
-      {
-        'type': 'posted',
-        'icon': Icons.add_box,
-        'iconColor': Color(0xFF6366F1),
-        'bgColor': Color(0xFFE0E7FF),
-        'title': 'New Item Posted',
-        'description': 'Posted Black iPhone 13 found in Library',
-        'time': '5 days ago',
-      },
-      {
-        'type': 'achievement',
-        'icon': Icons.emoji_events,
-        'iconColor': Color(0xFFF59E0B),
-        'bgColor': Color(0xFFFEF3C7),
-        'title': 'Achievement Unlocked',
-        'description': 'Earned "Community Star" badge',
-        'time': '1 week ago',
-      },
-    ];
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(firebase_auth.FirebaseAuth.instance.currentUser?.uid)
+          .collection('activities')
+          .orderBy('timestamp', descending: true)
+          .limit(20)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+        }
 
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Activity Timeline',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+        if (snapshot.hasError) {
+          return Center(
+            child: Text('Error loading activities: ${snapshot.error}'),
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.history,
+                  size: 64,
+                  color: Colors.grey,
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'No activities yet',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.grey,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Your recent activities will appear here',
+                  style: TextStyle(
+                    color: Colors.grey,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ),
+          );
+        }
+
+        final activities = snapshot.data!.docs;
+
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Recent Activity',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              // Activity Timeline Items
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: activities.length,
+                itemBuilder: (context, index) {
+                  final activity = activities[index].data() as Map<String, dynamic>;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _buildActivityCard(
+                      activity: activity,
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          
-          // Activity Timeline Items
-          ...activities.map((activity) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _buildActivityCard(
-              icon: activity['icon'] as IconData,
-              iconColor: activity['iconColor'] as Color,
-              bgColor: activity['bgColor'] as Color,
-              title: activity['title'] as String,
-              description: activity['description'] as String,
-              time: activity['time'] as String,
-            ),
-          )),
-        ],
-      ),
+        );
+      },
     );
   }
 
   Widget _buildActivityCard({
-    required IconData icon,
-    required Color iconColor,
-    required Color bgColor,
-    required String title,
-    required String description,
-    required String time,
+    required Map<String, dynamic> activity,
   }) {
+    // Determine icon, colors, and content based on activity type
+    final String type = activity['type'] ?? 'general';
+    final String title = activity['title'] ?? '';
+    final String description = activity['description'] ?? '';
+    final Timestamp timestamp = activity['timestamp'] ?? Timestamp.now();
+    final DateTime time = timestamp.toDate();
+    
+    IconData icon;
+    Color iconColor;
+    Color bgColor;
+    String timeAgo = _getTimeAgo(time);
+
+    switch (type) {
+      case 'item_posted':
+        icon = Icons.add_box;
+        iconColor = const Color(0xFF6366F1);
+        bgColor = const Color(0xFFE0E7FF);
+        break;
+      case 'item_returned':
+        icon = Icons.check_circle;
+        iconColor = const Color(0xFF10B981);
+        bgColor = const Color(0xFFD1FAE5);
+        break;
+      case 'item_claimed':
+        icon = Icons.shopping_bag;
+        iconColor = const Color(0xFFF59E0B);
+        bgColor = const Color(0xFFFEF3C7);
+        break;
+      case 'achievement_earned':
+        icon = Icons.emoji_events;
+        iconColor = const Color(0xFF8B5CF6);
+        bgColor = const Color(0xFFF3E8FF);
+        break;
+      case 'karma_earned':
+        icon = Icons.star;
+        iconColor = const Color(0xFFEC4899);
+        bgColor = const Color(0xFFFCE7F3);
+        break;
+      case 'level_up':
+        icon = Icons.trending_up;
+        iconColor = const Color(0xFF06B6D4);
+        bgColor = const Color(0xFFCFFAFE);
+        break;
+      default:
+        icon = Icons.notifications;
+        iconColor = const Color(0xFF6B7280);
+        bgColor = const Color(0xFFF3F4F6);
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1511,7 +1973,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  time,
+                  timeAgo,
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.grey[500],
@@ -1526,238 +1988,271 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildSettingsTab() {
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Notifications Section
-          Row(
+    return StatefulBuilder(
+      builder: (context, setState) {
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                Icons.notifications_outlined,
-                color: Color(0xFF10B981),
-                size: 24,
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                'Notifications',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          
-          _buildSettingItem(
-            title: 'Push Notifications',
-            subtitle: 'Get notified about claims and updates',
-            hasSwitch: true,
-            switchValue: true,
-            onSwitchChanged: (value) {
-              // TODO: Handle push notification toggle
-            },
-          ),
-          
-          _buildSettingItem(
-            title: 'Email Notifications',
-            subtitle: 'Receive emails for important updates',
-            hasSwitch: true,
-            switchValue: true,
-            onSwitchChanged: (value) {
-              // TODO: Handle email notification toggle
-            },
-          ),
-          
-          _buildSettingItem(
-            title: 'Claim Notifications',
-            subtitle: 'When someone claims your items',
-            hasSwitch: true,
-            switchValue: true,
-            onSwitchChanged: (value) {
-              // TODO: Handle claim notification toggle
-            },
-          ),
-          
-          const SizedBox(height: 32),
-          
-          // Privacy Section
-          Row(
-            children: [
-              Icon(
-                Icons.shield_outlined,
-                color: Color(0xFF6366F1),
-                size: 24,
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                'Privacy',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          
-          _buildSettingItem(
-            title: 'Public Profile',
-            subtitle: 'Allow others to view your profile',
-            hasSwitch: true,
-            switchValue: true,
-            onSwitchChanged: (value) {
-              // TODO: Handle public profile toggle
-            },
-          ),
-          
-          _buildSettingItem(
-            title: 'Show Statistics',
-            subtitle: 'Display your stats on leaderboards',
-            hasSwitch: true,
-            switchValue: true,
-            onSwitchChanged: (value) {
-              // TODO: Handle statistics toggle
-            },
-          ),
-          
-          const SizedBox(height: 32),
-          
-          // Account Section
-          Row(
-            children: [
-              Icon(
-                Icons.person_outline,
-                color: Color(0xFF8B5CF6),
-                size: 24,
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                'Account',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          
-          _buildSettingItem(
-            title: 'Export My Data',
-            hasArrow: true,
-            onTap: () {
-              // TODO: Navigate to export data
-            },
-          ),
-          
-          _buildSettingItem(
-            title: 'Help & Support',
-            hasArrow: true,
-            onTap: () {
-              // TODO: Navigate to help & support
-            },
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Sign Out Button
-          InkWell(
-            onTap: () async {
-              // Show confirmation dialog
-              final bool? confirm = await showDialog<bool>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Sign Out'),
-                  content: const Text('Are you sure you want to sign out?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text('Cancel'),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFFEF4444),
-                      ),
-                      child: const Text('Sign Out'),
-                    ),
-                  ],
-                ),
-              );
-
-              if (confirm == true) {
-                try {
-                  // Sign out from Firebase
-                  await firebase_auth.FirebaseAuth.instance.signOut();
-                  
-                  // Navigate to login page and remove all previous routes
-                  if (mounted) {
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (context) => const LoginPage()),
-                      (route) => false,
-                    );
-                  }
-                } catch (e) {
-                  // Show error message if sign out fails
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Error signing out: $e'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                }
-              }
-            },
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEF4444),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              // Notifications Section
+              Row(
                 children: [
-                  Row(
-                    children: const [
-                      Icon(
-                        Icons.logout,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                      SizedBox(width: 12),
-                      Text(
-                        'Sign Out',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
                   Icon(
-                    Icons.arrow_forward_ios,
-                    color: Colors.white,
-                    size: 16,
+                    Icons.notifications_outlined,
+                    color: Color(0xFF10B981),
+                    size: 24,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Notifications',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 16),
+              
+              _buildSettingItem(
+                title: 'Push Notifications',
+                subtitle: 'Get notified about claims and updates',
+                hasSwitch: true,
+                switchValue: pushNotifications,
+                onSwitchChanged: (value) {
+                  setState(() {
+                    pushNotifications = value;
+                  });
+                  _updateNotificationSettings('pushNotifications', value);
+                },
+              ),
+              
+              _buildSettingItem(
+                title: 'Email Notifications',
+                subtitle: 'Receive emails for important updates',
+                hasSwitch: true,
+                switchValue: emailNotifications,
+                onSwitchChanged: (value) {
+                  setState(() {
+                    emailNotifications = value;
+                  });
+                  _updateNotificationSettings('emailNotifications', value);
+                },
+              ),
+              
+              _buildSettingItem(
+                title: 'Claim Notifications',
+                subtitle: 'When someone claims your items',
+                hasSwitch: true,
+                switchValue: claimNotifications,
+                onSwitchChanged: (value) {
+                  setState(() {
+                    claimNotifications = value;
+                  });
+                  _updateNotificationSettings('claimNotifications', value);
+                },
+              ),
+              
+              const SizedBox(height: 32),
+              
+              // Privacy Section
+              Row(
+                children: [
+                  Icon(
+                    Icons.shield_outlined,
+                    color: Color(0xFF6366F1),
+                    size: 24,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Privacy',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              
+              _buildSettingItem(
+                title: 'Public Profile',
+                subtitle: 'Allow others to view your profile',
+                hasSwitch: true,
+                switchValue: publicProfile,
+                onSwitchChanged: (value) {
+                  setState(() {
+                    publicProfile = value;
+                  });
+                  _updatePrivacySettings('publicProfile', value);
+                },
+              ),
+              
+              _buildSettingItem(
+                title: 'Show Statistics',
+                subtitle: 'Display your stats on leaderboards',
+                hasSwitch: true,
+                switchValue: showStatistics,
+                onSwitchChanged: (value) {
+                  setState(() {
+                    showStatistics = value;
+                  });
+                  _updatePrivacySettings('showStatistics', value);
+                },
+              ),
+              
+              const SizedBox(height: 32),
+              
+              // Account Section
+              Row(
+                children: [
+                  Icon(
+                    Icons.person_outline,
+                    color: Color(0xFF8B5CF6),
+                    size: 24,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Account',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              
+              _buildSettingItem(
+                title: 'Export My Data',
+                hasArrow: true,
+                onTap: _exportUserData,
+              ),
+              
+              _buildSettingItem(
+                title: 'Help & Support',
+                hasArrow: true,
+                onTap: _showHelpAndSupport,
+              ),
+
+              _buildSettingItem(
+                title: 'About App',
+                hasArrow: true,
+                onTap: _showAboutApp,
+              ),
+
+              _buildSettingItem(
+                title: 'Terms of Service',
+                hasArrow: true,
+                onTap: _showTermsOfService,
+              ),
+
+              _buildSettingItem(
+                title: 'Privacy Policy',
+                hasArrow: true,
+                onTap: _showPrivacyPolicy,
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Sign Out Button
+              InkWell(
+                onTap: () async {
+                  // Show confirmation dialog
+                  final bool? confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Sign Out'),
+                      content: const Text('Are you sure you want to sign out?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          style: TextButton.styleFrom(
+                            foregroundColor: const Color(0xFFEF4444),
+                          ),
+                          child: const Text('Sign Out'),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  if (confirm == true) {
+                    try {
+                      // Sign out from Firebase
+                      await firebase_auth.FirebaseAuth.instance.signOut();
+                      
+                      // Navigate to login page and remove all previous routes
+                      if (mounted) {
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(builder: (context) => const LoginPage()),
+                          (route) => false,
+                        );
+                      }
+                    } catch (e) {
+                      // Show error message if sign out fails
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error signing out: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
+                  }
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF4444),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: const [
+                          Icon(
+                            Icons.logout,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          SizedBox(width: 12),
+                          Text(
+                            'Sign Out',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 24),
+            ],
           ),
-          
-          const SizedBox(height: 24),
-        ],
-      ),
+        );
+      },
     );
   }
 
