@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'return_success_page.dart';
 import '../../utils/page_transitions.dart';
+import '../../services/game_service.dart'; // Import GameService
 
 class ConfirmReturnPage extends StatefulWidget {
   final Map<String, dynamic> itemData;
@@ -147,25 +148,7 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
         },
       });
 
-      // 5. Add activity for the founder
-      final activityRef = _firestore.collection('users').doc(currentUser.uid).collection('activities').doc();
-      batch.set(activityRef, {
-        'type': 'item_returned',
-        'title': 'Item Returned',
-        'message': 'You returned ${widget.itemData['title'] ?? 'an item'} to ${widget.itemData['seekerName'] ?? 'the owner'}.',
-        'createdAt': FieldValue.serverTimestamp(),
-        'pointsEarned': 25,
-        'karmaEarned': 50,
-        'meta': {
-          'itemId': itemId,
-          'claimId': widget.claimId,
-          'itemTitle': widget.itemData['title'],
-          'claimerId': claimerId,
-          'returnLocation': _meetingLocationController.text.trim(),
-        },
-      });
-
-      // 6. Add activity for the claimer
+      // 5. Add activity for the claimer
       if (claimerId != null) {
         final claimerActivityRef = _firestore.collection('users').doc(claimerId).collection('activities').doc();
         batch.set(claimerActivityRef, {
@@ -182,14 +165,9 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
         });
       }
 
-      // 7. Update user stats - add points and karma to founder
-      final userRef = _firestore.collection('users').doc(currentUser.uid);
-      batch.update(userRef, {
-        'points': FieldValue.increment(25),
-        'karma': FieldValue.increment(50),
-        'itemsReturned': FieldValue.increment(1),
-        'lastActivity': FieldValue.serverTimestamp(),
-      });
+      // 6. Use GameService for consistent rewards (points, karma, activity, notifications)
+      final gameService = GameService();
+      await gameService.rewardSuccessfulReturn(widget.itemData['title'] ?? 'Item');
 
       // Commit all operations
       await batch.commit();
@@ -733,8 +711,8 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            _buildRewardItem('+25', 'Points', const Color(0xFF2196F3)),
-                            _buildRewardItem('+50', 'Karma', const Color(0xFF9C27B0)),
+                            _buildRewardItem('+12', 'Points', const Color(0xFF2196F3)),
+                            _buildRewardItem('+15', 'Karma', const Color(0xFF9C27B0)),
                             _buildRewardItem('🏆', 'Helper Badge', const Color(0xFFFFA726)),
                           ],
                         ),

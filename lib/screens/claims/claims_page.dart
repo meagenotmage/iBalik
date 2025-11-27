@@ -120,7 +120,7 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
                 final parts = <String>[];
                 if (shortDate.isNotEmpty) parts.add(shortDate);
                 if (relative.isNotEmpty) parts.add(relative);
-                return ' ' + parts.join(' ');
+                return ' ${parts.join(' ')}';
               })(),
               style: TextStyle(color: Colors.grey[700], fontSize: 12),
               overflow: TextOverflow.ellipsis,
@@ -308,7 +308,7 @@ Future<String> _resolveFounderNameFromItem(dynamic itemId) async {
                   final parts = <String>[];
                   if (shortDate.isNotEmpty) parts.add(shortDate);
                   if (relative.isNotEmpty) parts.add(relative);
-                  return ' ' + parts.join(' ');
+                  return ' ${parts.join(' ')}';
                 })(),
                 style: TextStyle(color: Colors.grey[700], fontSize: 12),
                 overflow: TextOverflow.ellipsis,
@@ -499,8 +499,9 @@ Future<String> _resolveFounderNameFromItem(dynamic itemId) async {
   String _formatShortDate(dynamic ts) {
     if (ts == null) return '';
     DateTime dt;
-    if (ts is Timestamp) dt = ts.toDate().toLocal();
-    else if (ts is DateTime) dt = ts.toLocal();
+    if (ts is Timestamp) {
+      dt = ts.toDate().toLocal();
+    } else if (ts is DateTime) dt = ts.toLocal();
     else {
       try {
         dt = DateTime.parse(ts.toString()).toLocal();
@@ -517,8 +518,9 @@ Future<String> _resolveFounderNameFromItem(dynamic itemId) async {
   String _formatRelativeCompact(dynamic ts) {
     if (ts == null) return '';
     DateTime dt;
-    if (ts is Timestamp) dt = ts.toDate().toLocal();
-    else if (ts is DateTime) dt = ts.toLocal();
+    if (ts is Timestamp) {
+      dt = ts.toDate().toLocal();
+    } else if (ts is DateTime) dt = ts.toLocal();
     else {
       try {
         dt = DateTime.parse(ts.toString()).toLocal();
@@ -540,8 +542,9 @@ Future<String> _resolveFounderNameFromItem(dynamic itemId) async {
   String _formatTimeOfDay(dynamic ts) {
     if (ts == null) return '';
     DateTime dt;
-    if (ts is Timestamp) dt = ts.toDate().toLocal();
-    else if (ts is DateTime) dt = ts.toLocal();
+    if (ts is Timestamp) {
+      dt = ts.toDate().toLocal();
+    } else if (ts is DateTime) dt = ts.toLocal();
     else {
       try {
         dt = DateTime.parse(ts.toString()).toLocal();
@@ -1749,7 +1752,7 @@ Widget _buildClaimerAdditionalInfo(Map<String, dynamic> claim) {
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              '$claimedBy' + (claimerEmail != null && claimerEmail.isNotEmpty ? ' (${claimerEmail})' : ''),
+                              '$claimedBy${claimerEmail != null && claimerEmail.isNotEmpty ? ' (${claimerEmail})' : ''}',
                               style: TextStyle(color: Colors.grey[800]),
                             ),
                           ),

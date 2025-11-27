@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/lost_item_service.dart';
 import '../../services/activity_service.dart';
+import '../../services/game_service.dart'; // Import GameService
 import 'dart:io';
 
 class DropOffSuccessPage extends StatefulWidget {
@@ -68,6 +69,13 @@ class _DropOffSuccessPageState extends State<DropOffSuccessPage> {
           category: widget.itemData['category'] ?? 'Uncategorized',
           itemId: createdId,
         );
+        
+        // Add GameService reward for drop-off
+        final gameService = GameService();
+        await gameService.rewardDropOffAtHub(
+          widget.itemData['title'] ?? widget.itemData['itemName'] ?? 'Untitled'
+        );
+        
       } catch (_) {
         // Ignore activity recording errors
       }
@@ -377,7 +385,7 @@ class _DropOffSuccessPageState extends State<DropOffSuccessPage> {
                                       ),
                                       const SizedBox(height: 6),
                                       const Text(
-                                        '+15',
+                                        '+5',
                                         style: TextStyle(
                                           fontSize: 24,
                                           fontWeight: FontWeight.bold,
@@ -421,7 +429,7 @@ class _DropOffSuccessPageState extends State<DropOffSuccessPage> {
                                       ),
                                       const SizedBox(height: 6),
                                       const Text(
-                                        '+25',
+                                        '+4',
                                         style: TextStyle(
                                           fontSize: 24,
                                           fontWeight: FontWeight.bold,

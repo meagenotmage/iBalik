@@ -16,6 +16,7 @@ import '../game/game_hub_page.dart';
 import '../game/leaderboards_page.dart';
 import '../game/challenges_page.dart';
 import 'profile_page.dart';
+import '../../services/game_service.dart'; // Import GameService
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -27,6 +28,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final AuthService _authService = AuthService();
   final LostItemService _lostItemService = LostItemService();
+  final GameService _gameService = GameService(); // Instantiate GameService
   int _selectedIndex = 0;
   String _userName = '';
 
@@ -34,6 +36,13 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _loadUserName();
+    // GameService initializes its listener in constructor
+  }
+
+  @override
+  void dispose() {
+    _gameService.dispose(); // Dispose GameService
+    super.dispose();
   }
 
   Future<void> _loadUserName() async {
@@ -245,38 +254,43 @@ class _HomePageState extends State<HomePage> {
                           ),
                           const SizedBox(height: 24),
                           // Stats Cards
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildStatCard(
-                                  '245',
-                                  'Karma',
-                                  AppColors.white,
-                                  icon: Icons.star_outline,
-                                  iconColor: AppColors.secondary,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _buildStatCard(
-                                  '850',
-                                  'Points',
-                                  AppColors.white,
-                                  icon: Icons.bolt_outlined,
-                                  iconColor: AppColors.primary,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _buildStatCard(
-                                  '#8',
-                                  'Rank',
-                                  AppColors.white,
-                                  icon: Icons.emoji_events_outlined,
-                                  iconColor: AppColors.primary,
-                                ),
-                              ),
-                            ],
+                          ListenableBuilder(
+                            listenable: _gameService,
+                            builder: (context, child) {
+                              return Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildStatCard(
+                                      '${_gameService.karma}',
+                                      'Karma',
+                                      AppColors.white,
+                                      icon: Icons.star_outline,
+                                      iconColor: AppColors.secondary,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _buildStatCard(
+                                      '${_gameService.points}',
+                                      'Points',
+                                      AppColors.white,
+                                      icon: Icons.bolt_outlined,
+                                      iconColor: AppColors.primary,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _buildStatCard(
+                                      'Lvl ${_gameService.currentLevel}',
+                                      'Level', // Changed from Rank to Level as Rank is harder to calculate efficiently client-side without a query
+                                      AppColors.white,
+                                      icon: Icons.emoji_events_outlined,
+                                      iconColor: AppColors.primary,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
                           ),
                           const SizedBox(height: 24),
                           // Action Buttons

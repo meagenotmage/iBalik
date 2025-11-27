@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../services/notification_service.dart';
 import '../../services/activity_service.dart';
+import '../../services/game_service.dart'; // Import GameService
 
 class ClaimDetailsPage extends StatefulWidget {
   final Map<String, dynamic> claimData;
@@ -342,8 +343,8 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
       final activityService = ActivityService();
 
       // Reward points for successful return
-      const karmaReward = 10;
-      const pointsReward = 50;
+      const karmaReward = 20; // Updated to match Verified Claim Fulfillment
+      const pointsReward = 25; // Updated to match Verified Claim Fulfillment
 
       // Notify claimer (owner) about successful return
       if (claimerId != null) {
@@ -368,12 +369,10 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
           karmaEarned: karmaReward,
           pointsEarned: pointsReward,
         );
-        await activityService.recordUserReturnCompleted(
-          userId: founderId,
-          itemName: itemTitle,
-          karmaEarned: karmaReward,
-          pointsEarned: pointsReward,
-        );
+        
+        // Use GameService for points/karma update and activity log
+        final gameService = GameService();
+        await gameService.rewardUserVerifiedClaimFulfillment(founderId, itemTitle);
       }
 
       setState(() {
@@ -1064,26 +1063,7 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
                                 if (!confirm) return;
                                 await _markSuccessfulClaim();
 
-                                // Award karma/points to founder
-                                if (founderId != null &&
-                                    founderId.isNotEmpty) {
-                                  final fs = FirebaseFirestore.instance;
-                                  final userRef = fs
-                                      .collection('users')
-                                      .doc(founderId);
-                                  await fs.runTransaction((tx) async {
-                                    final snap = await tx.get(userRef);
-                                    final data = snap.data() ?? {};
-                                    final int oldKarma =
-                                        (data['karma'] ?? 0) as int;
-                                    final int oldPoints =
-                                        (data['points'] ?? 0) as int;
-                                    tx.update(userRef, {
-                                      'karma': oldKarma + 1,
-                                      'points': oldPoints + 10,
-                                    });
-                                  });
-                                }
+                                // Award karma/points to founder - handled in _markSuccessfulClaim via GameService
                               },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF2196F3),
@@ -1213,6 +1193,8 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
   },
 );
 }
+}
+
 Widget _buildContactRow({
 required IconData icon,
 required String title,
@@ -1329,5 +1311,4 @@ color: Colors.grey[800],
 ),
 ],
 );
-}
 }

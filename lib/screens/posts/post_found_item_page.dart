@@ -9,6 +9,7 @@ import '../claims/drop_off_page.dart';
 import 'post_success_page.dart';
 import '../../services/lost_item_service.dart';
 import '../../services/activity_service.dart';
+import '../../services/game_service.dart'; // Import GameService
 
 class PostFoundItemPage extends StatefulWidget {
   const PostFoundItemPage({super.key});
@@ -1242,6 +1243,11 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
             category: _selectedCategory,
             itemId: itemId,
           );
+          
+          // Add GameService reward
+          final gameService = GameService();
+          await gameService.rewardItemPost(_titleController.text);
+          
         } catch (_) {
           // Ignore activity recording errors
         }
