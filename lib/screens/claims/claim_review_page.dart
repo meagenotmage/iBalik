@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../services/notification_service.dart';
+import '../../services/activity_service.dart';
 
 class ClaimReviewPage extends StatelessWidget {
   final Map<String, dynamic> claimData;
@@ -592,6 +594,8 @@ class ClaimReviewPage extends StatelessWidget {
               final claimId = claimData['docId'] as String?;
               final claimerId = claimData['claimerId'] as String?;
               final itemId = claimData['itemId'];
+              final itemTitle = claimData['itemTitle'] ?? '';
+              final claimerName = claimData['claimerName'] ?? 'Unknown';
               
               if (claimId != null) {
                 try {
@@ -604,20 +608,41 @@ class ClaimReviewPage extends StatelessWidget {
                     'rejectedAt': FieldValue.serverTimestamp(),
                   });
 
-                  // Notify claimer
+                  // Notify claimer using NotificationService
                   if (claimerId != null) {
                     try {
-                      await fs.collection('notifications').add({
-                        'userId': claimerId,
-                        'type': 'claim_rejected',
-                        'title': 'Claim Rejected',
-                        'message': 'Your claim for "${claimData['itemTitle'] ?? ''}" was rejected.',
-                        'createdAt': FieldValue.serverTimestamp(),
-                        'isRead': false,
-                        'meta': {'claimId': claimId, 'itemId': itemId},
-                      });
+                      final notificationService = NotificationService();
+                      await notificationService.notifyUserClaimDenied(
+                        userId: claimerId,
+                        itemName: itemTitle,
+                        claimId: claimId,
+                        itemId: itemId?.toString(),
+                      );
                     } catch (_) {}
                   }
+
+                  // Record activity for claimer using ActivityService
+                  if (claimerId != null) {
+                    try {
+                      final activityService = ActivityService();
+                      await activityService.recordUserClaimDenied(
+                        userId: claimerId,
+                        itemName: itemTitle,
+                        claimId: claimId,
+                      );
+                    } catch (_) {}
+                  }
+
+                  // Record activity for the reviewer (current user - the finder)
+                  try {
+                    final activityService = ActivityService();
+                    await activityService.recordClaimReviewed(
+                      itemName: itemTitle,
+                      decision: 'Rejected',
+                      claimerName: claimerName,
+                      claimId: claimId,
+                    );
+                  } catch (_) {}
                   
                   // Close loading dialog
                   if (context.mounted) {
@@ -716,6 +741,8 @@ class ClaimReviewPage extends StatelessWidget {
               final claimerId = claimData['claimerId'] as String?;
               final itemId = claimData['itemId'];
               final currentUid = FirebaseAuth.instance.currentUser?.uid;
+              final itemTitle = claimData['itemTitle'] ?? '';
+              final claimerName = claimData['claimerName'] ?? 'Unknown';
 
               if (claimId != null) {
                 try {
@@ -754,20 +781,41 @@ class ClaimReviewPage extends StatelessWidget {
                     }
                   }
 
-                  // Notify claimer
+                  // Notify claimer using NotificationService
                   if (claimerId != null) {
                     try {
-                      await fs.collection('notifications').add({
-                        'userId': claimerId,
-                        'type': 'claim_approved',
-                        'title': 'Claim Approved',
-                        'message': 'Your claim for "${claimData['itemTitle'] ?? ''}" was approved.',
-                        'createdAt': FieldValue.serverTimestamp(),
-                        'isRead': false,
-                        'meta': {'claimId': claimId, 'itemId': itemId},
-                      });
+                      final notificationService = NotificationService();
+                      await notificationService.notifyUserClaimApproved(
+                        userId: claimerId,
+                        itemName: itemTitle,
+                        claimId: claimId,
+                        itemId: itemId?.toString(),
+                      );
                     } catch (_) {}
                   }
+
+                  // Record activity for claimer using ActivityService
+                  if (claimerId != null) {
+                    try {
+                      final activityService = ActivityService();
+                      await activityService.recordUserClaimApproved(
+                        userId: claimerId,
+                        itemName: itemTitle,
+                        claimId: claimId,
+                      );
+                    } catch (_) {}
+                  }
+
+                  // Record activity for the reviewer (current user - the finder)
+                  try {
+                    final activityService = ActivityService();
+                    await activityService.recordClaimReviewed(
+                      itemName: itemTitle,
+                      decision: 'Approved',
+                      claimerName: claimerName,
+                      claimId: claimId,
+                    );
+                  } catch (_) {}
                   
                   // Close loading dialog
                   if (context.mounted) {

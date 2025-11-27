@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'cloudinary_service.dart';
+import 'notification_service.dart';
+import 'activity_service.dart';
 
 class LostItemService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -130,10 +132,49 @@ Stream<QuerySnapshot> getLostItems({String status = 'available', int limit = 50}
   /// Mark item as returned
   Future<void> markAsReturned(String itemId) async {
     try {
+      // Get item details before updating
+      final doc = await _lostItemsCollection.doc(itemId).get();
+      final data = doc.data() as Map<String, dynamic>?;
+      final itemName = data?['itemName'] ?? data?['name'] ?? data?['title'] ?? 'Item';
+      final foundById = data?['foundBy'] ?? data?['foundById'];
+      final claimedBy = data?['claimedBy'];
+
       await _lostItemsCollection.doc(itemId).update({
         'status': 'returned',
         'returnedAt': FieldValue.serverTimestamp(),
       });
+
+      // Send notifications and record activities for return completion
+      final notificationService = NotificationService();
+      final activityService = ActivityService();
+      final itemIdInt = int.tryParse(itemId) ?? data?['itemId'] ?? 0;
+
+      // Notify claimer (owner) about successful return
+      if (claimedBy != null) {
+        await notificationService.notifyUserReturnCompleted(
+          userId: claimedBy,
+          itemName: itemName,
+          itemId: itemIdInt,
+        );
+        await activityService.recordReturnCompleted(
+          itemName: itemName,
+          itemId: itemIdInt,
+        );
+      }
+
+      // Notify founder about successful return completion
+      if (foundById != null) {
+        await notificationService.notifyUserReturnCompleted(
+          userId: foundById,
+          itemName: itemName,
+          itemId: itemIdInt,
+        );
+        await activityService.recordUserReturnCompleted(
+          userId: foundById,
+          itemName: itemName,
+          itemId: itemIdInt,
+        );
+      }
     } catch (e) {
       throw Exception('Failed to mark item as returned: $e');
     }

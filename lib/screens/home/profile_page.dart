@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:io';
 import '../../utils/page_transitions.dart';
 import '../../utils/app_theme.dart';
+import '../../services/activity_service.dart';
 import '../posts/posts_page.dart';
 import '../game/game_hub_page.dart';
 import '../game/leaderboards_page.dart';
@@ -1780,77 +1781,87 @@ Future<void> _updateProfile(
     );
   }
 
+  /// Activity Tab - Shows user's recent actions (limited to 50 items or 3 months)
   Widget _buildActivityTab() {
+    final threeMonthsAgo = DateTime.now().subtract(const Duration(days: 90));
+    
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('users')
           .doc(firebase_auth.FirebaseAuth.instance.currentUser?.uid)
           .collection('activities')
+          .where('timestamp', isGreaterThan: Timestamp.fromDate(threeMonthsAgo))
           .orderBy('timestamp', descending: true)
-          .limit(20)
+          .limit(50)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
+          return const Center(child: CircularProgressIndicator());
         }
 
         if (snapshot.hasError) {
-          return Center(
-            child: Text('Error loading activities: ${snapshot.error}'),
+          return _buildActivityEmptyState(
+            icon: Icons.error_outline,
+            title: 'Something went wrong',
+            subtitle: 'Unable to load activities',
           );
         }
 
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.history,
-                  size: 64,
-                  color: Colors.grey,
-                ),
-                SizedBox(height: 16),
-                Text(
-                  'No activities yet',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Colors.grey,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Your recent activities will appear here',
-                  style: TextStyle(
-                    color: Colors.grey,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
+          return _buildActivityEmptyState(
+            icon: Icons.history,
+            title: 'No activity yet',
+            subtitle: 'Your actions will appear here as you use iBalik',
           );
         }
 
         final activities = snapshot.data!.docs;
 
-        return Padding(
+        return SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Recent Activity',
+              // Header with count
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Recent Activity',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${activities.length} items',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Last 3 months',
                 style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  fontSize: 13,
+                  color: AppColors.textTertiary,
                 ),
               ),
               const SizedBox(height: 16),
               
-              // Activity Timeline Items
+              // Activity list
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -1859,9 +1870,7 @@ Future<void> _updateProfile(
                   final activity = activities[index].data() as Map<String, dynamic>;
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: _buildActivityCard(
-                      activity: activity,
-                    ),
+                    child: _buildActivityCard(activity: activity),
                   );
                 },
               ),
@@ -1872,84 +1881,93 @@ Future<void> _updateProfile(
     );
   }
 
+  /// Empty state for activity tab
+  Widget _buildActivityEmptyState({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: AppColors.lightGray.withOpacity(0.5),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 40, color: AppColors.textTertiary),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.textTertiary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Activity card with gamified styling
   Widget _buildActivityCard({
     required Map<String, dynamic> activity,
   }) {
-    // Determine icon, colors, and content based on activity type
     final String type = activity['type'] ?? 'general';
     final String title = activity['title'] ?? '';
     final String description = activity['description'] ?? '';
-    final Timestamp timestamp = activity['timestamp'] ?? Timestamp.now();
-    final DateTime time = timestamp.toDate();
+    final Timestamp? timestamp = activity['timestamp'] as Timestamp?;
+    final DateTime time = timestamp?.toDate() ?? DateTime.now();
+    final int? karmaChange = activity['karmaChange'] as int?;
+    final int? pointsChange = activity['pointsChange'] as int?;
     
-    IconData icon;
-    Color iconColor;
-    Color bgColor;
-    String timeAgo = _getTimeAgo(time);
-
-    switch (type) {
-      case 'item_posted':
-        icon = Icons.add_box;
-        iconColor = const Color(0xFF6366F1);
-        bgColor = const Color(0xFFE0E7FF);
-        break;
-      case 'item_returned':
-        icon = Icons.check_circle;
-        iconColor = const Color(0xFF10B981);
-        bgColor = const Color(0xFFD1FAE5);
-        break;
-      case 'item_claimed':
-        icon = Icons.shopping_bag;
-        iconColor = const Color(0xFFF59E0B);
-        bgColor = const Color(0xFFFEF3C7);
-        break;
-      case 'achievement_earned':
-        icon = Icons.emoji_events;
-        iconColor = const Color(0xFF8B5CF6);
-        bgColor = const Color(0xFFF3E8FF);
-        break;
-      case 'karma_earned':
-        icon = Icons.star;
-        iconColor = const Color(0xFFEC4899);
-        bgColor = const Color(0xFFFCE7F3);
-        break;
-      case 'level_up':
-        icon = Icons.trending_up;
-        iconColor = const Color(0xFF06B6D4);
-        bgColor = const Color(0xFFCFFAFE);
-        break;
-      default:
-        icon = Icons.notifications;
-        iconColor = const Color(0xFF6B7280);
-        bgColor = const Color(0xFFF3F4F6);
-    }
+    // Get styling from ActivityService
+    final style = ActivityService.getActivityStyle(type);
+    final iconColor = Color(style['iconColor'] as int);
+    final bgColor = Color(style['bgColor'] as int);
+    final iconData = _getActivityIcon(style['icon'] as String);
+    final timeAgo = _getTimeAgo(time);
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: bgColor.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: bgColor.withOpacity(0.5),
-          width: 1,
-        ),
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.lightGray, width: 1),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Icon
           Container(
-            width: 48,
-            height: 48,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.2),
+              color: bgColor.withOpacity(0.3),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(
-              icon,
-              color: iconColor,
-              size: 24,
-            ),
+            child: Icon(iconData, color: iconColor, size: 22),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
+          
+          // Content
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1957,26 +1975,49 @@ Future<void> _updateProfile(
                 Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
                   description,
                   style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[700],
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                    height: 1.3,
                   ),
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  timeAgo,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[500],
-                  ),
+                
+                // Bottom row: time + rewards
+                Row(
+                  children: [
+                    Text(
+                      timeAgo,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textTertiary,
+                      ),
+                    ),
+                    if (karmaChange != null && karmaChange != 0) ...[
+                      const SizedBox(width: 8),
+                      _buildRewardBadge(
+                        value: karmaChange,
+                        label: 'karma',
+                        color: const Color(0xFFEC4899),
+                      ),
+                    ],
+                    if (pointsChange != null && pointsChange != 0) ...[
+                      const SizedBox(width: 6),
+                      _buildRewardBadge(
+                        value: pointsChange,
+                        label: 'pts',
+                        color: const Color(0xFFF59E0B),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
@@ -1984,6 +2025,52 @@ Future<void> _updateProfile(
         ],
       ),
     );
+  }
+
+  /// Small badge showing karma/points earned
+  Widget _buildRewardBadge({
+    required int value,
+    required String label,
+    required Color color,
+  }) {
+    final isPositive = value > 0;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        '${isPositive ? '+' : ''}$value $label',
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ),
+    );
+  }
+
+  /// Get icon data from string name
+  IconData _getActivityIcon(String iconName) {
+    final iconMap = {
+      'add_box': Icons.add_box,
+      'assignment': Icons.assignment,
+      'check_circle': Icons.check_circle,
+      'cancel': Icons.cancel,
+      'rate_review': Icons.rate_review,
+      'celebration': Icons.celebration,
+      'emoji_events': Icons.emoji_events,
+      'flag': Icons.flag,
+      'trending_up': Icons.trending_up,
+      'star': Icons.star,
+      'monetization_on': Icons.monetization_on,
+      'redeem': Icons.redeem,
+      'person': Icons.person,
+      'person_add': Icons.person_add,
+      'history': Icons.history,
+    };
+    return iconMap[iconName] ?? Icons.history;
   }
 
   Widget _buildSettingsTab() {

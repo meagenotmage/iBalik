@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/lost_item_service.dart';
+import '../../services/activity_service.dart';
 import 'dart:io';
 
 class DropOffSuccessPage extends StatefulWidget {
@@ -58,6 +59,18 @@ class _DropOffSuccessPageState extends State<DropOffSuccessPage> {
           'dropOffLocation': widget.itemData['dropOffLocation'],
         },
       );
+
+      // Record activity for posting the item
+      try {
+        final activityService = ActivityService();
+        await activityService.recordItemPosted(
+          itemName: widget.itemData['title'] ?? widget.itemData['itemName'] ?? 'Untitled',
+          category: widget.itemData['category'] ?? 'Uncategorized',
+          itemId: createdId,
+        );
+      } catch (_) {
+        // Ignore activity recording errors
+      }
 
       setState(() {
         _itemId = createdId;

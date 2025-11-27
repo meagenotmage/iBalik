@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../services/notification_service.dart';
+import '../../services/activity_service.dart';
 // no external date package required; we'll format DateTime manually
 
 class ClaimItemPage extends StatefulWidget {
@@ -815,25 +817,33 @@ class _ClaimItemPageState extends State<ClaimItemPage> {
       // prematurely.
       final itemId = claimData['itemId'];
       final founderId = claimData['founderId'];
+      final itemTitle = claimData['itemTitle'] ?? '';
 
-      // Create a notification for the founder so they see the new claim in notifications
+      // Notify the founder about the new claim using NotificationService
       if (founderId != null) {
         try {
-          await firestore.collection('notifications').add({
-            'userId': founderId,
-            'type': 'new_claim',
-            'title': 'New Claim Received',
-            'message': '${user?.displayName ?? 'Someone'} submitted a claim for your item "${claimData['itemTitle'] ?? ''}"',
-            'createdAt': FieldValue.serverTimestamp(),
-            'isRead': false,
-            'meta': {
-              'claimId': claimRef.id,
-              'itemId': itemId,
-            }
-          });
+          final notificationService = NotificationService();
+          await notificationService.notifyUserClaimReceived(
+            userId: founderId,
+            itemName: itemTitle,
+            claimerName: user?.displayName ?? 'Someone',
+            claimId: claimRef.id,
+            itemId: itemId?.toString(),
+          );
         } catch (_) {
           // ignore notification errors
         }
+      }
+
+      // Record activity for the claimer (current user)
+      try {
+        final activityService = ActivityService();
+        await activityService.recordClaimSubmitted(
+          itemName: itemTitle,
+          claimId: claimRef.id,
+        );
+      } catch (_) {
+        // ignore activity errors
       }
 
       // Close processing dialog
