@@ -45,96 +45,218 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
   }
 
   Widget _buildFoundBySubtitle(Map<String, dynamic> data, String status, String submittedStr) {
-    final founderName = (data['founderName'] ?? data['posterName'] ?? data['userName'])?.toString();
-    final founderId = data['founderId']?.toString();
-    final itemId = data['itemId'];
-    final description = (data['itemDescription'] ?? data['claimDescription'] ?? data['description'] ?? data['details'])?.toString() ?? '';
-    final pickup = (data['location'] ?? data['pickupLocation'] ?? data['foundAt'])?.toString() ?? '';
+  final founderName = (data['founderName'] ?? data['posterName'] ?? data['userName'])?.toString();
+  final founderId = data['founderId']?.toString();
+  final itemId = data['itemId'];
+  final description = (data['itemDescription'] ?? data['claimDescription'] ?? data['description'] ?? data['details'])?.toString() ?? '';
+  final pickup = (data['location'] ?? data['pickupLocation'] ?? data['foundAt'])?.toString() ?? '';
 
-    Widget founderWidget() {
-      if (founderName != null && founderName.isNotEmpty) return Text(founderName, style: TextStyle(color: Colors.grey[800]));
-      if ((founderId == null || founderId.isEmpty) && (itemId == null)) return const Text('Unknown', style: TextStyle(color: Colors.grey));
+  Widget founderWidget() {
+    // First, try to use the founderName if it's already available
+    if (founderName != null && founderName.isNotEmpty && founderName != 'null') {
+      return Text(founderName, style: TextStyle(color: Colors.grey[800]));
+    }
+    
+    // If we have founderId, try to resolve the name from Firestore
+    if (founderId != null && founderId.isNotEmpty) {
       return FutureBuilder<String>(
-        future: _resolveFounderDisplayName(founderId, itemId),
+        future: _resolveFounderDisplayNameVerbose(founderId, itemId),
         builder: (context, snapshot) {
-          String display = 'Unknown';
-          if (snapshot.hasData && snapshot.data!.isNotEmpty) display = snapshot.data!;
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Text('Loading...', style: TextStyle(color: Colors.grey[600]));
+          }
+          String display = 'Unknown Founder';
+          if (snapshot.hasData && snapshot.data!.isNotEmpty && snapshot.data != 'Unknown') {
+            display = snapshot.data!;
+          }
           return Text(display, style: TextStyle(color: Colors.grey[800]));
         },
       );
     }
-
-    final submittedTs = data['submittedDate'];
-    final shortDate = _formatShortDate(submittedTs);
-    final relative = _formatRelativeCompact(submittedTs);
-    final timeOfDay = _formatTimeOfDay(submittedTs);
-    final dropOff = (data['dropOffLocation'] ?? data['dropoffLocation'] ?? data['founderLocation'] ?? pickup)?.toString() ?? '';
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (description.isNotEmpty) Text(description, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.grey[800])),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            const Icon(Icons.person_outline, size: 14, color: Colors.grey),
-            const SizedBox(width: 6),
-            Expanded(child: founderWidget()),
-          ],
-        ),
-        const SizedBox(height: 6),
-        // Claimed time (when the user submitted the claim)
-        Row(
-          children: [
-            const Icon(Icons.access_time, size: 14, color: Colors.grey),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                (() {
-                  final parts = <String>[];
-                  if (shortDate.isNotEmpty) parts.add(shortDate);
-                  if (relative.isNotEmpty) parts.add(relative);
-                  return ' ' + parts.join(' ');
-                })(),
-                style: TextStyle(color: Colors.grey[700], fontSize: 12),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        // Drop-off / location info (either explicit dropOff or fallback to pickup/founder)
-        Row(
-          children: [
-            const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
-            const SizedBox(width: 6),
-            Expanded(
-              child: (() {
-                if (dropOff.isNotEmpty && dropOff != 'null') {
-                  return Text(dropOff, style: TextStyle(color: Colors.grey[700], fontSize: 12), overflow: TextOverflow.ellipsis);
-                }
-                if (pickup.isNotEmpty && pickup != 'null') {
-                  return Text(pickup, style: TextStyle(color: Colors.grey[700], fontSize: 12), overflow: TextOverflow.ellipsis);
-                }
-                // Try resolving from lost_items asynchronously
-                return FutureBuilder<String?>(
-                  future: _resolveLocationFromItem(data['itemId'] ?? data['itemDocId'] ?? data['item']),
-                  builder: (context, snap) {
-                    if (snap.connectionState == ConnectionState.waiting) return Text('Resolving location...', style: TextStyle(color: Colors.grey[600], fontSize: 12));
-                    final loc = snap.data;
-                    if (loc != null && loc.isNotEmpty) return Text(loc, style: TextStyle(color: Colors.grey[700], fontSize: 12), overflow: TextOverflow.ellipsis);
-                    final fName = (data['founderName'] ?? data['posterName'] ?? data['userName'])?.toString();
-                    if (fName != null && fName.isNotEmpty) return Text('With $fName', style: TextStyle(color: Colors.grey[700], fontSize: 12));
-                    return Text('Location unknown', style: TextStyle(color: Colors.grey[700], fontSize: 12));
-                  },
-                );
-              })(),
-            ),
-          ],
-        ),
-      ],
+    
+    // Last resort: try to get founder name from the lost item
+    return FutureBuilder<String>(
+      future: _resolveFounderNameFromItem(itemId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Text('Loading...', style: TextStyle(color: Colors.grey[600]));
+        }
+        String display = 'Unknown Founder';
+        if (snapshot.hasData && snapshot.data!.isNotEmpty && snapshot.data != 'Unknown') {
+          display = snapshot.data!;
+        }
+        return Text(display, style: TextStyle(color: Colors.grey[800]));
+      },
     );
   }
+
+  final submittedTs = data['submittedDate'];
+  final shortDate = _formatShortDate(submittedTs);
+  final relative = _formatRelativeCompact(submittedTs);
+  final timeOfDay = _formatTimeOfDay(submittedTs);
+  final dropOff = (data['dropOffLocation'] ?? data['dropoffLocation'] ?? data['founderLocation'] ?? pickup)?.toString() ?? '';
+
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      if (description.isNotEmpty) Text(description, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.grey[800])),
+      const SizedBox(height: 8),
+      Row(
+        children: [
+          const Icon(Icons.person_outline, size: 14, color: Colors.grey),
+          const SizedBox(width: 6),
+          Expanded(child: founderWidget()),
+        ],
+      ),
+      const SizedBox(height: 6),
+      // Claimed time (when the user submitted the claim)
+      Row(
+        children: [
+          const Icon(Icons.access_time, size: 14, color: Colors.grey),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              (() {
+                final parts = <String>[];
+                if (shortDate.isNotEmpty) parts.add(shortDate);
+                if (relative.isNotEmpty) parts.add(relative);
+                return ' ' + parts.join(' ');
+              })(),
+              style: TextStyle(color: Colors.grey[700], fontSize: 12),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 6),
+      // Drop-off / location info (either explicit dropOff or fallback to pickup/founder)
+      Row(
+        children: [
+          const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
+          const SizedBox(width: 6),
+          Expanded(
+            child: (() {
+              if (dropOff.isNotEmpty && dropOff != 'null') {
+                return Text(dropOff, style: TextStyle(color: Colors.grey[700], fontSize: 12), overflow: TextOverflow.ellipsis);
+              }
+              if (pickup.isNotEmpty && pickup != 'null') {
+                return Text(pickup, style: TextStyle(color: Colors.grey[700], fontSize: 12), overflow: TextOverflow.ellipsis);
+              }
+              // Try resolving from lost_items asynchronously
+              return FutureBuilder<String?>(
+                future: _resolveLocationFromItem(data['itemId'] ?? data['itemDocId'] ?? data['item']),
+                builder: (context, snap) {
+                  if (snap.connectionState == ConnectionState.waiting) return Text('Resolving location...', style: TextStyle(color: Colors.grey[600], fontSize: 12));
+                  final loc = snap.data;
+                  if (loc != null && loc.isNotEmpty) return Text(loc, style: TextStyle(color: Colors.grey[700], fontSize: 12), overflow: TextOverflow.ellipsis);
+                  final fName = (data['founderName'] ?? data['posterName'] ?? data['userName'])?.toString();
+                  if (fName != null && fName.isNotEmpty) return Text('With $fName', style: TextStyle(color: Colors.grey[700], fontSize: 12));
+                  return Text('Location unknown', style: TextStyle(color: Colors.grey[700], fontSize: 12));
+                },
+              );
+            })(),
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
+Future<String> _resolveFounderDisplayNameVerbose(String? founderId, dynamic itemId) async {
+  final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+  print('Resolving founder display name:');
+  print('  - founderId: $founderId');
+  print('  - currentUserId: $currentUserId');
+  print('  - itemId: $itemId');
+  
+  try {
+    // 1) Try users/{founderId}
+    if (founderId != null && founderId.isNotEmpty) {
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(founderId).get();
+      if (userDoc.exists) {
+        final u = userDoc.data();
+        final name = (u?['displayName'] ?? u?['name'] ?? u?['userName'])?.toString();
+        if (name != null && name.isNotEmpty) {
+          print('  - Found name from users collection: $name');
+          return name;
+        }
+      }
+    }
+
+    // 2) Try lost_items by doc id (itemId could be a doc id)
+    if (itemId != null) {
+      try {
+        final itemRef = FirebaseFirestore.instance.collection('lost_items').doc(itemId.toString());
+        final itemDoc = await itemRef.get();
+        if (itemDoc.exists) {
+          final it = itemDoc.data();
+          final posterName = (it?['userName'] ?? it?['posterName'] ?? it?['foundBy'])?.toString();
+          if (posterName != null && posterName.isNotEmpty) {
+            print('  - Found name from lost_items: $posterName');
+            return posterName;
+          }
+        }
+      } catch (_) {}
+
+      // 3) Fallback: query lost_items where itemId == itemId (for older data)
+      try {
+        final q = await FirebaseFirestore.instance.collection('lost_items').where('itemId', isEqualTo: itemId).limit(1).get();
+        if (q.docs.isNotEmpty) {
+          final it = q.docs.first.data() as Map<String, dynamic>?;
+          final posterName = (it?['userName'] ?? it?['posterName'] ?? it?['foundBy'])?.toString();
+          if (posterName != null && posterName.isNotEmpty) {
+            print('  - Found name from lost_items query: $posterName');
+            return posterName;
+          }
+        }
+      } catch (_) {}
+    }
+  } catch (e) {
+    print('Error resolving founder display name: $e');
+  }
+  
+  // Last-resort: return founderId short or 'Unknown'
+  if (founderId != null && founderId.isNotEmpty) {
+    print('  - Using founderId as fallback: $founderId');
+    return founderId;
+  }
+  
+  print('  - No founder info found, using "Unknown"');
+  return 'Unknown';
+}
+
+Future<String> _resolveFounderNameFromItem(dynamic itemId) async {
+  if (itemId == null) return 'Unknown';
+  
+  try {
+    final fs = FirebaseFirestore.instance;
+    
+    // Try doc id first
+    final docRef = fs.collection('lost_items').doc(itemId.toString());
+    final doc = await docRef.get();
+    if (doc.exists) {
+      final d = doc.data();
+      final name = (d?['userName'] ?? d?['posterName'] ?? d?['founderName'] ?? d?['foundBy'])?.toString();
+      if (name != null && name.isNotEmpty && name != 'null') {
+        return name;
+      }
+    }
+
+    // Fallback: query by itemId field
+    final q = await fs.collection('lost_items').where('itemId', isEqualTo: itemId).limit(1).get();
+    if (q.docs.isNotEmpty) {
+      final d = q.docs.first.data();
+      final name = (d['userName'] ?? d['posterName'] ?? d['founderName'] ?? d['foundBy'])?.toString();
+      if (name != null && name.isNotEmpty && name != 'null') {
+        return name;
+      }
+    }
+  } catch (e) {
+    print('Error resolving founder name from item: $e');
+  }
+  
+  return 'Unknown';
+}
 
   Widget _buildClaimerSubtitle(Map<String, dynamic> data, String status, String submittedStr) {
     final claimerName = (data['claimerName'] ?? data['claimerDisplayName'] ?? data['claimerEmail'])?.toString();
@@ -264,44 +386,67 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
   }
 
   Future<String> _resolveFounderDisplayName(String? founderId, dynamic itemId) async {
-    try {
-      // 1) Try users/{founderId}
-      if (founderId != null && founderId.isNotEmpty) {
-        final userDoc = await FirebaseFirestore.instance.collection('users').doc(founderId).get();
-        if (userDoc.exists) {
-          final u = userDoc.data();
-          final name = (u?['displayName'] ?? u?['name'] ?? u?['userName'])?.toString();
-          if (name != null && name.isNotEmpty) return name;
+  final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+  print('Resolving founder display name:');
+  print('  - founderId: $founderId');
+  print('  - currentUserId: $currentUserId');
+  print('  - itemId: $itemId');
+  
+  try {
+    // 1) Try users/{founderId}
+    if (founderId != null && founderId.isNotEmpty) {
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(founderId).get();
+      if (userDoc.exists) {
+        final u = userDoc.data();
+        final name = (u?['displayName'] ?? u?['name'] ?? u?['userName'])?.toString();
+        if (name != null && name.isNotEmpty) {
+          print('  - Found name from users collection: $name');
+          return name;
         }
       }
+    }
 
-      // 2) Try lost_items by doc id (itemId could be a doc id)
-      if (itemId != null) {
-        try {
-          final itemRef = FirebaseFirestore.instance.collection('lost_items').doc(itemId.toString());
-          final itemDoc = await itemRef.get();
-          if (itemDoc.exists) {
-            final it = itemDoc.data();
-            final posterName = (it?['userName'] ?? it?['posterName'] ?? it?['foundBy'])?.toString();
-            if (posterName != null && posterName.isNotEmpty) return posterName;
+    // 2) Try lost_items by doc id (itemId could be a doc id)
+    if (itemId != null) {
+      try {
+        final itemRef = FirebaseFirestore.instance.collection('lost_items').doc(itemId.toString());
+        final itemDoc = await itemRef.get();
+        if (itemDoc.exists) {
+          final it = itemDoc.data();
+          final posterName = (it?['userName'] ?? it?['posterName'] ?? it?['foundBy'])?.toString();
+          if (posterName != null && posterName.isNotEmpty) {
+            print('  - Found name from lost_items: $posterName');
+            return posterName;
           }
-        } catch (_) {}
+        }
+      } catch (_) {}
 
-        // 3) Fallback: query lost_items where itemId == itemId (for older data)
-        try {
-          final q = await FirebaseFirestore.instance.collection('lost_items').where('itemId', isEqualTo: itemId).limit(1).get();
-          if (q.docs.isNotEmpty) {
-            final it = q.docs.first.data() as Map<String, dynamic>?;
-            final posterName = (it?['userName'] ?? it?['posterName'] ?? it?['foundBy'])?.toString();
-            if (posterName != null && posterName.isNotEmpty) return posterName;
+      // 3) Fallback: query lost_items where itemId == itemId (for older data)
+      try {
+        final q = await FirebaseFirestore.instance.collection('lost_items').where('itemId', isEqualTo: itemId).limit(1).get();
+        if (q.docs.isNotEmpty) {
+          final it = q.docs.first.data() as Map<String, dynamic>?;
+          final posterName = (it?['userName'] ?? it?['posterName'] ?? it?['foundBy'])?.toString();
+          if (posterName != null && posterName.isNotEmpty) {
+            print('  - Found name from lost_items query: $posterName');
+            return posterName;
           }
-        } catch (_) {}
-      }
-    } catch (_) {}
-    // Last-resort: return founderId short or 'Unknown'
-    if (founderId != null && founderId.isNotEmpty) return founderId;
-    return 'Unknown';
+        }
+      } catch (_) {}
+    }
+  } catch (e) {
+    print('Error resolving founder display name: $e');
   }
+  
+  // Last-resort: return founderId short or 'Unknown'
+  if (founderId != null && founderId.isNotEmpty) {
+    print('  - Using founderId as fallback: $founderId');
+    return founderId;
+  }
+  
+  print('  - No founder info found, using "Unknown"');
+  return 'Unknown';
+}
 
   Future<String?> _resolveLocationFromItem(dynamic itemId) async {
     if (itemId == null) return null;
@@ -1270,26 +1415,61 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildClaimerAdditionalInfo(Map<String, dynamic> claim) {
-    return FutureBuilder<String>(
-      future: _resolveFounderDisplayName(claim['founderId'], claim['itemId']),
-      builder: (context, snapshot) {
-        final founderName = snapshot.data ?? 'Loading...';
+Widget _buildClaimerAdditionalInfo(Map<String, dynamic> claim) {
+  final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+  final founderId = claim['founderId'];
+  final itemId = claim['itemId'];
+  
+  // If the current user is the founder, don't show "Found by: You"
+  if (founderId == currentUserId) {
+    return Row(
+      children: [
+        Icon(Icons.person_outline, size: 16, color: Colors.grey[500]),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            'You found this item',
+            style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+          ),
+        ),
+      ],
+    );
+  }
+  
+  // Otherwise, show the actual founder's name
+  return FutureBuilder<String>(
+    future: _resolveFounderDisplayNameVerbose(founderId, itemId),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
         return Row(
           children: [
             Icon(Icons.person_outline, size: 16, color: Colors.grey[500]),
             const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                'Found by $founderName',
-                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-              ),
-            ),
+            Text('Loading founder...', style: TextStyle(fontSize: 13, color: Colors.grey[600])),
           ],
         );
-      },
-    );
-  }
+      }
+      
+      String founderName = 'Unknown Founder';
+      if (snapshot.hasData && snapshot.data != null && snapshot.data!.isNotEmpty && snapshot.data != 'Unknown') {
+        founderName = snapshot.data!;
+      }
+      
+      return Row(
+        children: [
+          Icon(Icons.person_outline, size: 16, color: Colors.grey[500]),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              'Found by $founderName',
+              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+            ),
+          ),
+        ],
+      );
+    },
+  );
+}
 
   Widget _buildFounderAdditionalInfo(Map<String, dynamic> claim) {
     final claimerName = claim['claimerName'] ?? claim['claimerEmail'] ?? 'Unknown';
@@ -2124,13 +2304,7 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
                               color: Colors.grey[600],
                             ),
                             const SizedBox(width: 4),
-                            Text(
-                              'Found by $foundBy',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[600],
-                              ),
-                            ),
+                        
                           ],
                         ),
                         const SizedBox(height: 4),
@@ -2571,13 +2745,7 @@ class _ClaimsPageState extends State<ClaimsPage> with SingleTickerProviderStateM
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  'Found by $foundBy',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey[600],
-                  ),
-                ),
+            
                 const SizedBox(height: 4),
                 Row(
                   children: [

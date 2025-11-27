@@ -136,7 +136,7 @@ class ClaimReviewPage extends StatelessWidget {
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(
-                                '${claimData['claimerName'] ?? 'J. Smith'}\n(${claimData['claimerEmail'] ?? 'jane.smith@wvsu.edu.ph'})',
+                                '${claimData['claimerName'] ?? 'J. Smith'}\nEmail: ${claimData['claimerEmail'] ?? 'jane.smith@wvsu.edu.ph'}\nContact: ${claimData['claimerProvidedContactValue'] ?? claimData['claimerPhone'] ?? 'No contact provided'}',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.grey[600],
@@ -199,7 +199,7 @@ class ClaimReviewPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    claimData['claimDescription'] ?? 
+                    claimData['claimDescription'] ??  
                     'This is my student ID. I lost it yesterday near the gymnasium. My student number is 2021-12345 and I remember dropping it when I was getting my things from my bag after basketball practice.',
                     style: TextStyle(
                       fontSize: 14,
@@ -207,6 +207,15 @@ class ClaimReviewPage extends StatelessWidget {
                       height: 1.5,
                     ),
                   ),
+                  if ((claimData['additionalInfo'] ?? '').toString().trim().isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      const Text('Additional Details (provided by claimer):', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.orange)),
+                      SizedBox(height: 4),
+                      Text(
+                        claimData['additionalInfo'],
+                        style: TextStyle(fontSize: 14, color: Colors.black87),
+                      ),
+                  ],
                 ],
               ),
             ),
@@ -295,7 +304,7 @@ class ClaimReviewPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Seeker Information',
+                    'Claimer Information',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -309,7 +318,7 @@ class ClaimReviewPage extends StatelessWidget {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          claimData['founderName'] ?? claimData['founderDisplayName'] ?? 'Unknown',
+                          claimData['claimerName'] ?? 'Unknown Claimer',
                           style: const TextStyle(fontSize: 15),
                         ),
                       ),
@@ -322,7 +331,7 @@ class ClaimReviewPage extends StatelessWidget {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          claimData['founderPhone'] ?? 'No phone provided',
+                          claimData['claimerProvidedContactValue'] ?? claimData['claimerPhone'] ?? 'No contact provided',
                           style: const TextStyle(fontSize: 15),
                         ),
                       ),
@@ -335,7 +344,7 @@ class ClaimReviewPage extends StatelessWidget {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          claimData['founderEmail'] ?? 'No email provided',
+                          claimData['claimerEmail'] ?? 'No email provided',
                           style: const TextStyle(fontSize: 15),
                         ),
                       ),
