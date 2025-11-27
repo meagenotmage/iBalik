@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // Add this import
 import '../../utils/page_transitions.dart';
 import '../claims/claim_item_page.dart';
 
@@ -7,6 +8,14 @@ class ItemDetailsPage extends StatelessWidget {
   final Map<String, dynamic> item;
 
   const ItemDetailsPage({super.key, required this.item});
+
+  // Check if current user is the founder of the item
+  bool get _isCurrentUserFounder {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    final itemUserId = item['userId'] ?? '';
+    
+    return currentUserId == itemUserId;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -402,7 +411,7 @@ class ItemDetailsPage extends StatelessWidget {
               ),
             ),
           ),
-          // Claim Button at bottom
+          // Claim Button at bottom - Updated with founder validation
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -417,27 +426,46 @@ class ItemDetailsPage extends StatelessWidget {
             ),
             child: SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  _showClaimDialog(context);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4318FF),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 0,
-                ),
-                child: const Text(
-                  'Claim This Item',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
+              child: _isCurrentUserFounder
+                  ? Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          "You can't claim this item",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
+                    )
+                  : ElevatedButton(
+                      onPressed: () {
+                        _showClaimDialog(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4318FF),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        'Claim This Item',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
             ),
           ),
         ],

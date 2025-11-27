@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../utils/page_transitions.dart';
@@ -143,6 +144,16 @@ class _PostsPageState extends State<PostsPage> {
     } else {
       return 'Just now';
     }
+  }
+
+  // Check if current user is the founder of the item
+  bool _isCurrentUserFounder(Map<String, dynamic> item) {
+    // You'll need to implement this based on your authentication system
+    // For now, using a placeholder - replace with your actual user ID logic
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid; // Replace with actual current user ID
+    final itemUserId = item['userId'] ?? '';
+    
+    return currentUserId == itemUserId;
   }
 
   void _showFilterBottomSheet() {
@@ -486,6 +497,9 @@ class _PostsPageState extends State<PostsPage> {
     final datePosted = item['datePosted'] != null 
         ? (item['datePosted'] as Timestamp).toDate() 
         : DateTime.now();
+    
+    // Check if current user is the founder
+    final isFounder = _isCurrentUserFounder(item);
     
     return InkWell(
       onTap: () {
