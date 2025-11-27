@@ -6,6 +6,7 @@ import '../../utils/page_transitions.dart';
 import '../claims/drop_off_page.dart';
 import 'post_success_page.dart';
 import '../../services/lost_item_service.dart';
+import '../../services/activity_service.dart';
 
 class PostFoundItemPage extends StatefulWidget {
   const PostFoundItemPage({super.key});
@@ -1086,6 +1087,18 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
             'dropOffLocation': null,
           },
         );
+        
+        // Record activity for posting the item
+        try {
+          final activityService = ActivityService();
+          await activityService.recordItemPosted(
+            itemName: _titleController.text,
+            category: _selectedCategory,
+            itemId: itemId,
+          );
+        } catch (_) {
+          // Ignore activity recording errors
+        }
         
         setState(() {
           _isUploading = false;
