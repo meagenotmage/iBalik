@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:io';
+import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/page_transitions.dart';
 import '../claims/drop_off_page.dart';
 import 'post_success_page.dart';
@@ -23,6 +25,8 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
   
   final List<File> _selectedImages = [];
   bool _isUploading = false;
+  bool _isOnCooldown = false;
+  Duration _remainingCooldown = Duration.zero;
   
   String _selectedCategory = 'Select category';
   String _selectedLocation = 'Select location';
@@ -83,15 +87,84 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
     'Guard House',
   ];
 
-  // No location-based drop-off suggestions needed anymore.
-
-  // (Removed college-specific hub UI; no college list needed)
+  @override
+  void initState() {
+    super.initState();
+    _checkCooldown();
+  }
 
   @override
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  // Check if user is on cooldown
+  Future<void> _checkCooldown() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastPostTimestamp = prefs.getInt('lastPostTimestamp');
+    
+    if (lastPostTimestamp != null) {
+      final lastPostTime = DateTime.fromMillisecondsSinceEpoch(lastPostTimestamp);
+      final now = DateTime.now();
+      final difference = now.difference(lastPostTime);
+      final cooldownDuration = const Duration(minutes: 10);
+      
+      if (difference < cooldownDuration) {
+        setState(() {
+          _isOnCooldown = true;
+          _remainingCooldown = cooldownDuration - difference;
+        });
+        
+        // Start countdown timer
+        _startCooldownTimer();
+      } else {
+        // Cooldown period has passed
+        await prefs.remove('lastPostTimestamp');
+        setState(() {
+          _isOnCooldown = false;
+          _remainingCooldown = Duration.zero;
+        });
+      }
+    }
+  }
+
+  // Start countdown timer
+  void _startCooldownTimer() {
+    Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_remainingCooldown.inSeconds > 0) {
+        setState(() {
+          _remainingCooldown = _remainingCooldown - const Duration(seconds: 1);
+        });
+      } else {
+        timer.cancel();
+        setState(() {
+          _isOnCooldown = false;
+        });
+        _clearCooldown();
+      }
+    });
+  }
+
+  // Save cooldown timestamp
+  Future<void> _setCooldown() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('lastPostTimestamp', DateTime.now().millisecondsSinceEpoch);
+  }
+
+  // Clear cooldown
+  Future<void> _clearCooldown() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('lastPostTimestamp');
+  }
+
+  // Format duration for display
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, "0");
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    return "$minutes:$seconds";
   }
 
   @override
@@ -119,6 +192,59 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Cooldown Banner (if on cooldown)
+            if (_isOnCooldown) ...[
+              Container(
+                margin: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF3E0),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.orange),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(
+                        color: Colors.orange,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.timer,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Posting Cooldown',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.orange,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'You can post again in ${_formatDuration(_remainingCooldown)}',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Colors.orange,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            
             // Info Banner
             Container(
               margin: const EdgeInsets.all(16),
@@ -202,11 +328,12 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                   const SizedBox(height: 8),
                   TextField(
                     controller: _titleController,
+                    enabled: !_isOnCooldown,
                     decoration: InputDecoration(
                       hintText: 'e.g., Black iPhone with cracked screen',
                       hintStyle: TextStyle(color: Colors.grey[400]),
                       filled: true,
-                      fillColor: const Color(0xFFF5F5F5),
+                      fillColor: _isOnCooldown ? Colors.grey[200] : const Color(0xFFF5F5F5),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
@@ -228,12 +355,13 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                   const SizedBox(height: 8),
                   TextField(
                     controller: _descriptionController,
+                    enabled: !_isOnCooldown,
                     maxLines: 4,
                     decoration: InputDecoration(
                       hintText: 'Provide more details that could help identify the owner...',
                       hintStyle: TextStyle(color: Colors.grey[400]),
                       filled: true,
-                      fillColor: const Color(0xFFF5F5F5),
+                      fillColor: _isOnCooldown ? Colors.grey[200] : const Color(0xFFF5F5F5),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
@@ -262,7 +390,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF5F5F5),
+                                color: _isOnCooldown ? Colors.grey[200] : const Color(0xFFF5F5F5),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: DropdownButtonHideUnderline(
@@ -286,7 +414,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                                         ),
                                       );
                                     }).toList(),
-                                    onChanged: (String? newValue) {
+                                    onChanged: _isOnCooldown ? null : (String? newValue) {
                                       setState(() {
                                         _selectedCategory = newValue ?? 'Select category';
                                       });
@@ -313,7 +441,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                             ),
                             const SizedBox(height: 8),
                             InkWell(
-                              onTap: () async {
+                              onTap: _isOnCooldown ? null : () async {
                                 final DateTime? picked = await showDatePicker(
                                   context: context,
                                   initialDate: _selectedDate,
@@ -329,7 +457,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                               child: Container(
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFF5F5F5),
+                                  color: _isOnCooldown ? Colors.grey[200] : const Color(0xFFF5F5F5),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Row(
@@ -401,7 +529,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF5F5F5),
+                      color: _isOnCooldown ? Colors.grey[200] : const Color(0xFFF5F5F5),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: DropdownButtonHideUnderline(
@@ -425,11 +553,9 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                                   ),
                                 );
                               }).toList(),
-                              onChanged: (String? newValue) {
+                              onChanged: _isOnCooldown ? null : (String? newValue) {
                                 setState(() {
                                   _selectedLocation = newValue ?? 'Select location';
-                                  // If the founder chose the 'Drop off location' flow,
-                                  // default the drop-off selection to the first available option.
                                 });
                               },
                             );
@@ -480,7 +606,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF5F5F5),
+                          color: _isOnCooldown ? Colors.grey[200] : const Color(0xFFF5F5F5),
                           borderRadius: BorderRadius.circular(12),
                         ),
                           child: DropdownButtonHideUnderline(
@@ -500,7 +626,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                                   ),
                                 );
                               }).toList(),
-                              onChanged: (String? newValue) {
+                              onChanged: _isOnCooldown ? null : (String? newValue) {
                                 setState(() {
                                   _selectedDropOffLocation = newValue ?? (variantOptions.isNotEmpty ? variantOptions.first : 'Library');
                                 });
@@ -512,8 +638,6 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                     ),
                   ],
                   const SizedBox(height: 12),
-                  
-                  // (College-specific hub option removed)
                 ],
               ),
             ),
@@ -561,12 +685,12 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                   // Photo upload area
                   if (_selectedImages.isEmpty)
                     InkWell(
-                      onTap: _pickImages,
+                      onTap: _isOnCooldown ? null : _pickImages,
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
                         height: 200,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF5F5F5),
+                          color: _isOnCooldown ? Colors.grey[200] : const Color(0xFFF5F5F5),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: Colors.grey[300]!,
@@ -581,11 +705,11 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                               Icon(
                                 Icons.add_a_photo_outlined,
                                 size: 64,
-                                color: Colors.grey[400],
+                                color: _isOnCooldown ? Colors.grey[400] : Colors.grey[400],
                               ),
                               const SizedBox(height: 12),
                               Text(
-                                'Tap to add photos',
+                                _isOnCooldown ? 'Posting Disabled' : 'Tap to add photos',
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
@@ -594,7 +718,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Clear photos help owners identify their items',
+                                _isOnCooldown ? 'Wait for cooldown to end' : 'Clear photos help owners identify their items',
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: Colors.grey[500],
@@ -620,12 +744,12 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                                 return Padding(
                                   padding: const EdgeInsets.only(right: 8),
                                   child: InkWell(
-                                    onTap: _pickImages,
+                                    onTap: _isOnCooldown ? null : _pickImages,
                                     borderRadius: BorderRadius.circular(12),
                                     child: Container(
                                       width: 120,
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFF5F5F5),
+                                        color: _isOnCooldown ? Colors.grey[200] : const Color(0xFFF5F5F5),
                                         borderRadius: BorderRadius.circular(12),
                                         border: Border.all(
                                           color: Colors.grey[300]!,
@@ -638,7 +762,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                                           Icon(
                                             Icons.add_a_photo_outlined,
                                             size: 32,
-                                            color: Colors.grey[400],
+                                            color: _isOnCooldown ? Colors.grey[400] : Colors.grey[400],
                                           ),
                                           const SizedBox(height: 8),
                                           Text(
@@ -670,6 +794,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                                       ),
                                     ),
                                     // Remove button
+                                    if (!_isOnCooldown)
                                     Positioned(
                                       top: 4,
                                       right: 4,
@@ -725,15 +850,21 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Container(
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF4318FF), Color(0xFF4ECDC4)],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
+                  gradient: _isOnCooldown 
+                    ? const LinearGradient(
+                        colors: [Colors.grey, Colors.grey],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      )
+                    : const LinearGradient(
+                        colors: [Color(0xFF4318FF), Color(0xFF4ECDC4)],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: ElevatedButton(
-                  onPressed: _isUploading ? null : _postItem,
+                  onPressed: _isOnCooldown ? null : (_isUploading ? null : _postItem),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
                     foregroundColor: Colors.white,
@@ -752,15 +883,23 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                             strokeWidth: 2,
                           ),
                         )
-                      : Text(
-                          _selectedAvailability == 'Keep with me' 
-                            ? 'Post Item and Earn Points' 
-                            : 'Continue to Drop-off',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                      : _isOnCooldown
+                          ? Text(
+                              'Posting Available in ${_formatDuration(_remainingCooldown)}',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            )
+                          : Text(
+                              _selectedAvailability == 'Keep with me' 
+                                ? 'Post Item and Earn Points' 
+                                : 'Continue to Drop-off',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                 ),
               ),
             ),
@@ -775,7 +914,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
     bool isSelected = _selectedAvailability == title;
     
     return InkWell(
-      onTap: () {
+      onTap: _isOnCooldown ? null : () {
         setState(() {
           _selectedAvailability = title;
         });
@@ -784,10 +923,12 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFEDE7F6) : const Color(0xFFF5F5F5),
+          color: _isOnCooldown 
+            ? Colors.grey[200] 
+            : (isSelected ? const Color(0xFFEDE7F6) : const Color(0xFFF5F5F5)),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? const Color(0xFF4318FF) : Colors.transparent,
+            color: isSelected && !_isOnCooldown ? const Color(0xFF4318FF) : Colors.transparent,
             width: 2,
           ),
         ),
@@ -798,7 +939,9 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
               children: [
                 Icon(
                   isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-                  color: isSelected ? const Color(0xFF4318FF) : Colors.grey[400],
+                  color: _isOnCooldown 
+                    ? Colors.grey[400] 
+                    : (isSelected ? const Color(0xFF4318FF) : Colors.grey[400]),
                   size: 20,
                 ),
                 const SizedBox(width: 12),
@@ -808,7 +951,9 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
-                      color: isSelected ? const Color(0xFF4318FF) : Colors.black87,
+                      color: _isOnCooldown 
+                        ? Colors.grey[600] 
+                        : (isSelected ? const Color(0xFF4318FF) : Colors.black87),
                     ),
                   ),
                 ),
@@ -832,7 +977,9 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                     points,
                     style: TextStyle(
                       fontSize: 12,
-                      color: isSelected ? const Color(0xFF4CAF50) : Colors.grey[600],
+                      color: _isOnCooldown 
+                        ? Colors.grey[500] 
+                        : (isSelected ? const Color(0xFF4CAF50) : Colors.grey[600]),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -846,6 +993,8 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
   }
 
   Future<void> _pickImages() async {
+    if (_isOnCooldown) return;
+    
     try {
       // Show dialog to choose between camera and gallery
       final source = await showDialog<ImageSource>(
@@ -950,7 +1099,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
         // Try to pick multiple images from gallery
         try {
           final List<XFile> images = await _imagePicker.pickMultiImage(
-            maxWidth: 1024,  // Compress gallery images too
+            maxWidth: 1024,
             maxHeight: 1024,
             imageQuality: 70,
           );
@@ -990,9 +1139,9 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
         // Camera - single image only
         final XFile? image = await _imagePicker.pickImage(
           source: ImageSource.camera,
-          maxWidth: 1024,  // Reduced from 1920 to save storage
-          maxHeight: 1024,  // Reduced from 1080 to save storage
-          imageQuality: 70,  // Reduced from 85 to save storage (still good quality)
+          maxWidth: 1024,
+          maxHeight: 1024,
+          imageQuality: 70,
         );
         if (image != null) {
           setState(() {
@@ -1013,6 +1162,8 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
   }
 
   void _postItem() async {
+    if (_isOnCooldown) return;
+    
     // Validate inputs
     if (_titleController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1054,18 +1205,13 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
       return;
     }
     
-    // No college-specific hub option anymore; no college validation needed
-    
-    // Images are now OPTIONAL for testing
-    // if (_selectedImages.isEmpty) {
-    //   ScaffoldMessenger.of(context).showSnackBar(
-    //     const SnackBar(
-    //       content: Text('Please add at least one photo of the item'),
-    //       backgroundColor: Colors.orange,
-    //     ),
-    //   );
-    //   return;
-    // }
+    // Set cooldown immediately when user posts
+    await _setCooldown();
+    setState(() {
+      _isOnCooldown = true;
+      _remainingCooldown = const Duration(minutes: 10);
+    });
+    _startCooldownTimer();
     
     // Navigate to drop-off page based on availability selection
     if (_selectedAvailability == 'Keep with me') {

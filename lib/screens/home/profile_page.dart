@@ -962,359 +962,358 @@ Future<void> _updateProfile(
         title: const Text(
           'Profile',
           style: TextStyle(
-            color: Colors.black87,
-            fontSize: 20,
             fontWeight: FontWeight.w600,
           ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.share, color: Colors.black87),
-            onPressed: () {
-              // TODO: Implement share functionality
-            },
+            icon: const Icon(Icons.edit, color: Colors.black87),
+            onPressed: _showEditProfileDialog,
           ),
         ],
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const ClampingScrollPhysics(),
-          child: Column(
-            children: [
-              // Unified Profile Section
-              Container(
-                margin: const EdgeInsets.all(AppSpacing.lg),
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(AppRadius.xl),
-                  boxShadow: AppShadows.medium,
+        child: RefreshIndicator(
+          onRefresh: _loadUserData,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Unified Profile Section
+                Container(
+                  margin: const EdgeInsets.all(AppSpacing.lg),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(AppRadius.xl),
+                    boxShadow: AppShadows.medium,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    child: Column(
+                      children: [
+                        // User Profile Section
+                        Row(
+                          children: [
+                            // Profile Picture with Upload Capability
+                            GestureDetector(
+                              onTap: _pickAndUploadImage,
+                              child: Stack(
+                                children: [
+                                  Container(
+                                    width: 64,
+                                    height: 64,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.white,
+                                      borderRadius: BorderRadius.circular(AppRadius.xl),
+                                      border: Border.all(
+                                        color: AppColors.white,
+                                        width: 3,
+                                      ),
+                                      boxShadow: AppShadows.medium,
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(17),
+                                      child: profileImageUrl != null && profileImageUrl!.isNotEmpty
+                                          ? Image.network(
+                                              profileImageUrl!,
+                                              width: 64,
+                                              height: 64,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (context, error, stackTrace) {
+                                                return Icon(
+                                                  Icons.person,
+                                                  size: 32,
+                                                  color: Colors.grey[400],
+                                                );
+                                              },
+                                              loadingBuilder: (context, child, loadingProgress) {
+                                                if (loadingProgress == null) return child;
+                                                return Center(
+                                                  child: CircularProgressIndicator(
+                                                    value: loadingProgress.expectedTotalBytes != null
+                                                        ? loadingProgress.cumulativeBytesLoaded /
+                                                          loadingProgress.expectedTotalBytes!
+                                                        : null,
+                                                  ),
+                                                );
+                                              },
+                                            )
+                                          : Icon(
+                                              Icons.person,
+                                              size: 32,
+                                              color: Colors.grey[400],
+                                            ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    bottom: 2,
+                                    right: 2,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: const BoxDecoration(
+                                        color: Colors.white,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.verified,
+                                        color: Color(0xFF4CAF50),
+                                        size: 12,
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    bottom: 2,
+                                    left: 2,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: const BoxDecoration(
+                                        color: AppColors.primary,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.camera_alt,
+                                        color: Colors.white,
+                                        size: 10,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.md),
+                            
+                            // User Details
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    userName.isNotEmpty ? userName : 'User Name',
+                                    style: const TextStyle(
+                                      color: AppColors.white,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.3,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '$department • $year',
+                                    style: const TextStyle(
+                                      color: AppColors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    course,
+                                    style: TextStyle(
+                                      color: AppColors.white.withOpacity(0.8),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            
+                            // Edit Button
+                            Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(AppRadius.md),
+                                border: Border.all(
+                                  color: AppColors.white.withOpacity(0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: _showEditProfileDialog,
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(12),
+                                    child: Icon(
+                                      Icons.edit_rounded,
+                                      color: AppColors.white,
+                                      size: AppIconSize.md,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        
+                        const SizedBox(height: AppSpacing.lg),
+                        
+                        // Primary Stats Row
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildCompactStatCard(
+                                icon: Icons.star_rounded,
+                                value: karma.toString(),
+                                label: 'Karma',
+                                subtitle: 'Community Score',
+                                color: AppColors.secondary,
+                                isPrimary: true,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _buildCompactStatCard(
+                                icon: Icons.bolt_rounded,
+                                value: points.toString(),
+                                label: 'Points',
+                                subtitle: 'Exchange Points',
+                                color: AppColors.primary,
+                                isPrimary: true,
+                              ),
+                            ),
+                          ],
+                        ),
+                        
+                        const SizedBox(height: AppSpacing.sm),
+                        
+                        // Secondary Stats Row
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildCompactStatCard(
+                                icon: Icons.emoji_events_rounded,
+                                value: '#$rank',
+                                label: 'Rank',
+                                color: AppColors.mediumGray,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildCompactStatCard(
+                                icon: Icons.autorenew_rounded,
+                                value: returned.toString(),
+                                label: 'Returned',
+                                color: AppColors.mediumGray,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildCompactStatCard(
+                                icon: Icons.local_fire_department_rounded,
+                                value: streak.toString(),
+                                label: 'Streak',
+                                color: AppColors.mediumGray,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildCompactStatCard(
+                                icon: Icons.star_border_rounded,
+                                value: 'Lv $level',
+                                label: 'Level',
+                                color: AppColors.mediumGray,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                child: Padding(
+
+                // Bio Section
+                Container(
+                  margin: const EdgeInsets.all(AppSpacing.lg),
                   padding: const EdgeInsets.all(AppSpacing.lg),
+                  decoration: BoxDecoration(
+                    color: AppColors.white,
+                    borderRadius: BorderRadius.circular(AppRadius.xl),
+                    border: Border.all(
+                      color: AppColors.lightGray.withOpacity(0.3),
+                      width: 1,
+                    ),
+                    boxShadow: AppShadows.soft,
+                  ),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // User Profile Section
                       Row(
                         children: [
-                          // Profile Picture with Upload Capability
-                          GestureDetector(
-                            onTap: _pickAndUploadImage,
-                            child: Stack(
-                              children: [
-                                Container(
-                                  width: 64,
-                                  height: 64,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.white,
-                                    borderRadius: BorderRadius.circular(AppRadius.xl),
-                                    border: Border.all(
-                                      color: AppColors.white,
-                                      width: 3,
-                                    ),
-                                    boxShadow: AppShadows.medium,
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(17),
-                                    child: profileImageUrl != null && profileImageUrl!.isNotEmpty
-                                        ? Image.network(
-                                            profileImageUrl!,
-                                            width: 64,
-                                            height: 64,
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (context, error, stackTrace) {
-                                              return Icon(
-                                                Icons.person,
-                                                size: 32,
-                                                color: Colors.grey[400],
-                                              );
-                                            },
-                                            loadingBuilder: (context, child, loadingProgress) {
-                                              if (loadingProgress == null) return child;
-                                              return Center(
-                                                child: CircularProgressIndicator(
-                                                  value: loadingProgress.expectedTotalBytes != null
-                                                      ? loadingProgress.cumulativeBytesLoaded /
-                                                          loadingProgress.expectedTotalBytes!
-                                                      : null,
-                                                ),
-                                              );
-                                            },
-                                          )
-                                        : Icon(
-                                            Icons.person,
-                                            size: 32,
-                                            color: Colors.grey[400],
-                                          ),
-                                  ),
-                                ),
-                                Positioned(
-                                  bottom: 2,
-                                  right: 2,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: const BoxDecoration(
-                                      color: Colors.white,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.verified,
-                                      color: Color(0xFF4CAF50),
-                                      size: 12,
-                                    ),
-                                  ),
-                                ),
-                                Positioned(
-                                  bottom: 2,
-                                  left: 2,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: const BoxDecoration(
-                                      color: AppColors.primary,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.camera_alt,
-                                      color: Colors.white,
-                                      size: 10,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(AppRadius.sm),
+                            ),
+                            child: Icon(
+                              Icons.person_outline_rounded,
+                              color: AppColors.primary,
+                              size: AppIconSize.md,
                             ),
                           ),
                           const SizedBox(width: AppSpacing.md),
-                          
-                          // User Details
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  userName.isNotEmpty ? userName : 'User Name',
-                                  style: const TextStyle(
-                                    color: AppColors.white,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.3,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '$department • $year',
-                                  style: const TextStyle(
-                                    color: AppColors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  course,
-                                  style: TextStyle(
-                                    color: AppColors.white.withOpacity(0.8),
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          
-                          // Edit Button
-                          Container(
-                            decoration: BoxDecoration(
-                              color: AppColors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(AppRadius.md),
-                              border: Border.all(
-                                color: AppColors.white.withOpacity(0.3),
-                                width: 1,
-                              ),
-                            ),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: _showEditProfileDialog,
-                                borderRadius: BorderRadius.circular(12),
-                                child: const Padding(
-                                  padding: EdgeInsets.all(12),
-                                  child: Icon(
-                                    Icons.edit_rounded,
-                                    color: AppColors.white,
-                                    size: AppIconSize.md,
-                                  ),
-                                ),
-                              ),
+                          const Text(
+                            'About',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
                             ),
                           ),
                         ],
                       ),
-                      
-                      const SizedBox(height: AppSpacing.lg),
-                      
-                      // Primary Stats Row
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildCompactStatCard(
-                              icon: Icons.star_rounded,
-                              value: karma.toString(),
-                              label: 'Karma',
-                              subtitle: 'Community Score',
-                              color: AppColors.secondary,
-                              isPrimary: true,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildCompactStatCard(
-                              icon: Icons.bolt_rounded,
-                              value: points.toString(),
-                              label: 'Points',
-                              subtitle: 'Exchange Points',
-                              color: AppColors.primary,
-                              isPrimary: true,
-                            ),
-                          ),
-                        ],
-                      ),
-                      
-                      const SizedBox(height: AppSpacing.sm),
-                      
-                      // Secondary Stats Row
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildCompactStatCard(
-                              icon: Icons.emoji_events_rounded,
-                              value: '#$rank',
-                              label: 'Rank',
-                              color: AppColors.mediumGray,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: _buildCompactStatCard(
-                              icon: Icons.autorenew_rounded,
-                              value: returned.toString(),
-                              label: 'Returned',
-                              color: AppColors.mediumGray,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: _buildCompactStatCard(
-                              icon: Icons.local_fire_department_rounded,
-                              value: streak.toString(),
-                              label: 'Streak',
-                              color: AppColors.mediumGray,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: _buildCompactStatCard(
-                              icon: Icons.star_border_rounded,
-                              value: 'Lv $level',
-                              label: 'Level',
-                              color: AppColors.mediumGray,
-                            ),
-                          ),
-                        ],
+                      const SizedBox(height: 12),
+                      Text(
+                        bio,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[700],
+                          height: 1.6,
+                        ),
                       ),
                     ],
                   ),
                 ),
-              ),
 
-              // Bio Section
-              Container(
-                margin: const EdgeInsets.all(AppSpacing.lg),
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(AppRadius.xl),
-                  border: Border.all(
-                    color: AppColors.lightGray.withOpacity(0.3),
-                    width: 1,
+                // Tab Navigation
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: AppColors.lightGray.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    border: Border.all(
+                      color: AppColors.lightGray.withOpacity(0.3),
+                      width: 1,
+                    ),
                   ),
-                  boxShadow: AppShadows.soft,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(AppRadius.sm),
-                          ),
-                          child: Icon(
-                            Icons.person_outline_rounded,
-                            color: AppColors.primary,
-                            size: AppIconSize.md,
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.md),
-                        const Text(
-                          'About',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      bio,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[700],
-                        height: 1.6,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Tab Navigation
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: AppColors.lightGray.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                  border: Border.all(
-                    color: AppColors.lightGray.withOpacity(0.3),
-                    width: 1,
+                  child: Row(
+                    children: [
+                      Expanded(child: _buildTab('Overview', 0)),
+                      Expanded(child: _buildTab('Badges', 1)),
+                      Expanded(child: _buildTab('Activity', 2)),
+                      Expanded(child: _buildTab('Settings', 3)),
+                    ],
                   ),
                 ),
-                child: Row(
-                  children: [
-                    Expanded(child: _buildTab('Overview', 0)),
-                    Expanded(child: _buildTab('Badges', 1)),
-                    Expanded(child: _buildTab('Activity', 2)),
-                    Expanded(child: _buildTab('Settings', 3)),
-                  ],
-                ),
-              ),
 
-              const SizedBox(height: AppSpacing.lg),
-              
-              // Tab Content
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                child: _buildTabContent(),
-              ),
-              
-              const SizedBox(height: AppSpacing.md),
-            ],
+                const SizedBox(height: AppSpacing.lg),
+                
+                // Tab Content
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                  child: _buildTabContent(),
+                ),
+                
+                const SizedBox(height: AppSpacing.md),
+              ],
+            ),
           ),
         ),
       ),
-      // Bottom Navigation Bar (Standard App Navigation)
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: AppColors.black,
