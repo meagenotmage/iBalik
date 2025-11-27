@@ -82,23 +82,15 @@ class LostItemService {
   }
 
   /// Get all lost items
-  Stream<QuerySnapshot> getLostItems({
-    String? status,
-    String? category,
-    int limit = 20,
-  }) {
-    Query query = _lostItemsCollection.orderBy('datePosted', descending: true);
-
-    if (status != null) {
-      query = query.where('status', isEqualTo: status);
-    }
-
-    if (category != null) {
-      query = query.where('category', isEqualTo: category);
-    }
-
-    return query.limit(limit).snapshots();
-  }
+  // In your LostItemService class
+Stream<QuerySnapshot> getLostItems({String status = 'available', int limit = 50}) {
+  return FirebaseFirestore.instance
+      .collection('lost_items')
+      .where('status', isEqualTo: status) // Ensure this filter is working
+      .orderBy('datePosted', descending: true)
+      .limit(limit)
+      .snapshots();
+}
 
   /// Get lost items by user
   Stream<QuerySnapshot> getUserLostItems(String userId) {

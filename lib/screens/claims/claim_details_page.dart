@@ -13,6 +13,18 @@ class ClaimDetailsPage extends StatefulWidget {
   State<ClaimDetailsPage> createState() => _ClaimDetailsPageState();
 }
 
+// String extension for title case
+extension StringTitleCase on String {
+  String titleCase() {
+    if (isEmpty) return this;
+    return split(' ')
+        .map((word) => word.isEmpty
+            ? word
+            : '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}')
+        .join(' ');
+  }
+}
+
 class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
   late Map<String, dynamic> _data;
   bool _processing = false;
@@ -35,6 +47,86 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
     _resolveLostItemIfNeeded();
   }
 
+Widget _buildPickupDetails() {
+  // Get availability and location from the CLAIM data (which should include lost item info)
+  final availability = _data['availability']?.toString();
+  final dropOffLocation = _data['dropOffLocation']?.toString();
+  final location = _data['location']?.toString();
+  final founderName = _data['founderName'] ?? 'the founder';
+  
+  // Debug logging to see what data we have
+  print('Pickup Details Debug:');
+  print('  - availability: $availability');
+  print('  - dropOffLocation: $dropOffLocation');
+  print('  - location: $location');
+  print('  - founderName: $founderName');
+  
+  // Check if the item is kept with founder or at a drop-off location
+  if (availability == 'Keep with me') {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text("Item is kept with $founderName", 
+             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF00695C))),
+        const SizedBox(height: 8),
+        Text("Contact the founder directly to arrange pickup", 
+             style: TextStyle(fontSize: 14, color: Colors.grey[700])),
+        const SizedBox(height: 4),
+        if (location != null && location.isNotEmpty && location != 'null')
+          Text("Found at: $location", 
+               style: TextStyle(fontSize: 13, color: Colors.grey[600], fontStyle: FontStyle.italic)),
+      ],
+    );
+  } 
+  else if (availability == 'Drop off location' && dropOffLocation != null && dropOffLocation.isNotEmpty && dropOffLocation != 'null') {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text("Available for pickup at:", 
+             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF00695C))),
+        const SizedBox(height: 8),
+        Text(dropOffLocation, 
+             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 4),
+        Text("Visit this location to collect your item", 
+             style: TextStyle(fontSize: 14, color: Colors.grey[700])),
+        const SizedBox(height: 4),
+        if (location != null && location.isNotEmpty && location != 'null')
+          Text("Originally found at: $location", 
+               style: TextStyle(fontSize: 13, color: Colors.grey[600], fontStyle: FontStyle.italic)),
+      ],
+    );
+  }
+  // Fallback: Show general location if specific drop-off isn't available
+  else if (location != null && location.isNotEmpty && location != 'null') {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text("Available for pickup:", 
+             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF00695C))),
+        const SizedBox(height: 8),
+        Text(location, 
+             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 4),
+        Text("Contact $founderName to arrange pickup", 
+             style: TextStyle(fontSize: 14, color: Colors.grey[700])),
+      ],
+    );
+  }
+  // Final fallback
+  else {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text("Item is with $founderName", 
+             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF00695C))),
+        const SizedBox(height: 8),
+        Text("Contact the founder directly to arrange pickup", 
+             style: TextStyle(fontSize: 14, color: Colors.grey[700])),
+      ],
+    );
+  }
+}
   // --- ACTIONS ---
 
   Future<void> _rejectClaim() async {
@@ -77,49 +169,50 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
     }
   }
 
-  Future<void> _markSuccessfulClaim() async {
-    final claimId = _data['docId'] as String?;
-    final itemId = _data['itemId'];
-    final claimerId = _data['claimerId'] as String?;
+  // In your claim completion method (like _markSuccessfulClaim)
+Future<void> _markSuccessfulClaim() async {
+  final claimId = _data['docId'] as String?;
+  final itemId = _data['itemId'];
+  final claimerId = _data['claimerId'] as String?;
 
-    if (claimId == null) return;
+  if (claimId == null) return;
 
-    setState(() => _processing = true);
+  setState(() => _processing = true);
 
-    final fs = FirebaseFirestore.instance;
-    try {
-      // 1. Update Claim Status
-      await fs.collection('claims').doc(claimId).update({
-        'status': 'completed',
-        'completedBy': FirebaseAuth.instance.currentUser?.uid,
-        'completedAt': FieldValue.serverTimestamp(),
-      });
+  final fs = FirebaseFirestore.instance;
+  try {
+    // 1. Update Claim Status
+    await fs.collection('claims').doc(claimId).update({
+      'status': 'completed',
+      'completedBy': FirebaseAuth.instance.currentUser?.uid,
+      'completedAt': FieldValue.serverTimestamp(),
+    });
 
-      // 2. Update Lost Item Status
-      if (itemId != null) {
-        // Try direct doc ID first
-        try {
-          await fs.collection('lost_items').doc(itemId.toString()).update({
-            'status': 'returned',
+    // 2. Update Lost Item Status - THIS IS CRITICAL
+    if (itemId != null) {
+      // Try direct doc ID first
+      try {
+        await fs.collection('lost_items').doc(itemId.toString()).update({
+          'status': 'returned', // Change from 'available' to 'returned'
+          'returnedTo': claimerId,
+          'returnedAt': FieldValue.serverTimestamp(),
+        });
+      } catch (_) {
+        // Fallback: Query by field
+        final q = await fs
+            .collection('lost_items')
+            .where('itemId', isEqualTo: itemId)
+            .limit(1)
+            .get();
+        if (q.docs.isNotEmpty) {
+          await q.docs.first.reference.update({
+            'status': 'returned', // Change from 'available' to 'returned'
             'returnedTo': claimerId,
             'returnedAt': FieldValue.serverTimestamp(),
           });
-        } catch (_) {
-          // Fallback: Query by field
-          final q = await fs
-              .collection('lost_items')
-              .where('itemId', isEqualTo: itemId)
-              .limit(1)
-              .get();
-          if (q.docs.isNotEmpty) {
-            await q.docs.first.reference.update({
-              'status': 'returned',
-              'returnedTo': claimerId,
-              'returnedAt': FieldValue.serverTimestamp(),
-            });
-          }
         }
       }
+    }
       
       // 3. Award Karma (Optional logic)
       final founderId = (_data['founderId'] ?? _data['posterId'])?.toString();
@@ -171,46 +264,45 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
 
   // --- DATA LOADING HELPERS ---
 
-  Future<void> _resolveLostItemIfNeeded() async {
-    // This fetches the original item details (Image, Title) to display at the top
+ Future<void> _resolveLostItemIfNeeded() async {
+  try {
+    final fs = FirebaseFirestore.instance;
+    final itemIdRaw = _data['itemId'] ?? _data['lostItemId'];
+    
+    if (itemIdRaw == null) return;
+
+    DocumentSnapshot<Map<String, dynamic>>? itemDoc;
+    
+    // Try get by ID
     try {
-      final fs = FirebaseFirestore.instance;
-      final itemIdRaw = _data['itemId'] ?? _data['lostItemId'];
-      
-      if (itemIdRaw == null) return;
-
-      DocumentSnapshot<Map<String, dynamic>>? itemDoc;
-      
-      // Try get by ID
-      try {
-        final doc = await fs.collection('lost_items').doc(itemIdRaw.toString()).get();
-        if (doc.exists) itemDoc = doc;
-      } catch (_) {}
-
-      // Try query by field
-      if (itemDoc == null) {
-        final q = await fs.collection('lost_items').where('itemId', isEqualTo: itemIdRaw).limit(1).get();
-        if (q.docs.isNotEmpty) itemDoc = q.docs.first;
-      }
-
-      if (itemDoc != null && itemDoc.exists) {
-        final d = itemDoc.data()!;
-        if (mounted) {
-          setState(() {
-            // Only overwrite ITEM details, do not overwrite CLAIM details
-            _data['itemTitle'] = d['title'] ?? d['name'] ?? d['itemName'];
-            _data['itemDescription'] = d['description'] ?? d['details']; // The item's physical description
-            _data['itemImageUrl'] = d['imageUrl'] ?? d['imageURL'];
-            
-            // Founder info backup
-            _data['founderName'] = _data['founderName'] ?? d['founderName'] ?? d['finderName'];
-            _data['founderPhone'] = _data['founderPhone'] ?? d['founderPhone'] ?? d['finderPhone'];
-          });
-        }
-      }
+      final doc = await fs.collection('lost_items').doc(itemIdRaw.toString()).get();
+      if (doc.exists) itemDoc = doc;
     } catch (_) {}
-  }
 
+    // Try query by field
+    if (itemDoc == null) {
+      final q = await fs.collection('lost_items').where('itemId', isEqualTo: itemIdRaw).limit(1).get();
+      if (q.docs.isNotEmpty) itemDoc = q.docs.first;
+    }
+
+    if (itemDoc != null && itemDoc.exists) {
+      final d = itemDoc.data()!;
+      if (mounted) {
+        setState(() {
+          // Load pickup information from lost item - don't overwrite if already exists
+          _data['availability'] = _data['availability'] ?? d['availability'];
+          _data['dropOffLocation'] = _data['dropOffLocation'] ?? d['dropOffLocation'];
+          _data['location'] = _data['location'] ?? d['location'];
+          
+          // Debug logging
+          print('Loaded from lost item - Availability: ${d['availability']}, DropOff: ${d['dropOffLocation']}');
+        });
+      }
+    }
+  } catch (e) {
+    print('Error resolving lost item: $e');
+  }
+}
   Future<void> _loadFounderIfNeeded() async {
     // Fetch Founder profile if missing
     try {
@@ -481,42 +573,43 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
 
                         const SizedBox(height: 20),
 
-                        // 5. Pickup Info (Only relevant if approved/completed)
-                        if (isApproved || isCompleted)
-                          Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 20),
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE0F2F1),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(children: const [
-                                  Icon(Icons.location_on, color: Color(0xFF00695C)),
-                                  SizedBox(width: 8),
-                                  Text("Pickup Details", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF00695C)))
-                                ]),
-                                const SizedBox(height: 12),
-                                Builder(builder: (_) {
-                                  final pickupType = (_data['pickupType'] ?? _data['availability'] ?? '').toString();
-                                  final dropOff = (_data['dropOffLocation'] ?? _data['pickupLocation'] ?? _data['location'] ?? '').toString();
-                                  if (pickupType == 'Keep with me' || pickupType == 'Kept with founder' || pickupType == 'Kept by founder') {
-                                    final founder = _data['founderName'] ?? 'the founder';
-                                    return Text("Kept with $founder. Contact for specific arrangement.", style: const TextStyle(fontWeight: FontWeight.bold));
-                                  } else if (pickupType.toLowerCase().contains('drop') || pickupType.toLowerCase().contains('library') || dropOff.isNotEmpty) {
-                                    final loc = dropOff.isNotEmpty ? dropOff : 'Drop-off location set by founder';
-                                    return Text("Available for pickup at: $loc", style: const TextStyle(fontWeight: FontWeight.bold));
-                                  } else {
-                                    return Text("Location: ${dropOff.isNotEmpty ? dropOff : 'To be arranged'}", style: const TextStyle(fontWeight: FontWeight.bold));
-                                  }
-                                }),
-                                const SizedBox(height: 4),
-                                Text(_data['pickupInstructions'] ?? 'Please contact the finder to arrange the meeting.', style: TextStyle(color: Colors.grey[700])),
-                              ],
-                            ),
-                          ),
+                                // 5. Pickup Info (Only relevant if approved/completed)
+                                if (isApproved || isCompleted)
+                                  Container(
+                                    margin: const EdgeInsets.symmetric(horizontal: 20),
+                                    padding: const EdgeInsets.all(20),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFE0F2F1),
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(children: const [
+                                          Icon(Icons.location_on, color: Color(0xFF00695C)),
+                                          SizedBox(width: 8),
+                                          Text("Pickup Details", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF00695C)))
+                                        ]),
+                                        const SizedBox(height: 12),
+                                        
+                                        // Improved pickup details logic
+                                        _buildPickupDetails(),
+                                        
+                                        const SizedBox(height: 4),
+                                        if (_data['pickupInstructions'] != null && _data['pickupInstructions'].toString().isNotEmpty)
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              const SizedBox(height: 8),
+                                              Text("Additional Instructions:", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey[700])),
+                                              Text(_data['pickupInstructions'], style: TextStyle(fontSize: 14, color: Colors.grey[700])),
+                                            ],
+                                          )
+                                        else
+                                          Text('Please contact the finder to arrange the meeting.', style: TextStyle(color: Colors.grey[700])),
+                                      ],
+                                    ),
+                                  ),
                         
                         // 6. Action Buttons for Quick Contact
                         if (isApproved && !isCompleted)
