@@ -1,8 +1,12 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:io';
 import '../../utils/page_transitions.dart';
-import '../../utils/app_theme.dart';import '../posts/posts_page.dart';
+import '../../utils/app_theme.dart';
+import '../posts/posts_page.dart';
 import '../game/game_hub_page.dart';
 import '../game/leaderboards_page.dart';
 import '../game/challenges_page.dart';
@@ -20,13 +24,13 @@ class _ProfilePageState extends State<ProfilePage> {
   int _selectedTabIndex = 0;
   int _selectedIndex = 4; // Profile tab is selected
 
-  // User data - TODO: Fetch from Firebase
+  // User data
   String userName = 'username';
   String department = 'CICT';
   String course = 'BS Information Technology';
   String year = '3rd Year';
-  String bio =
-      'Passionate about helping the WVSU community. Always happy to help reunite lost items with their owners!';
+  String bio = 'Passionate about helping the WVSU community. Always happy to help reunite lost items with their owners!';
+  String? profileImageUrl;
 
   // Stats
   int karma = 90;
@@ -36,8 +40,82 @@ class _ProfilePageState extends State<ProfilePage> {
   int streak = 5;
   int level = 3;
 
-  // No more mock recent items. Will fetch from Firestore.
-  // final List<Map<String, dynamic>> recentItems = [];
+  // Department to courses mapping
+  final Map<String, List<String>> _departmentCourses = {
+    'College of Information and Communications Technology': [
+      'BS Information Technology',
+      'BS Computer Science',
+      'BS Information Systems',
+      'BS Entertainment and Multimedia Computing',
+      'BS Library and Information Science',
+    ],
+    'College of Nursing': [
+      'BS Nursing',
+    ],
+    'College of Law': [
+      'Juris Doctor',
+    ],
+    'College of Education': [
+      'BS Education - Elementary',
+      'BS Education - Secondary',
+      'BS Physical Education',
+      'BS Special Education',
+      'Bachelor of Early Childhood Education',
+    ],
+    'College of Business and Management': [
+      'BS Business Administration',
+      'BS in Office Administration',
+      'BS in Hospitality Management',
+    ],
+    'College of PESCAR': [
+      'BS in Sports Science',
+      'BS in Physical Education',
+    ],
+    'College of Communications': [
+      'BS in Development Communication',
+      'BS in Broadcasting',
+      'BS in Journalism',
+    ],
+    'College of Medicine': [
+      'Doctor of Medicine',
+    ],
+    'College of Arts and Sciences': [
+      'BS Psychology',
+      'BS Biology',
+      'BS Chemistry',
+      'BS Mathematics',
+      'BS Social Work',
+      'AB in Political Science',
+      'AB in English',
+    ],
+    'College of Dentistry': [
+      'Doctor of Dental Medicine',
+    ],
+  };
+
+  // Available options for dropdowns
+  final List<String> departments = [
+    'College of Information and Communications Technology',
+    'College of Nursing',
+    'College of Law',
+    'College of Education',
+    'College of Business and Management',
+    'College of PESCAR',
+    'College of Communications',
+    'College of Medicine',
+    'College of Arts and Sciences',
+    'College of Dentistry',
+  ];
+
+  final List<String> years = [
+    '1st Year',
+    '2nd Year',
+    '3rd Year',
+    '4th Year',
+    '5th Year',
+  ];
+
+  final ImagePicker _imagePicker = ImagePicker();
 
   @override
   void initState() {
@@ -47,43 +125,402 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _loadUserData() async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
+      final user = firebase_auth.FirebaseAuth.instance.currentUser;
       if (user != null) {
         final userDoc = await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
             .get();
 
-        if (userDoc.exists) {
-          final data = userDoc.data();
+        if (userDoc.exists && userDoc.data() != null) {
+          final data = userDoc.data()!;
           setState(() {
-            // Try username first, then fall back to full name, then email, then default
-            final username = data?['username'] as String?;
-            final fullName = data?['name'] as String?;
+            final username = data['username'] as String?;
+            final fullName = data['name'] as String?;
             userName =
                 username ??
                 fullName ??
                 user.displayName ??
-                user.email?.split('@')[0] ??
+                user.email?.split('@').first ??
                 'User Name';
 
-            department = data?['department'] ?? 'CICT';
-            course = data?['course'] ?? 'BS Computer Science';
-            year = data?['year'] ?? '3rd Year';
-            bio =
-                data?['bio'] ??
-                'Passionate about helping the WVSU community. Always happy to help reunite lost items with their owners!';
-            karma = data?['karma'] ?? 90;
-            points = data?['points'] ?? 245;
-            rank = data?['rank'] ?? 8;
-            returned = data?['returned'] ?? 12;
-            streak = data?['streak'] ?? 5;
-            level = data?['level'] ?? 3;
+            department = (data['department'] as String?) ?? 'CICT';
+            course = (data['course'] as String?) ?? 'BS Information Technology';
+            year = (data['year'] as String?) ?? '3rd Year';
+            bio = (data['bio'] as String?) ?? 
+                  'Passionate about helping the WVSU community. Always happy to help reunite lost items with their owners!';
+            profileImageUrl = data['profileImageUrl'] as String?;
+            karma = (data['karma'] as int?) ?? 90;
+            points = (data['points'] as int?) ?? 245;
+            rank = (data['rank'] as int?) ?? 8;
+            returned = (data['returned'] as int?) ?? 12;
+            streak = (data['streak'] as int?) ?? 5;
+            level = (data['level'] as int?) ?? 3;
           });
+        } else {
+          _createUserDocument(user);
         }
       }
     } catch (e) {
       debugPrint('Error loading user data: $e');
+      setState(() {
+        userName = 'User Name';
+        department = 'CICT';
+        course = 'BS Information Technology';
+        year = '3rd Year';
+        bio = 'Passionate about helping the WVSU community. Always happy to help reunite lost items with their owners!';
+      });
+    }
+  }
+
+  Future<void> _createUserDocument(firebase_auth.User user) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .set({
+        'username': user.displayName ?? user.email?.split('@').first ?? 'User',
+        'department': 'CICT',
+        'course': 'BS Information Technology',
+        'year': '3rd Year',
+        'bio': 'Passionate about helping the WVSU community. Always happy to help reunite lost items with their owners!',
+        'karma': 90,
+        'points': 245,
+        'rank': 8,
+        'returned': 12,
+        'streak': 5,
+        'level': 3,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('Error creating user document: $e');
+    }
+  }
+
+  Future<void> _pickAndUploadImage() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 80,
+      );
+
+      if (image != null) {
+        await _uploadImageToSupabase(File(image.path));
+      }
+    } catch (e) {
+      debugPrint('Error picking image: $e');
+      _showSnackBar('Error picking image: $e');
+    }
+  }
+
+  Future<void> _uploadImageToSupabase(File imageFile) async {
+    try {
+      final user = firebase_auth.FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      // Check if Supabase is initialized
+      try {
+        final supabase = Supabase.instance.client;
+        supabase.auth.currentSession;
+      } catch (e) {
+        debugPrint('Supabase not initialized: $e');
+        _showSnackBar('Storage service not available');
+        return;
+      }
+
+      _showSnackBar('Uploading image...');
+
+      // Read file as bytes for Supabase upload
+      final fileBytes = await imageFile.readAsBytes();
+      final fileName = '${user.uid}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final supabase = Supabase.instance.client;
+      
+      // Upload to Supabase Storage using bytes
+      await supabase.storage
+          .from('profile-images')
+          .uploadBinary(
+            fileName,
+            fileBytes,
+            fileOptions: FileOptions(
+              upsert: true,
+              contentType: 'image/jpeg',
+            ),
+          );
+
+      // Get public URL
+      final imageUrl = supabase.storage
+          .from('profile-images')
+          .getPublicUrl(fileName);
+
+      // Update Firestore with the new image URL
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .update({
+        'profileImageUrl': imageUrl,
+      });
+
+      // Update local state
+      setState(() {
+        profileImageUrl = imageUrl;
+      });
+
+      _showSnackBar('Profile image updated successfully!');
+    } catch (e) {
+      debugPrint('Error uploading image to Supabase: $e');
+      _showSnackBar('Error uploading image: ${e.toString()}');
+    }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _showEditProfileDialog() {
+    final TextEditingController nameController = TextEditingController(text: userName);
+    final TextEditingController bioController = TextEditingController(text: bio);
+    
+    // Use local state for the dialog
+    String selectedDepartment = department;
+    String selectedCourse = course;
+    String selectedYear = year;
+    
+    // Initialize available courses for the dialog
+    List<String> availableCourses = _departmentCourses[selectedDepartment] ?? [];
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          // Helper function to update courses when department changes
+          void updateCourses(String newDepartment) {
+            final newCourses = _departmentCourses[newDepartment] ?? [];
+            setDialogState(() {
+              availableCourses = newCourses;
+              // Reset course if it's not in the new department's courses
+              if (!newCourses.contains(selectedCourse)) {
+                selectedCourse = newCourses.isNotEmpty ? newCourses.first : '';
+              }
+            });
+          }
+
+          return AlertDialog(
+            title: const Text('Edit Profile'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Profile Image Upload
+                  GestureDetector(
+                    onTap: _pickAndUploadImage,
+                    child: Stack(
+                      children: [
+                        CircleAvatar(
+                          radius: 40,
+                          backgroundColor: AppColors.lightGray,
+                          backgroundImage: profileImageUrl != null
+                              ? NetworkImage(profileImageUrl!)
+                              : null,
+                          child: profileImageUrl == null
+                              ? Icon(
+                                  Icons.person,
+                                  size: 40,
+                                  color: Colors.grey[400],
+                                )
+                              : null,
+                        ),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: const BoxDecoration(
+                              color: AppColors.primary,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.camera_alt,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Name Field
+                  TextFormField(
+                    controller: nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Name',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  
+                  // Department Dropdown
+                  DropdownButtonFormField<String>(
+                    value: selectedDepartment,
+                    decoration: const InputDecoration(
+                      labelText: 'Department',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: departments.map((String dept) {
+                      return DropdownMenuItem<String>(
+                        value: dept,
+                        child: Text(dept),
+                      );
+                    }).toList(),
+                    onChanged: (String? newValue) {
+                      if (newValue != null) {
+                        setDialogState(() {
+                          selectedDepartment = newValue;
+                        });
+                        // Update available courses when department changes
+                        updateCourses(newValue);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  
+                  // Course Dropdown (dynamically filtered by department)
+                  DropdownButtonFormField<String>(
+                    value: availableCourses.contains(selectedCourse) ? selectedCourse : null,
+                    decoration: const InputDecoration(
+                      labelText: 'Course',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: availableCourses.map((String crs) {
+                      return DropdownMenuItem<String>(
+                        value: crs,
+                        child: Text(crs),
+                      );
+                    }).toList(),
+                    onChanged: availableCourses.isNotEmpty ? (String? newValue) {
+                      if (newValue != null) {
+                        setDialogState(() {
+                          selectedCourse = newValue;
+                        });
+                      }
+                    } : null,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please select a course';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  
+                  // Year Dropdown
+                  DropdownButtonFormField<String>(
+                    value: selectedYear,
+                    decoration: const InputDecoration(
+                      labelText: 'Year',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: years.map((String yr) {
+                      return DropdownMenuItem<String>(
+                        value: yr,
+                        child: Text(yr),
+                      );
+                    }).toList(),
+                    onChanged: (String? newValue) {
+                      if (newValue != null) {
+                        setDialogState(() {
+                          selectedYear = newValue;
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  
+                  // Bio Field
+                  TextFormField(
+                    controller: bioController,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Bio',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  // Validate that a course is selected
+                  if (selectedCourse.isEmpty) {
+                    _showSnackBar('Please select a course');
+                    return;
+                  }
+                  
+                  await _updateProfile(
+                    nameController.text,
+                    selectedDepartment,
+                    selectedCourse,
+                    selectedYear,
+                    bioController.text,
+                  );
+                  Navigator.pop(context);
+                },
+                child: const Text('Save'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _updateProfile(
+    String newName,
+    String newDepartment,
+    String newCourse,
+    String newYear,
+    String newBio,
+  ) async {
+    try {
+      final user = firebase_auth.FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .update({
+        'username': newName,
+        'department': newDepartment,
+        'course': newCourse,
+        'year': newYear,
+        'bio': newBio,
+      });
+
+      setState(() {
+        userName = newName;
+        department = newDepartment;
+        course = newCourse;
+        year = newYear;
+        bio = newBio;
+      });
+
+      _showSnackBar('Profile updated successfully!');
+    } catch (e) {
+      debugPrint('Error updating profile: $e');
+      _showSnackBar('Error updating profile: $e');
     }
   }
 
@@ -115,298 +552,342 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        physics: const ClampingScrollPhysics(),
-        child: Column(
-          children: [
-            // Unified Profile Section
-            Container(
-              margin: const EdgeInsets.all(AppSpacing.lg),
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(AppRadius.xl),
-                boxShadow: AppShadows.medium,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          physics: const ClampingScrollPhysics(),
+          child: Column(
+            children: [
+              // Unified Profile Section
+              Container(
+                margin: const EdgeInsets.all(AppSpacing.lg),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(AppRadius.xl),
+                  boxShadow: AppShadows.medium,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Column(
+                    children: [
+                      // User Profile Section
+                      Row(
+                        children: [
+                          // Profile Picture with Upload Capability
+                          GestureDetector(
+                            onTap: _pickAndUploadImage,
+                            child: Stack(
+                              children: [
+                                Container(
+                                  width: 64,
+                                  height: 64,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.white,
+                                    borderRadius: BorderRadius.circular(AppRadius.xl),
+                                    border: Border.all(
+                                      color: AppColors.white,
+                                      width: 3,
+                                    ),
+                                    boxShadow: AppShadows.medium,
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(17),
+                                    child: profileImageUrl != null && profileImageUrl!.isNotEmpty
+                                        ? Image.network(
+                                            profileImageUrl!,
+                                            width: 64,
+                                            height: 64,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (context, error, stackTrace) {
+                                              return Icon(
+                                                Icons.person,
+                                                size: 32,
+                                                color: Colors.grey[400],
+                                              );
+                                            },
+                                            loadingBuilder: (context, child, loadingProgress) {
+                                              if (loadingProgress == null) return child;
+                                              return Center(
+                                                child: CircularProgressIndicator(
+                                                  value: loadingProgress.expectedTotalBytes != null
+                                                      ? loadingProgress.cumulativeBytesLoaded /
+                                                          loadingProgress.expectedTotalBytes!
+                                                      : null,
+                                                ),
+                                              );
+                                            },
+                                          )
+                                        : Icon(
+                                            Icons.person,
+                                            size: 32,
+                                            color: Colors.grey[400],
+                                          ),
+                                  ),
+                                ),
+                                Positioned(
+                                  bottom: 2,
+                                  right: 2,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.white,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.verified,
+                                      color: Color(0xFF4CAF50),
+                                      size: 12,
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  bottom: 2,
+                                  left: 2,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: const BoxDecoration(
+                                      color: AppColors.primary,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.camera_alt,
+                                      color: Colors.white,
+                                      size: 10,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.md),
+                          
+                          // User Details
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  userName.isNotEmpty ? userName : 'User Name',
+                                  style: const TextStyle(
+                                    color: AppColors.white,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.3,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '$department • $year',
+                                  style: const TextStyle(
+                                    color: AppColors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  course,
+                                  style: TextStyle(
+                                    color: AppColors.white.withOpacity(0.8),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          
+                          // Edit Button
+                          Container(
+                            decoration: BoxDecoration(
+                              color: AppColors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                              border: Border.all(
+                                color: AppColors.white.withOpacity(0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: _showEditProfileDialog,
+                                borderRadius: BorderRadius.circular(12),
+                                child: const Padding(
+                                  padding: EdgeInsets.all(12),
+                                  child: Icon(
+                                    Icons.edit_rounded,
+                                    color: AppColors.white,
+                                    size: AppIconSize.md,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      const SizedBox(height: AppSpacing.lg),
+                      
+                      // Primary Stats Row
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildCompactStatCard(
+                              icon: Icons.star_rounded,
+                              value: karma.toString(),
+                              label: 'Karma',
+                              subtitle: 'Community Score',
+                              color: AppColors.secondary,
+                              isPrimary: true,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildCompactStatCard(
+                              icon: Icons.bolt_rounded,
+                              value: points.toString(),
+                              label: 'Points',
+                              subtitle: 'Exchange Points',
+                              color: AppColors.primary,
+                              isPrimary: true,
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      const SizedBox(height: AppSpacing.sm),
+                      
+                      // Secondary Stats Row
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildCompactStatCard(
+                              icon: Icons.emoji_events_rounded,
+                              value: '#$rank',
+                              label: 'Rank',
+                              color: AppColors.mediumGray,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buildCompactStatCard(
+                              icon: Icons.autorenew_rounded,
+                              value: returned.toString(),
+                              label: 'Returned',
+                              color: AppColors.mediumGray,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buildCompactStatCard(
+                              icon: Icons.local_fire_department_rounded,
+                              value: streak.toString(),
+                              label: 'Streak',
+                              color: AppColors.mediumGray,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buildCompactStatCard(
+                              icon: Icons.star_border_rounded,
+                              value: 'Lv $level',
+                              label: 'Level',
+                              color: AppColors.mediumGray,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              child: Padding(
+
+              // Bio Section
+              Container(
+                margin: const EdgeInsets.all(AppSpacing.lg),
                 padding: const EdgeInsets.all(AppSpacing.lg),
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(AppRadius.xl),
+                  border: Border.all(
+                    color: AppColors.lightGray.withOpacity(0.3),
+                    width: 1,
+                  ),
+                  boxShadow: AppShadows.soft,
+                ),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // User Profile Section
                     Row(
                       children: [
-                        // Profile Picture with Verification Badge
-                        Stack(
-                          children: [
-                            Container(
-                              width: 64,
-                              height: 64,
-                              decoration: BoxDecoration(
-                                color: AppColors.white,
-                                borderRadius: BorderRadius.circular(AppRadius.xl),
-                                border: Border.all(
-                                  color: AppColors.white,
-                                  width: 3,
-                                ),
-                                boxShadow: AppShadows.medium,
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(17),
-                                child: Icon(
-                                  Icons.person,
-                                  size: 32,
-                                  color: Colors.grey[400],
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              bottom: 2,
-                              right: 2,
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: const BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.verified,
-                                  color: Color(0xFF4CAF50),
-                                  size: 12,
-                                ),
-                              ),
-                            ),
-                          ],
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
+                          ),
+                          child: Icon(
+                            Icons.person_outline_rounded,
+                            color: AppColors.primary,
+                            size: AppIconSize.md,
+                          ),
                         ),
                         const SizedBox(width: AppSpacing.md),
-                        
-                        // User Details
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                userName,
-                                style: const TextStyle(
-                                  color: AppColors.white,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.3,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '$department • $year',
-                                style: const TextStyle(
-                                  color: AppColors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                course,
-                                style: TextStyle(
-                                  color: AppColors.white.withValues(alpha: 0.8),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        
-                        // Edit Button
-                        Container(
-                          decoration: BoxDecoration(
-                            color: AppColors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                            border: Border.all(
-                              color: AppColors.white.withValues(alpha: 0.3),
-                              width: 1,
-                            ),
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () {
-                                // TODO: Navigate to edit profile
-                              },
-                              borderRadius: BorderRadius.circular(12),
-                              child: const Padding(
-                                padding: EdgeInsets.all(12),
-                                child: Icon(
-                                  Icons.edit_rounded,
-                                  color: AppColors.white,
-                                  size: AppIconSize.md,
-                                ),
-                              ),
-                            ),
+                        const Text(
+                          'About',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
                           ),
                         ),
                       ],
                     ),
-                    
-                    const SizedBox(height: AppSpacing.lg),
-                    
-                    // Primary Stats Row
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildCompactStatCard(
-                            icon: Icons.star_rounded,
-                            value: karma.toString(),
-                            label: 'Karma',
-                            subtitle: 'Community Score',
-                            color: AppColors.secondary,
-                            isPrimary: true,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildCompactStatCard(
-                            icon: Icons.bolt_rounded,
-                            value: points.toString(),
-                            label: 'Points',
-                            subtitle: 'Exchange Points',
-                            color: AppColors.primary,
-                            isPrimary: true,
-                          ),
-                        ),
-                      ],
-                    ),
-                    
-                    const SizedBox(height: AppSpacing.sm),
-                    
-                    // Secondary Stats Row
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildCompactStatCard(
-                            icon: Icons.emoji_events_rounded,
-                            value: '#$rank',
-                            label: 'Rank',
-                            color: AppColors.mediumGray,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _buildCompactStatCard(
-                            icon: Icons.autorenew_rounded,
-                            value: returned.toString(),
-                            label: 'Returned',
-                            color: AppColors.mediumGray,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _buildCompactStatCard(
-                            icon: Icons.local_fire_department_rounded,
-                            value: streak.toString(),
-                            label: 'Streak',
-                            color: AppColors.mediumGray,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _buildCompactStatCard(
-                            icon: Icons.star_border_rounded,
-                            value: 'Lv $level',
-                            label: 'Level',
-                            color: AppColors.mediumGray,
-                          ),
-                        ),
-                      ],
+                    const SizedBox(height: 12),
+                    Text(
+                      bio,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                        height: 1.6,
+                      ),
                     ),
                   ],
                 ),
               ),
-            ),
 
-            // Bio Section
-            Container(
-              margin: const EdgeInsets.all(AppSpacing.lg),
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              decoration: BoxDecoration(
-                color: AppColors.white,
-                borderRadius: BorderRadius.circular(AppRadius.xl),
-                border: Border.all(
-                  color: AppColors.lightGray.withValues(alpha: 0.3),
-                  width: 1,
+              // Tab Navigation
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppColors.lightGray.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  border: Border.all(
+                    color: AppColors.lightGray.withOpacity(0.3),
+                    width: 1,
+                  ),
                 ),
-                boxShadow: AppShadows.soft,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
-                        ),
-                        child: Icon(
-                          Icons.person_outline_rounded,
-                          color: AppColors.primary,
-                          size: AppIconSize.md,
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      const Text(
-                        'About',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    bio,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[700],
-                      height: 1.6,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Tab Navigation
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: AppColors.lightGray.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-                border: Border.all(
-                  color: AppColors.lightGray.withValues(alpha: 0.3),
-                  width: 1,
+                child: Row(
+                  children: [
+                    Expanded(child: _buildTab('Overview', 0)),
+                    Expanded(child: _buildTab('Badges', 1)),
+                    Expanded(child: _buildTab('Activity', 2)),
+                    Expanded(child: _buildTab('Settings', 3)),
+                  ],
                 ),
               ),
-              child: Row(
-                children: [
-                  Expanded(child: _buildTab('Overview', 0)),
-                  Expanded(child: _buildTab('Badges', 1)),
-                  Expanded(child: _buildTab('Activity', 2)),
-                  Expanded(child: _buildTab('Settings', 3)),
-                ],
-              ),
-            ),
 
-            const SizedBox(height: AppSpacing.lg),
-            
-            // Tab Content
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-              child: _buildTabContent(),
-            ),
-            
-            const SizedBox(height: AppSpacing.md),
-          ],
+              const SizedBox(height: AppSpacing.lg),
+              
+              // Tab Content
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                child: _buildTabContent(),
+              ),
+              
+              const SizedBox(height: AppSpacing.md),
+            ],
+          ),
         ),
       ),
       // Bottom Navigation Bar (Standard App Navigation)
@@ -434,6 +915,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+
   Widget _buildCompactStatCard({
     required IconData icon,
     required String value,
@@ -448,7 +930,7 @@ class _ProfilePageState extends State<ProfilePage> {
         color: AppColors.white,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(
-          color: color.withValues(alpha: 0.2),
+          color: color.withOpacity(0.2),
           width: 2,
         ),
         boxShadow: AppShadows.soft,
@@ -513,7 +995,7 @@ class _ProfilePageState extends State<ProfilePage> {
           color: isSelected ? AppColors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(AppRadius.md),
           border: isSelected ? Border.all(
-            color: AppColors.primary.withValues(alpha: 0.2),
+            color: AppColors.primary.withOpacity(0.2),
             width: 1,
           ) : null,
           boxShadow: isSelected ? AppShadows.soft : null,
@@ -548,112 +1030,112 @@ class _ProfilePageState extends State<ProfilePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-          // Quick Actions Grid
-          Row(
-            children: [
-              Expanded(
-                child: _buildQuickActionCard(
-                  'Game Hub',
-                  Icons.emoji_events,
-                  const LinearGradient(
-                    colors: [AppColors.black, AppColors.black],
-                  ),
-                  () {
-                    Navigator.push(
-                      context,
-                      SmoothPageRoute(page: const GameHubPage()),
-                    );
-                  },
+        // Quick Actions Grid
+        Row(
+          children: [
+            Expanded(
+              child: _buildQuickActionCard(
+                'Game Hub',
+                Icons.emoji_events,
+                const LinearGradient(
+                  colors: [AppColors.black, AppColors.black],
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildQuickActionCard(
-                  'My Posts',
-                  Icons.inventory_2,
-                  const LinearGradient(
-                    colors: [AppColors.black, AppColors.black],
-                  ),
-                  () {
-                    Navigator.push(
-                      context,
-                      SmoothPageRoute(page: const PostsPage()),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildQuickActionCard(
-                  'Leaderboard',
-                  Icons.people,
-                  const LinearGradient(
-                    colors: [AppColors.black, AppColors.black],
-                  ),
-                  () {
-                    Navigator.push(
-                      context,
-                      SmoothPageRoute(page: const LeaderboardsPage()),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildQuickActionCard(
-                  'Challenges',
-                  Icons.track_changes,
-                  const LinearGradient(
-                    colors: [AppColors.black, AppColors.black],
-                  ),
-                  () {
-                    Navigator.push(
-                      context,
-                      SmoothPageRoute(page: const ChallengesPage()),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Recent Items Section
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Recent Items',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-              TextButton(
-                onPressed: () {
-                  // TODO: View all items
+                () {
+                  Navigator.push(
+                    context,
+                    SmoothPageRoute(page: const GameHubPage()),
+                  );
                 },
-                child: const Text(
-                  'View All',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF3B82F6),
-                    fontWeight: FontWeight.w600,
-                  ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildQuickActionCard(
+                'My Posts',
+                Icons.inventory_2,
+                const LinearGradient(
+                  colors: [AppColors.black, AppColors.black],
+                ),
+                () {
+                  Navigator.push(
+                    context,
+                    SmoothPageRoute(page: const PostsPage()),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildQuickActionCard(
+                'Leaderboard',
+                Icons.people,
+                const LinearGradient(
+                  colors: [AppColors.black, AppColors.black],
+                ),
+                () {
+                  Navigator.push(
+                    context,
+                    SmoothPageRoute(page: const LeaderboardsPage()),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildQuickActionCard(
+                'Challenges',
+                Icons.track_changes,
+                const LinearGradient(
+                  colors: [AppColors.black, AppColors.black],
+                ),
+                () {
+                  Navigator.push(
+                    context,
+                    SmoothPageRoute(page: const ChallengesPage()),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        // Recent Items Section
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Recent Items',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                // TODO: View all items
+              },
+              child: const Text(
+                'View All',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF3B82F6),
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
 
-          // Recent Items List
-          const SizedBox(height: 8),
-        ],
+        // Recent Items List
+        const SizedBox(height: 8),
+      ],
     );
   }
 
@@ -696,8 +1178,6 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     );
   }
-
-
 
   Widget _buildBadgesTab() {
     // Sample badge data - TODO: Fetch from Firebase
@@ -748,109 +1228,109 @@ class _ProfilePageState extends State<ProfilePage> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 16),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 16),
 
-            // Earned Badges Section
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.emoji_events,
-                      color: Color(0xFF10B981),
-                      size: 24,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Earned (${earnedBadges.length})',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ],
-                ),
-                TextButton(
-                  onPressed: () {},
-                  child: const Text(
-                    'View All',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF3B82F6),
-                      fontWeight: FontWeight.w600,
+          // Earned Badges Section
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.emoji_events,
+                    color: Color(0xFF10B981),
+                    size: 24,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Earned (${earnedBadges.length})',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
                     ),
                   ),
+                ],
+              ),
+              TextButton(
+                onPressed: () {},
+                child: const Text(
+                  'View All',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF3B82F6),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Earned Badges Grid
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 0.75,
               ),
-              itemCount: earnedBadges.length,
-              itemBuilder: (context, index) {
-                final badge = earnedBadges[index];
-                return _buildBadgeCard(
-                  icon: badge['icon'] as IconData,
-                  name: badge['name'] as String,
-                  description: badge['description'] as String,
-                  color: badge['color'] as Color,
-                  bgColor: badge['bgColor'] as Color,
-                  isLocked: false,
-                );
-              },
-            ),
-            const SizedBox(height: 32),
+            ],
+          ),
+          const SizedBox(height: 16),
 
-            // Locked Badges Section
-            Text(
-              'Locked (${lockedBadges.length})',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
+          // Earned Badges Grid
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              childAspectRatio: 0.75,
             ),
-            const SizedBox(height: 16),
+            itemCount: earnedBadges.length,
+            itemBuilder: (context, index) {
+              final badge = earnedBadges[index];
+              return _buildBadgeCard(
+                icon: badge['icon'] as IconData,
+                name: badge['name'] as String,
+                description: badge['description'] as String,
+                color: badge['color'] as Color,
+                bgColor: badge['bgColor'] as Color,
+                isLocked: false,
+              );
+            },
+          ),
+          const SizedBox(height: 32),
 
-            // Locked Badges Grid
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 0.85,
-              ),
-              itemCount: lockedBadges.length,
-              itemBuilder: (context, index) {
-                final badge = lockedBadges[index];
-                return _buildBadgeCard(
-                  icon: badge['icon'] as IconData,
-                  name: badge['name'] as String,
-                  description: badge['description'] as String,
-                  color: Colors.grey[400]!,
-                  bgColor: Colors.grey[100]!,
-                  isLocked: true,
-                );
-              },
+          // Locked Badges Section
+          Text(
+            'Locked (${lockedBadges.length})',
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
             ),
-            const SizedBox(height: 24),
-          ],
-        ),
+          ),
+          const SizedBox(height: 16),
+
+          // Locked Badges Grid
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 0.85,
+            ),
+            itemCount: lockedBadges.length,
+            itemBuilder: (context, index) {
+              final badge = lockedBadges[index];
+              return _buildBadgeCard(
+                icon: badge['icon'] as IconData,
+                name: badge['name'] as String,
+                description: badge['description'] as String,
+                color: Colors.grey[400]!,
+                bgColor: Colors.grey[100]!,
+                isLocked: true,
+              );
+            },
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
     );
   }
 
@@ -946,32 +1426,32 @@ class _ProfilePageState extends State<ProfilePage> {
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Activity Timeline',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Activity Timeline',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
             ),
-            const SizedBox(height: 16),
-            
-            // Activity Timeline Items
-            ...activities.map((activity) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _buildActivityCard(
-                icon: activity['icon'] as IconData,
-                iconColor: activity['iconColor'] as Color,
-                bgColor: activity['bgColor'] as Color,
-                title: activity['title'] as String,
-                description: activity['description'] as String,
-                time: activity['time'] as String,
-              ),
-            )),
-          ],
-        ),
+          ),
+          const SizedBox(height: 16),
+          
+          // Activity Timeline Items
+          ...activities.map((activity) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _buildActivityCard(
+              icon: activity['icon'] as IconData,
+              iconColor: activity['iconColor'] as Color,
+              bgColor: activity['bgColor'] as Color,
+              title: activity['title'] as String,
+              description: activity['description'] as String,
+              time: activity['time'] as String,
+            ),
+          )),
+        ],
+      ),
     );
   }
 
@@ -986,10 +1466,10 @@ class _ProfilePageState extends State<ProfilePage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: bgColor.withValues(alpha: 0.3),
+        color: bgColor.withOpacity(0.3),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: bgColor.withValues(alpha: 0.5),
+          color: bgColor.withOpacity(0.5),
           width: 1,
         ),
       ),
@@ -999,7 +1479,7 @@ class _ProfilePageState extends State<ProfilePage> {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.2),
+              color: iconColor.withOpacity(0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -1049,235 +1529,235 @@ class _ProfilePageState extends State<ProfilePage> {
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Notifications Section
-            Row(
-              children: [
-                Icon(
-                  Icons.notifications_outlined,
-                  color: Color(0xFF10B981),
-                  size: 24,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Notifications Section
+          Row(
+            children: [
+              Icon(
+                Icons.notifications_outlined,
+                color: Color(0xFF10B981),
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Notifications',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
                 ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Notifications',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          _buildSettingItem(
+            title: 'Push Notifications',
+            subtitle: 'Get notified about claims and updates',
+            hasSwitch: true,
+            switchValue: true,
+            onSwitchChanged: (value) {
+              // TODO: Handle push notification toggle
+            },
+          ),
+          
+          _buildSettingItem(
+            title: 'Email Notifications',
+            subtitle: 'Receive emails for important updates',
+            hasSwitch: true,
+            switchValue: true,
+            onSwitchChanged: (value) {
+              // TODO: Handle email notification toggle
+            },
+          ),
+          
+          _buildSettingItem(
+            title: 'Claim Notifications',
+            subtitle: 'When someone claims your items',
+            hasSwitch: true,
+            switchValue: true,
+            onSwitchChanged: (value) {
+              // TODO: Handle claim notification toggle
+            },
+          ),
+          
+          const SizedBox(height: 32),
+          
+          // Privacy Section
+          Row(
+            children: [
+              Icon(
+                Icons.shield_outlined,
+                color: Color(0xFF6366F1),
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Privacy',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            
-            _buildSettingItem(
-              title: 'Push Notifications',
-              subtitle: 'Get notified about claims and updates',
-              hasSwitch: true,
-              switchValue: true,
-              onSwitchChanged: (value) {
-                // TODO: Handle push notification toggle
-              },
-            ),
-            
-            _buildSettingItem(
-              title: 'Email Notifications',
-              subtitle: 'Receive emails for important updates',
-              hasSwitch: true,
-              switchValue: true,
-              onSwitchChanged: (value) {
-                // TODO: Handle email notification toggle
-              },
-            ),
-            
-            _buildSettingItem(
-              title: 'Claim Notifications',
-              subtitle: 'When someone claims your items',
-              hasSwitch: true,
-              switchValue: true,
-              onSwitchChanged: (value) {
-                // TODO: Handle claim notification toggle
-              },
-            ),
-            
-            const SizedBox(height: 32),
-            
-            // Privacy Section
-            Row(
-              children: [
-                Icon(
-                  Icons.shield_outlined,
-                  color: Color(0xFF6366F1),
-                  size: 24,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          _buildSettingItem(
+            title: 'Public Profile',
+            subtitle: 'Allow others to view your profile',
+            hasSwitch: true,
+            switchValue: true,
+            onSwitchChanged: (value) {
+              // TODO: Handle public profile toggle
+            },
+          ),
+          
+          _buildSettingItem(
+            title: 'Show Statistics',
+            subtitle: 'Display your stats on leaderboards',
+            hasSwitch: true,
+            switchValue: true,
+            onSwitchChanged: (value) {
+              // TODO: Handle statistics toggle
+            },
+          ),
+          
+          const SizedBox(height: 32),
+          
+          // Account Section
+          Row(
+            children: [
+              Icon(
+                Icons.person_outline,
+                color: Color(0xFF8B5CF6),
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Account',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
                 ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Privacy',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            
-            _buildSettingItem(
-              title: 'Public Profile',
-              subtitle: 'Allow others to view your profile',
-              hasSwitch: true,
-              switchValue: true,
-              onSwitchChanged: (value) {
-                // TODO: Handle public profile toggle
-              },
-            ),
-            
-            _buildSettingItem(
-              title: 'Show Statistics',
-              subtitle: 'Display your stats on leaderboards',
-              hasSwitch: true,
-              switchValue: true,
-              onSwitchChanged: (value) {
-                // TODO: Handle statistics toggle
-              },
-            ),
-            
-            const SizedBox(height: 32),
-            
-            // Account Section
-            Row(
-              children: [
-                Icon(
-                  Icons.person_outline,
-                  color: Color(0xFF8B5CF6),
-                  size: 24,
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Account',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            
-            _buildSettingItem(
-              title: 'Export My Data',
-              hasArrow: true,
-              onTap: () {
-                // TODO: Navigate to export data
-              },
-            ),
-            
-            _buildSettingItem(
-              title: 'Help & Support',
-              hasArrow: true,
-              onTap: () {
-                // TODO: Navigate to help & support
-              },
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // Sign Out Button
-            InkWell(
-              onTap: () async {
-                // Show confirmation dialog
-                final bool? confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Sign Out'),
-                    content: const Text('Are you sure you want to sign out?'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: const Text('Cancel'),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        style: TextButton.styleFrom(
-                          foregroundColor: const Color(0xFFEF4444),
-                        ),
-                        child: const Text('Sign Out'),
-                      ),
-                    ],
-                  ),
-                );
-
-                if (confirm == true) {
-                  try {
-                    // Sign out from Firebase
-                    await FirebaseAuth.instance.signOut();
-                    
-                    // Navigate to login page and remove all previous routes
-                    if (mounted) {
-                      Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(builder: (context) => const LoginPage()),
-                        (route) => false,
-                      );
-                    }
-                  } catch (e) {
-                    // Show error message if sign out fails
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Error signing out: $e'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                    }
-                  }
-                }
-              },
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEF4444),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: const [
-                        Icon(
-                          Icons.logout,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                        SizedBox(width: 12),
-                        Text(
-                          'Sign Out',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          _buildSettingItem(
+            title: 'Export My Data',
+            hasArrow: true,
+            onTap: () {
+              // TODO: Navigate to export data
+            },
+          ),
+          
+          _buildSettingItem(
+            title: 'Help & Support',
+            hasArrow: true,
+            onTap: () {
+              // TODO: Navigate to help & support
+            },
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // Sign Out Button
+          InkWell(
+            onTap: () async {
+              // Show confirmation dialog
+              final bool? confirm = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Sign Out'),
+                  content: const Text('Are you sure you want to sign out?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
                     ),
-                    Icon(
-                      Icons.arrow_forward_ios,
-                      color: Colors.white,
-                      size: 16,
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFFEF4444),
+                      ),
+                      child: const Text('Sign Out'),
                     ),
                   ],
                 ),
+              );
+
+              if (confirm == true) {
+                try {
+                  // Sign out from Firebase
+                  await firebase_auth.FirebaseAuth.instance.signOut();
+                  
+                  // Navigate to login page and remove all previous routes
+                  if (mounted) {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (context) => const LoginPage()),
+                      (route) => false,
+                    );
+                  }
+                } catch (e) {
+                  // Show error message if sign out fails
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error signing out: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              }
+            },
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEF4444),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: const [
+                      Icon(
+                        Icons.logout,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      SizedBox(width: 12),
+                      Text(
+                        'Sign Out',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                ],
               ),
             ),
-            
-            const SizedBox(height: 24),
-          ],
-        ),
+          ),
+          
+          const SizedBox(height: 24),
+        ],
+      ),
     );
   }
 
@@ -1350,7 +1830,7 @@ class _ProfilePageState extends State<ProfilePage> {
         children: [
           Icon(
             icon,
-            color: isSelected ? AppColors.primary : AppColors.white.withValues(alpha: 0.6),
+            color: isSelected ? AppColors.primary : AppColors.white.withOpacity(0.6),
             size: 26,
           ),
           const SizedBox(height: 4),
@@ -1358,7 +1838,7 @@ class _ProfilePageState extends State<ProfilePage> {
             label,
             style: TextStyle(
               fontSize: 11,
-              color: isSelected ? AppColors.primary : AppColors.white.withValues(alpha: 0.6),
+              color: isSelected ? AppColors.primary : AppColors.white.withOpacity(0.6),
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
             ),
           ),
