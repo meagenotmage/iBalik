@@ -1673,7 +1673,7 @@ Widget _buildClaimerAdditionalInfo(Map<String, dynamic> claim) {
   void _navigateToConfirmReturn(Map<String, dynamic> claim) {
     Navigator.push(
       context,
-      SmoothPageRoute(page: ConfirmReturnPage(itemData: claim)),
+      SmoothPageRoute(page: ConfirmReturnPage(itemData: claim, claimId: claim['docId'])),
     );
   }
 
@@ -2160,6 +2160,7 @@ Widget _buildClaimerAdditionalInfo(Map<String, dynamic> claim) {
                                 'description': itemDetails,
                                 'seekerName': seekerName,
                               },
+                              claimId: id,
                             ),
                           ),
                         );
