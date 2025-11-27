@@ -147,18 +147,23 @@ Stream<QuerySnapshot> getLostItems({String status = 'available', int limit = 50}
       // Send notifications and record activities for return completion
       final notificationService = NotificationService();
       final activityService = ActivityService();
-      final itemIdInt = int.tryParse(itemId) ?? data?['itemId'] ?? 0;
+      
+      // Reward points for successful return
+      const karmaReward = 10;
+      const pointsReward = 50;
 
       // Notify claimer (owner) about successful return
       if (claimedBy != null) {
         await notificationService.notifyUserReturnCompleted(
           userId: claimedBy,
           itemName: itemName,
-          itemId: itemIdInt,
+          karmaEarned: karmaReward,
+          pointsEarned: pointsReward,
         );
         await activityService.recordReturnCompleted(
           itemName: itemName,
-          itemId: itemIdInt,
+          karmaEarned: karmaReward,
+          pointsEarned: pointsReward,
         );
       }
 
@@ -167,12 +172,14 @@ Stream<QuerySnapshot> getLostItems({String status = 'available', int limit = 50}
         await notificationService.notifyUserReturnCompleted(
           userId: foundById,
           itemName: itemName,
-          itemId: itemIdInt,
+          karmaEarned: karmaReward,
+          pointsEarned: pointsReward,
         );
         await activityService.recordUserReturnCompleted(
           userId: foundById,
           itemName: itemName,
-          itemId: itemIdInt,
+          karmaEarned: karmaReward,
+          pointsEarned: pointsReward,
         );
       }
     } catch (e) {

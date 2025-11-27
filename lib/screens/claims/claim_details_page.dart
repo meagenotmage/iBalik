@@ -341,16 +341,22 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
       final notificationService = NotificationService();
       final activityService = ActivityService();
 
+      // Reward points for successful return
+      const karmaReward = 10;
+      const pointsReward = 50;
+
       // Notify claimer (owner) about successful return
       if (claimerId != null) {
         await notificationService.notifyUserReturnCompleted(
           userId: claimerId,
           itemName: itemTitle,
-          itemId: itemId ?? 0,
+          karmaEarned: karmaReward,
+          pointsEarned: pointsReward,
         );
         await activityService.recordReturnCompleted(
           itemName: itemTitle,
-          itemId: itemId ?? 0,
+          karmaEarned: karmaReward,
+          pointsEarned: pointsReward,
         );
       }
 
@@ -359,12 +365,14 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
         await notificationService.notifyUserReturnCompleted(
           userId: founderId,
           itemName: itemTitle,
-          itemId: itemId ?? 0,
+          karmaEarned: karmaReward,
+          pointsEarned: pointsReward,
         );
         await activityService.recordUserReturnCompleted(
           userId: founderId,
           itemName: itemTitle,
-          itemId: itemId ?? 0,
+          karmaEarned: karmaReward,
+          pointsEarned: pointsReward,
         );
       }
 

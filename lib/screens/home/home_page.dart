@@ -5,6 +5,7 @@ import '../../services/lost_item_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../utils/page_transitions.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/shimmer_widgets.dart';
 import '../auth/login_page.dart';
 import '../notifications/notifications_page.dart';
 import '../posts/posts_page.dart';
@@ -369,10 +370,10 @@ class _HomePageState extends State<HomePage> {
                       stream: _lostItemService.getLostItems(status: 'available', limit: 3),
                       builder: (context, snapshot) {
                         if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: Padding(
-                            padding: EdgeInsets.symmetric(vertical: 12),
-                            child: CircularProgressIndicator(),
-                          ));
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: ShimmerWidgets.itemList(count: 3),
+                          );
                         }
 
                         if (snapshot.hasError) {

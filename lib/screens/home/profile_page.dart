@@ -3,9 +3,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:io';
 import '../../utils/page_transitions.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/shimmer_widgets.dart';
 import '../../services/activity_service.dart';
 import '../posts/posts_page.dart';
 import '../game/game_hub_page.dart';
@@ -1015,29 +1017,21 @@ Future<void> _updateProfile(
                                     child: ClipRRect(
                                       borderRadius: BorderRadius.circular(17),
                                       child: profileImageUrl != null && profileImageUrl!.isNotEmpty
-                                          ? Image.network(
-                                              profileImageUrl!,
+                                          ? CachedNetworkImage(
+                                              imageUrl: profileImageUrl!,
                                               width: 64,
                                               height: 64,
                                               fit: BoxFit.cover,
-                                              errorBuilder: (context, error, stackTrace) {
-                                                return Icon(
-                                                  Icons.person,
-                                                  size: 32,
-                                                  color: Colors.grey[400],
-                                                );
-                                              },
-                                              loadingBuilder: (context, child, loadingProgress) {
-                                                if (loadingProgress == null) return child;
-                                                return Center(
-                                                  child: CircularProgressIndicator(
-                                                    value: loadingProgress.expectedTotalBytes != null
-                                                        ? loadingProgress.cumulativeBytesLoaded /
-                                                          loadingProgress.expectedTotalBytes!
-                                                        : null,
-                                                  ),
-                                                );
-                                              },
+                                              placeholder: (context, url) => ShimmerWidgets.imagePlaceholder(
+                                                width: 64,
+                                                height: 64,
+                                                borderRadius: BorderRadius.circular(17),
+                                              ),
+                                              errorWidget: (context, url, error) => Icon(
+                                                Icons.person,
+                                                size: 32,
+                                                color: Colors.grey[400],
+                                              ),
                                             )
                                           : Icon(
                                               Icons.person,
