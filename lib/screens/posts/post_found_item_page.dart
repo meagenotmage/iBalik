@@ -1474,7 +1474,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
               label: 'Try Again',
               textColor: Colors.white,
               onPressed: () {
-                _showImageSourceOptions();
+                _pickImages();
               },
             ),
           ),
@@ -1746,6 +1746,11 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
         dropOffLocation = '';
       }
       
+      // Prepare images for drop-off page
+      final imagesForDropOff = kIsWeb 
+          ? _selectedImages  // Keep ImagePickerData for web
+          : _selectedImages.map((img) => img.file).where((f) => f != null).toList();  // Extract File for mobile
+      
       final itemData = {
         'title': _titleController.text,
         'description': _descriptionController.text,
@@ -1754,7 +1759,8 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
         'date': _selectedDate,
         'dropOffLocation': dropOffLocation,
         'availability': _selectedAvailability,
-        'images': _selectedImages,
+        'images': imagesForDropOff,
+        'imagePickerData': _selectedImages,  // Keep original ImagePickerData
       };
       
       Navigator.push(
