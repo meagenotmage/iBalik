@@ -10,6 +10,8 @@ import '../../utils/app_theme.dart';
 import '../../utils/shimmer_widgets.dart';
 import '../../services/activity_service.dart';
 import '../../services/game_service.dart';
+import '../../services/game_data_service.dart';
+import '../../models/game_models.dart';
 import '../posts/posts_page.dart';
 import '../game/game_hub_page.dart';
 import '../game/leaderboards_page.dart';
@@ -28,6 +30,7 @@ class _ProfilePageState extends State<ProfilePage> {
   int _selectedTabIndex = 0;
   int _selectedIndex = 4; // Profile tab is selected
   final GameService _gameService = GameService(); // Add GameService instance
+  final GameDataService _gameDataService = GameDataService(); // Add GameDataService instance
 
   // User data
   String userName = 'username';
@@ -37,10 +40,11 @@ class _ProfilePageState extends State<ProfilePage> {
   String bio = 'Passionate about helping the WVSU community. Always happy to help reunite lost items with their owners!';
   String? profileImageUrl;
 
-  // Stats (non-gamification stats)
-  int rank = 8;
-  int returned = 12;
-  int streak = 5;
+  // Stats (real data from Firestore)
+  int _userRank = 0; // Calculated from leaderboard
+  int _itemsReturned = 0;
+  int _currentStreak = 0;
+  bool _statsLoading = true;
 
   // Settings state
   bool pushNotifications = true;
@@ -138,6 +142,42 @@ class _ProfilePageState extends State<ProfilePage> {
     super.dispose();
   }
 
+  /// Calculate user's rank based on karma leaderboard
+  Future<void> _calculateUserRank() async {
+    try {
+      final userId = firebase_auth.FirebaseAuth.instance.currentUser?.uid;
+      if (userId == null) return;
+
+      // Get the user's karma
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+      
+      if (!userDoc.exists) return;
+      
+      final userKarma = (userDoc.data()?['karma'] as num?)?.toInt() ?? 0;
+
+      // Count users with higher karma
+      final higherKarmaQuery = await FirebaseFirestore.instance
+          .collection('users')
+          .where('karma', isGreaterThan: userKarma)
+          .count()
+          .get();
+
+      setState(() {
+        _userRank = (higherKarmaQuery.count ?? 0) + 1;
+        _statsLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Error calculating user rank: $e');
+      setState(() {
+        _userRank = 0;
+        _statsLoading = false;
+      });
+    }
+  }
+
  Future<void> _loadUserData() async {
   try {
     final user = firebase_auth.FirebaseAuth.instance.currentUser;
@@ -168,10 +208,12 @@ class _ProfilePageState extends State<ProfilePage> {
           bio = (data['bio'] as String?) ?? 
                 'Passionate about helping the WVSU community. Always happy to help reunite lost items with their owners!';
           profileImageUrl = data['profileImageUrl'] as String?;
-          // karma, points, and level are now handled by GameService
-          rank = (data['rank'] as int?) ?? 8;
-          returned = (data['returned'] as int?) ?? 12;
-          streak = (data['streak'] as int?) ?? 5;
+          // Load real stats from Firestore
+          _itemsReturned = (data['itemsReturned'] as int?) ?? (data['returned'] as int?) ?? 0;
+          _currentStreak = (data['currentStreak'] as int?) ?? (data['streak'] as int?) ?? 0;
+          
+          // Calculate user rank asynchronously
+          _calculateUserRank();
 
           // Load settings
           final settings = data['settings'] as Map<String, dynamic>?;
@@ -212,9 +254,9 @@ class _ProfilePageState extends State<ProfilePage> {
       'year': '3rd Year',
       'bio': 'Passionate about helping the WVSU community. Always happy to help reunite lost items with their owners!',
       // karma, points, and level will be initialized by GameService
-      'rank': 8,
-      'returned': 12,
-      'streak': 5,
+      'itemsReturned': 0,
+      'currentStreak': 0,
+      'itemsPosted': 0,
       'settings': {
         'notifications': {
           'pushNotifications': true,
@@ -1185,7 +1227,7 @@ Future<void> _updateProfile(
                                     Expanded(
                                       child: _buildCompactStatCard(
                                         icon: Icons.emoji_events_rounded,
-                                        value: '#$rank',
+                                        value: _statsLoading ? '...' : '#$_userRank',
                                         label: 'Rank',
                                         color: AppColors.mediumGray,
                                       ),
@@ -1194,7 +1236,7 @@ Future<void> _updateProfile(
                                     Expanded(
                                       child: _buildCompactStatCard(
                                         icon: Icons.autorenew_rounded,
-                                        value: returned.toString(),
+                                        value: _itemsReturned.toString(),
                                         label: 'Returned',
                                         color: AppColors.mediumGray,
                                       ),
@@ -1203,7 +1245,7 @@ Future<void> _updateProfile(
                                     Expanded(
                                       child: _buildCompactStatCard(
                                         icon: Icons.local_fire_department_rounded,
-                                        value: streak.toString(),
+                                        value: _currentStreak.toString(),
                                         label: 'Streak',
                                         color: AppColors.mediumGray,
                                       ),
@@ -1574,158 +1616,315 @@ Future<void> _updateProfile(
   }
 
   Widget _buildBadgesTab() {
-    // Sample badge data - TODO: Fetch from Firebase
-    final earnedBadges = [
-      {
-        'icon': Icons.search,
-        'name': 'First Find',
-        'description': 'Posted your first found item',
-        'color': Colors.white,
-        'bgColor': Colors.grey[100],
-      },
-      {
-        'icon': Icons.volunteer_activism,
-        'name': 'Helper',
-        'description': 'Helped 5 people find their items',
-        'color': Colors.white,
-        'bgColor': Colors.grey[100],
-      },
-      {
-        'icon': Icons.bolt,
-        'name': 'Speed Returner',
-        'description': 'Returned item within 24 hours',
-        'color': Color(0xFF8B5CF6),
-        'bgColor': Color(0xFFF3E8FF),
-      },
-      {
-        'icon': Icons.star,
-        'name': 'Community Star',
-        'description': 'Reached top 10 on leaderboard',
-        'color': Colors.white,
-        'bgColor': Colors.grey[100],
-      },
-    ];
+    return ListenableBuilder(
+      listenable: _gameDataService,
+      builder: (context, _) {
+        final earnedBadges = _gameDataService.earnedBadges;
+        final availableBadges = _gameDataService.getAvailableBadgesWithProgress();
 
-    final lockedBadges = [
-      {
-        'icon': Icons.emoji_events,
-        'name': 'Perfect Week',
-        'description': 'Found 7 items in one week',
-      },
-      {
-        'icon': Icons.auto_awesome,
-        'name': 'Karma Master',
-        'description': 'Reached 100 karma points',
-      },
-    ];
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 16),
-
-          // Earned Badges Section
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const SizedBox(height: 16),
+
+              // Earned Badges Section
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Icon(
-                    Icons.emoji_events,
-                    color: Color(0xFF10B981),
-                    size: 24,
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.emoji_events,
+                        color: Color(0xFF10B981),
+                        size: 24,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Earned (${earnedBadges.length})',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Earned (${earnedBadges.length})',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                  TextButton(
+                    onPressed: () {
+                      // Navigate to full badges page
+                      Navigator.push(
+                        context,
+                        SmoothPageRoute(page: const GameHubPage()),
+                      );
+                    },
+                    child: const Text(
+                      'View All',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF3B82F6),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],
               ),
-              TextButton(
-                onPressed: () {},
-                child: const Text(
-                  'View All',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF3B82F6),
-                    fontWeight: FontWeight.w600,
-                  ),
+              const SizedBox(height: 16),
+
+              // Earned Badges Grid
+              earnedBadges.isEmpty
+                  ? _buildEmptyBadgesState()
+                  : GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: 0.75,
+                      ),
+                      itemCount: earnedBadges.length,
+                      itemBuilder: (context, index) {
+                        final badge = earnedBadges[index];
+                        return _buildEarnedBadgeCard(badge);
+                      },
+                    ),
+              const SizedBox(height: 32),
+
+              // Available Badges Section (Locked)
+              Text(
+                'Available (${availableBadges.length})',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
                 ),
               ),
+              const SizedBox(height: 16),
+
+              // Available Badges Grid with Progress
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 0.75,
+                ),
+                itemCount: availableBadges.length > 6 ? 6 : availableBadges.length,
+                itemBuilder: (context, index) {
+                  final badgeData = availableBadges[index];
+                  final def = badgeData['definition'] as BadgeDefinition;
+                  final progress = badgeData['progress'] as double;
+                  return _buildLockedBadgeCard(def, progress);
+                },
+              ),
+              const SizedBox(height: 24),
             ],
           ),
-          const SizedBox(height: 16),
+        );
+      },
+    );
+  }
 
-          // Earned Badges Grid
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: 0.75,
-            ),
-            itemCount: earnedBadges.length,
-            itemBuilder: (context, index) {
-              final badge = earnedBadges[index];
-              return _buildBadgeCard(
-                icon: badge['icon'] as IconData,
-                name: badge['name'] as String,
-                description: badge['description'] as String,
-                color: badge['color'] as Color,
-                bgColor: badge['bgColor'] as Color,
-                isLocked: false,
-              );
-            },
-          ),
-          const SizedBox(height: 32),
-
-          // Locked Badges Section
+  Widget _buildEmptyBadgesState() {
+    return Container(
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.emoji_events_outlined, size: 48, color: Colors.grey[400]),
+          const SizedBox(height: 12),
           Text(
-            'Locked (${lockedBadges.length})',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+            'No badges earned yet',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[600],
             ),
           ),
-          const SizedBox(height: 16),
-
-          // Locked Badges Grid
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 0.85,
-            ),
-            itemCount: lockedBadges.length,
-            itemBuilder: (context, index) {
-              final badge = lockedBadges[index];
-              return _buildBadgeCard(
-                icon: badge['icon'] as IconData,
-                name: badge['name'] as String,
-                description: badge['description'] as String,
-                color: Colors.grey[400]!,
-                bgColor: Colors.grey[100]!,
-                isLocked: true,
-              );
-            },
+          const SizedBox(height: 8),
+          Text(
+            'Complete challenges and activities to earn badges!',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
           ),
-          const SizedBox(height: 24),
         ],
       ),
     );
+  }
+
+  Widget _buildEarnedBadgeCard(UserBadge badge) {
+    final rarityColor = _getRarityColor(badge.rarity);
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: rarityColor.withOpacity(0.3), width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: rarityColor.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: rarityColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Center(
+              child: Text(
+                badge.icon,
+                style: const TextStyle(fontSize: 28),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            badge.name,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 3),
+          Text(
+            badge.description,
+            style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: rarityColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              badge.rarity.name.toUpperCase(),
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.bold,
+                color: rarityColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLockedBadgeCard(BadgeDefinition def, double progress) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey[300]!, width: 1),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Center(
+                  child: Text(
+                    def.icon,
+                    style: TextStyle(
+                      fontSize: 28,
+                      color: Colors.grey[400],
+                    ),
+                  ),
+                ),
+              ),
+              if (progress > 0)
+                SizedBox(
+                  width: 56,
+                  height: 56,
+                  child: CircularProgressIndicator(
+                    value: progress,
+                    strokeWidth: 3,
+                    backgroundColor: Colors.grey[200],
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      _getRarityColor(def.rarity).withOpacity(0.7),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            def.name,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[500],
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 3),
+          Text(
+            def.unlockCondition,
+            style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '${(progress * 100).toInt()}% complete',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[500],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getRarityColor(BadgeRarity rarity) {
+    switch (rarity) {
+      case BadgeRarity.common:
+        return Colors.grey[600]!;
+      case BadgeRarity.rare:
+        return const Color(0xFF3B82F6);
+      case BadgeRarity.epic:
+        return const Color(0xFF8B5CF6);
+      case BadgeRarity.legendary:
+        return const Color(0xFFF59E0B);
+    }
   }
 
   Widget _buildBadgeCard({
