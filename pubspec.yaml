@@ -44,6 +44,9 @@ dependencies:
   # Image picker for selecting photos
   image_picker: ^1.0.7
   
+  # Image compression for optimizing uploads
+  flutter_image_compress: ^2.1.0
+  
   # Permission handler for runtime permissions
   permission_handler: ^12.0.1
   

@@ -26,6 +26,8 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
   
   final List<File> _selectedImages = [];
   bool _isUploading = false;
+  int _uploadedCount = 0;
+  int _totalImages = 0;
   bool _isOnCooldown = false;
   Duration _remainingCooldown = Duration.zero;
   Timer? _cooldownTimer;
@@ -189,25 +191,27 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'Post Found Item',
-          style: TextStyle(
-            color: Colors.black87,
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
+    return Stack(
+      children: [
+        Scaffold(
+          backgroundColor: const Color(0xFFF5F5F5),
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.black87),
+              onPressed: _isUploading ? null : () => Navigator.pop(context),
+            ),
+            title: const Text(
+              'Post Found Item',
+              style: TextStyle(
+                color: Colors.black87,
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
-        ),
-      ),
-      body: SingleChildScrollView(
+          body: SingleChildScrollView(
         physics: const ClampingScrollPhysics(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1001,6 +1005,81 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
           ],
         ),
       ),
+        ),
+        
+        // Upload Progress Overlay
+        if (_isUploading)
+          Container(
+            color: Colors.black.withOpacity(0.7),
+            child: Center(
+              child: Container(
+                margin: const EdgeInsets.all(40),
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Upload icon
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF4CAF50),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.cloud_upload,
+                        color: Colors.white,
+                        size: 40,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Uploading Images',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Uploading $_uploadedCount of $_totalImages photos...',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    // Progress bar
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: LinearProgressIndicator(
+                        value: _totalImages > 0 ? _uploadedCount / _totalImages : 0,
+                        minHeight: 8,
+                        backgroundColor: Colors.grey[200],
+                        valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${(_totalImages > 0 ? (_uploadedCount / _totalImages * 100) : 0).toStringAsFixed(0)}%',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF4CAF50),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -1483,6 +1562,12 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
           contactValue = _emailController.text.trim();
         }
         
+        // Set total images for progress tracking
+        setState(() {
+          _totalImages = _selectedImages.length;
+          _uploadedCount = 0;
+        });
+        
         final String itemId = await _lostItemService.createLostItem(
           itemName: _titleController.text,
           description: _descriptionController.text,
@@ -1490,6 +1575,14 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
           location: _selectedLocation,
           images: _selectedImages,
           dateFound: _selectedDate.toIso8601String(),
+          onImageUploadProgress: (current, total) {
+            if (mounted) {
+              setState(() {
+                _uploadedCount = current;
+                _totalImages = total;
+              });
+            }
+          },
           additionalDetails: {
             'availability': _selectedAvailability,
             'dropOffLocation': null,

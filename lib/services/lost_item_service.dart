@@ -1,31 +1,44 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'cloudinary_service.dart';
+import 'supabase_storage_service.dart';
 import 'notification_service.dart';
 import 'activity_service.dart';
 
 class LostItemService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final CloudinaryService _cloudinary = CloudinaryService();
+  final SupabaseStorageService _storage = SupabaseStorageService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Collection reference
   CollectionReference get _lostItemsCollection =>
       _firestore.collection('lost_items');
 
-  /// Upload image to Cloudinary
+  /// Upload image to Supabase Storage
   Future<String> uploadItemImage(File imageFile, String itemId) async {
     try {
-      return await _cloudinary.uploadImage(imageFile, itemId);
+      return await _storage.uploadImage(
+        imageFile: imageFile,
+        itemId: itemId,
+        type: 'posts',
+      );
     } catch (e) {
       throw Exception('Failed to upload image: $e');
     }
   }
 
-  /// Upload multiple images
-  Future<List<String>> uploadMultipleImages(List<File> imageFiles, String itemId) async {
-    return await _cloudinary.uploadMultipleImages(imageFiles, itemId);
+  /// Upload multiple images with progress callback
+  Future<List<String>> uploadMultipleImages(
+    List<File> imageFiles,
+    String itemId, {
+    Function(int current, int total)? onProgress,
+  }) async {
+    return await _storage.uploadMultipleImages(
+      imageFiles: imageFiles,
+      itemId: itemId,
+      type: 'posts',
+      onProgress: onProgress,
+    );
   }
 
   /// Create a new lost item post
@@ -36,6 +49,7 @@ class LostItemService {
     required String location,
     required List<File> images,
     String? dateFound,
+    Function(int current, int total)? onImageUploadProgress,
     Map<String, dynamic>? additionalDetails,
   }) async {
     try {
@@ -48,8 +62,12 @@ class LostItemService {
       final docRef = _lostItemsCollection.doc();
       final String itemId = docRef.id;
 
-      // Upload images
-      final List<String> imageUrls = await uploadMultipleImages(images, itemId);
+      // Upload images with progress callback
+      final List<String> imageUrls = await uploadMultipleImages(
+        images,
+        itemId,
+        onProgress: onImageUploadProgress,
+      );
 
       // Create lost item data
       final Map<String, dynamic> lostItemData = {
