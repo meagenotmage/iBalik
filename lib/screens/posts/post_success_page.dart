@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/loading_components.dart';
 import '../../utils/design_system.dart';
+import '../../utils/shimmer_widgets.dart';
 
 class PostSuccessPage extends StatelessWidget {
   final Map<String, dynamic> itemData;
@@ -85,7 +87,7 @@ class PostSuccessPage extends StatelessWidget {
                       ),
                       child: Row(
                         children: [
-                          // Placeholder image
+                          // Item image
                           Container(
                             width: 90,
                             height: 90,
@@ -93,10 +95,9 @@ class PostSuccessPage extends StatelessWidget {
                               color: Colors.grey[200],
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: Icon(
-                              Icons.image,
-                              color: Colors.grey[400],
-                              size: 40,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: _buildItemImage(),
                             ),
                           ),
                           const SizedBox(width: 20),
@@ -544,6 +545,41 @@ class PostSuccessPage extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  /// Build item image from uploaded images array
+  Widget _buildItemImage() {
+    final images = itemData['images'];
+    String? imageUrl;
+    
+    if (images is List && images.isNotEmpty) {
+      imageUrl = images.first?.toString();
+    }
+    
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      return CachedNetworkImage(
+        imageUrl: imageUrl,
+        width: 90,
+        height: 90,
+        fit: BoxFit.cover,
+        placeholder: (context, url) => ShimmerWidgets.imagePlaceholder(
+          width: 90,
+          height: 90,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        errorWidget: (context, url, error) => Icon(
+          Icons.broken_image,
+          color: Colors.grey[400],
+          size: 40,
+        ),
+      );
+    }
+    
+    return Icon(
+      Icons.image,
+      color: Colors.grey[400],
+      size: 40,
     );
   }
 }

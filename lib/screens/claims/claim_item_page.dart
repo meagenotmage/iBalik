@@ -740,11 +740,20 @@ class _ClaimItemPageState extends State<ClaimItemPage> {
 
     try {
       final user = FirebaseAuth.instance.currentUser;
+      
+      // Extract item image URL from images array
+      String? itemImageUrl;
+      final images = widget.item['images'];
+      if (images is List && images.isNotEmpty && images[0] is String) {
+        itemImageUrl = images[0] as String;
+      }
+      
       // Normalize item fields and copy founder contact info into the claim
       final claimData = <String, dynamic>{
         'itemId': widget.item['itemId'] ?? widget.item['id'] ?? widget.item['docId'],
         'itemTitle': widget.item['itemName'] ?? widget.item['title'] ?? widget.item['name'] ?? widget.item['itemTitle'],
         'itemDescription': widget.item['description'] ?? widget.item['details'] ?? widget.item['itemDescription'],
+        'imageUrl': itemImageUrl, // Store item's image URL for display in claims list
         'claimerId': user?.uid,
         'claimerName': user?.displayName,
         'claimerEmail': user?.email,

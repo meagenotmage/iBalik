@@ -1694,6 +1694,20 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
           _isUploading = false;
         });
         
+        // Fetch the created item to get the image URLs
+        List<String> uploadedImageUrls = [];
+        try {
+          final doc = await _lostItemService.getLostItem(itemId);
+          if (doc.exists) {
+            final data = doc.data() as Map<String, dynamic>?;
+            if (data != null && data['images'] is List) {
+              uploadedImageUrls = List<String>.from(data['images']);
+            }
+          }
+        } catch (_) {
+          // Ignore fetch errors, proceed without images
+        }
+        
         final itemData = {
           'itemId': itemId,
           'title': _titleController.text,
@@ -1702,6 +1716,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
           'location': _selectedLocation,
           'date': _selectedDate,
           'availability': _selectedAvailability,
+          'images': uploadedImageUrls,
         };
         
         Navigator.push(

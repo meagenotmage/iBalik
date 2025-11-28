@@ -165,6 +165,14 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
               d['founderDisplayName'];
           _data['founderContactMethod'] = _data['founderContactMethod'] ?? d['founderContactMethod'];
           _data['founderContactValue'] = _data['founderContactValue'] ?? d['founderContactValue'];
+          
+          // Copy imageUrl from lost_item's images array if not present
+          if (_data['imageUrl'] == null) {
+            final images = d['images'];
+            if (images is List && images.isNotEmpty && images[0] is String) {
+              _data['imageUrl'] = images[0];
+            }
+          }
         });
       }
     } catch (_) {}
@@ -742,11 +750,35 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
                                     ),
                                     child: ClipRRect(
                                       borderRadius: BorderRadius.circular(11),
-                                      child: Icon(
-                                        Icons.image,
-                                        color: Colors.grey[400],
-                                        size: 32,
-                                      ),
+                                      child: (_data['imageUrl'] != null && _data['imageUrl'].toString().isNotEmpty)
+                                          ? Image.network(
+                                              _data['imageUrl'].toString(),
+                                              width: 64,
+                                              height: 64,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (context, error, stackTrace) => Icon(
+                                                Icons.broken_image,
+                                                color: Colors.grey[400],
+                                                size: 32,
+                                              ),
+                                              loadingBuilder: (context, child, loadingProgress) {
+                                                if (loadingProgress == null) return child;
+                                                return Center(
+                                                  child: CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    value: loadingProgress.expectedTotalBytes != null
+                                                        ? loadingProgress.cumulativeBytesLoaded /
+                                                            loadingProgress.expectedTotalBytes!
+                                                        : null,
+                                                  ),
+                                                );
+                                              },
+                                            )
+                                          : Icon(
+                                              Icons.image,
+                                              color: Colors.grey[400],
+                                              size: 32,
+                                            ),
                                     ),
                                   ),
                                   SizedBox(width: ClaimsSpacing.md),

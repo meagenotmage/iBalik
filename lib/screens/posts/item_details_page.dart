@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../utils/page_transitions.dart';
+import '../../utils/shimmer_widgets.dart';
 import '../claims/claim_item_page.dart';
 
 class ItemDetailsPage extends StatefulWidget {
@@ -17,6 +19,8 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
   bool _isCheckingClaim = true;
   bool _hasExistingClaim = false;
   String? _existingClaimStatus;
+  int _currentImageIndex = 0;
+  final PageController _imagePageController = PageController();
 
   // Check if current user is the founder of the item
   bool get _isCurrentUserFounder {
@@ -30,6 +34,12 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
   void initState() {
     super.initState();
     _checkExistingClaim();
+  }
+
+  @override
+  void dispose() {
+    _imagePageController.dispose();
+    super.dispose();
   }
 
   // Check if user already has a claim for this item
@@ -108,57 +118,8 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: 16),
-                  // Item Image (use Cloudinary/URL if available, otherwise fallback to icon)
-                  Container(
-                    height: 250,
-                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.black87,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Center(
-                      child: () {
-                        // images field is a list of URLs in Firestore
-                        final images = (widget.item['images'] is List) ? List.from(widget.item['images']) : null;
-                        final firstImage = (images != null && images.isNotEmpty) ? images.first as String? : null;
-                        if (firstImage != null && firstImage.isNotEmpty) {
-                          return ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: Image.network(
-                              firstImage,
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              height: 250,
-                              errorBuilder: (context, error, stackTrace) => const Icon(
-                                Icons.broken_image,
-                                size: 80,
-                                color: Colors.white54,
-                              ),
-                              loadingBuilder: (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return const Center(child: CircularProgressIndicator());
-                              },
-                            ),
-                          );
-                        }
-
-                        // If an icon code was passed (legacy), show it
-                        if (widget.item['image'] != null && widget.item['image'] is IconData) {
-                          return Icon(
-                            widget.item['image'],
-                            size: 100,
-                            color: Colors.white.withOpacity(0.4),
-                          );
-                        }
-
-                        return Icon(
-                          Icons.image,
-                          size: 100,
-                          color: Colors.white.withOpacity(0.4),
-                        );
-                      }(),
-                    ),
-                  ),
+                  // Item Image Carousel (supports multiple images)
+                  _buildImageCarousel(),
                   const SizedBox(height: 20),
                   
                   // Item Status Banner (if claimed or user has existing claim)
@@ -785,5 +746,150 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
       // Redirect to home after claim submission
       Navigator.popUntil(context, (route) => route.isFirst);
     }
+  }
+
+  /// Build image carousel with dots indicator for multiple images
+  Widget _buildImageCarousel() {
+    final images = (widget.item['images'] is List) 
+        ? List<String>.from(widget.item['images'].whereType<String>()) 
+        : <String>[];
+    
+    // No images - show placeholder
+    if (images.isEmpty) {
+      return Container(
+        height: 250,
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: Colors.black87,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Center(
+          child: widget.item['image'] != null && widget.item['image'] is IconData
+              ? Icon(
+                  widget.item['image'],
+                  size: 100,
+                  color: Colors.white.withOpacity(0.4),
+                )
+              : Icon(
+                  Icons.image,
+                  size: 100,
+                  color: Colors.white.withOpacity(0.4),
+                ),
+        ),
+      );
+    }
+
+    // Single image - no carousel needed
+    if (images.length == 1) {
+      return Container(
+        height: 250,
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: Colors.black87,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: CachedNetworkImage(
+            imageUrl: images.first,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: 250,
+            placeholder: (context, url) => ShimmerWidgets.imagePlaceholder(
+              width: double.infinity,
+              height: 250,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            errorWidget: (context, url, error) => const Center(
+              child: Icon(Icons.broken_image, size: 80, color: Colors.white54),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Multiple images - show carousel with dots indicator
+    return Column(
+      children: [
+        Container(
+          height: 250,
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: Colors.black87,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Stack(
+              children: [
+                PageView.builder(
+                  controller: _imagePageController,
+                  itemCount: images.length,
+                  onPageChanged: (index) {
+                    setState(() {
+                      _currentImageIndex = index;
+                    });
+                  },
+                  itemBuilder: (context, index) {
+                    return CachedNetworkImage(
+                      imageUrl: images[index],
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: 250,
+                      placeholder: (context, url) => ShimmerWidgets.imagePlaceholder(
+                        width: double.infinity,
+                        height: 250,
+                      ),
+                      errorWidget: (context, url, error) => const Center(
+                        child: Icon(Icons.broken_image, size: 80, color: Colors.white54),
+                      ),
+                    );
+                  },
+                ),
+                // Image counter badge
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${_currentImageIndex + 1}/${images.length}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        // Dots indicator
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(images.length, (index) {
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              width: _currentImageIndex == index ? 20 : 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: _currentImageIndex == index 
+                    ? const Color(0xFF4CAF50) 
+                    : Colors.grey[300],
+                borderRadius: BorderRadius.circular(4),
+              ),
+            );
+          }),
+        ),
+      ],
+    );
   }
 }
