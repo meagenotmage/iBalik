@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../utils/app_theme.dart';
+import '../../utils/claims_theme.dart';
 import '../../services/notification_service.dart';
 import '../../services/activity_service.dart';
 
@@ -69,13 +71,13 @@ class ClaimReviewPage extends StatelessWidget {
       ),
       body: SingleChildScrollView(
         physics: const ClampingScrollPhysics(),
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(ClaimsSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Item Card
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(ClaimsSpacing.md),
               decoration: BoxDecoration(
                 color: const Color(0xFFF3F1FF),
                 borderRadius: BorderRadius.circular(16),
@@ -96,20 +98,16 @@ class ClaimReviewPage extends StatelessWidget {
                       size: 40,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                        SizedBox(width: ClaimsSpacing.md),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           claimData['itemTitle'] ?? 'Student ID - Jane Smith',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
+                          style: ClaimsTypography.subtitle,
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: ClaimsSpacing.xs),
                         Row(
                           children: [
                             Icon(
@@ -178,56 +176,45 @@ class ClaimReviewPage extends StatelessWidget {
                       Icon(
                         Icons.chat_bubble_outline,
                         size: 20,
-                        color: Colors.blue[600],
+                        color: ClaimsColors.info,
                       ),
-                      const SizedBox(width: 8),
-                      const Text(
+                      SizedBox(width: ClaimsSpacing.xs),
+                      Text(
                         'Claim Description',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
+                        style: ClaimsTypography.subtitle,
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: ClaimsSpacing.xxs),
                   Text(
                     'Why they believe this item belongs to them',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
+                    style: ClaimsTypography.caption,
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: ClaimsSpacing.md),
                   Text(
                     claimData['claimDescription'] ??  
                     'This is my student ID. I lost it yesterday near the gymnasium. My student number is 2021-12345 and I remember dropping it when I was getting my things from my bag after basketball practice.',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[800],
-                      height: 1.5,
-                    ),
+                    style: ClaimsTypography.body.copyWith(height: 1.5),
                   ),
                   if ((claimData['additionalInfo'] ?? '').toString().trim().isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      const Text('Additional Details (provided by claimer):', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.orange)),
-                      SizedBox(height: 4),
+                      SizedBox(height: ClaimsSpacing.sm),
+                      Text('Additional Details (provided by claimer):', style: ClaimsTypography.bodyBold.copyWith(color: Colors.orange)),
+                      SizedBox(height: ClaimsSpacing.xxs),
                       Text(
                         claimData['additionalInfo'],
-                        style: TextStyle(fontSize: 14, color: Colors.black87),
+                        style: ClaimsTypography.body,
                       ),
                   ],
                 ],
               ),
             ),
             
-            const SizedBox(height: 20),
+            SizedBox(height: ClaimsSpacing.lg),
             
             // Image Proof Section (only if image exists)
             if (hasImage) ...[
               Container(
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.all(ClaimsSpacing.lg),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
@@ -305,66 +292,35 @@ class ClaimReviewPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Claimer Information',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
+                    style: ClaimsTypography.subtitle,
                   ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      const Icon(Icons.person, color: Colors.blueGrey, size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          claimData['claimerName'] ?? 'Unknown Claimer',
-                          style: const TextStyle(fontSize: 15),
-                        ),
-                      ),
-                    ],
+                  SizedBox(height: ClaimsSpacing.md),
+                  ClaimsWidgets.infoRow(
+                    icon: Icons.person,
+                    text: claimData['claimerName'] ?? 'Unknown Claimer',
                   ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      const Icon(Icons.phone, color: Colors.blueGrey, size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          claimData['claimerProvidedContactValue'] ?? claimData['claimerPhone'] ?? 'No contact provided',
-                          style: const TextStyle(fontSize: 15),
-                        ),
-                      ),
-                    ],
+                  SizedBox(height: ClaimsSpacing.sm),
+                  ClaimsWidgets.infoRow(
+                    icon: Icons.phone,
+                    text: claimData['claimerProvidedContactValue'] ?? claimData['claimerPhone'] ?? 'No contact provided',
                   ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      const Icon(Icons.email, color: Colors.blueGrey, size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          claimData['claimerEmail'] ?? 'No email provided',
-                          style: const TextStyle(fontSize: 15),
-                        ),
-                      ),
-                    ],
+                  SizedBox(height: ClaimsSpacing.sm),
+                  ClaimsWidgets.infoRow(
+                    icon: Icons.email,
+                    text: claimData['claimerEmail'] ?? 'No email provided',
                   ),
                 ],
               ),
             ),
             
-            const SizedBox(height: 20),
+            SizedBox(height: ClaimsSpacing.lg),
             
             // Verification Tips Card
             Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF9E6),
-                borderRadius: BorderRadius.circular(16),
-              ),
+              padding: EdgeInsets.all(ClaimsSpacing.lg),
+              decoration: ClaimsCardStyles.infoCard(ClaimsColors.pendingLight),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -372,16 +328,14 @@ class ClaimReviewPage extends StatelessWidget {
                     children: [
                       Icon(
                         Icons.info_outline,
-                        color: Colors.orange[700],
+                        color: ClaimsColors.pending,
                         size: 20,
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: ClaimsSpacing.xs),
                       Text(
                         'Verification Tips',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.orange[900],
+                        style: ClaimsTypography.subtitle.copyWith(
+                          color: ClaimsColors.pending,
                         ),
                       ),
                     ],
@@ -404,80 +358,24 @@ class ClaimReviewPage extends StatelessWidget {
             
             const SizedBox(height: 24),
             
-            // Action Buttons styled as in screenshot
+            // Action Buttons using ClaimsButton
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      _showRejectDialog(context);
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red,
-                      side: const BorderSide(color: Colors.red, width: 1.5),
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.cancel_outlined, size: 20),
-                        SizedBox(width: 8),
-                        Text(
-                          'Reject Claim',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.red,
-                          ),
-                        ),
-                      ],
-                    ),
+                  child: ClaimsButton(
+                    label: 'Reject Claim',
+                    icon: Icons.cancel_outlined,
+                    onPressed: () => _showRejectDialog(context),
+                    type: ClaimsButtonType.reject,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Color(0xFF2196F3), Color(0xFF3F51B5)],
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: ElevatedButton(
-                      onPressed: () {
-                        _showApproveDialog(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.check_circle, size: 20),
-                          SizedBox(width: 8),
-                          Text(
-                            'Approve Claim',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  child: ClaimsButton(
+                    label: 'Approve Claim',
+                    icon: Icons.check_circle,
+                    onPressed: () => _showApproveDialog(context),
+                    type: ClaimsButtonType.approve,
                   ),
                 ),
               ],

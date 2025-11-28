@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import '../../utils/page_transitions.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/claims_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../posts/posts_page.dart';
@@ -806,7 +807,7 @@ Future<String> _resolveFounderNameFromItem(dynamic itemId) async {
                   count: groupedClaims['pending']!.length,
                   isExpanded: _pendingExpanded,
                   onToggle: () => setState(() => _pendingExpanded = !_pendingExpanded),
-                  statusColor: const Color(0xFFF57C00),
+                  statusColor: ClaimsColors.pending,
                   icon: Icons.schedule,
                   claims: groupedClaims['pending']!,
                   isMyClaims: true,
@@ -819,7 +820,7 @@ Future<String> _resolveFounderNameFromItem(dynamic itemId) async {
                   count: groupedClaims['approved']!.length,
                   isExpanded: _approvedExpanded,
                   onToggle: () => setState(() => _approvedExpanded = !_approvedExpanded),
-                  statusColor: const Color(0xFF4CAF50),
+                  statusColor: ClaimsColors.approved,
                   icon: Icons.check_circle_outline,
                   claims: groupedClaims['approved']!,
                   isMyClaims: true,
@@ -832,7 +833,7 @@ Future<String> _resolveFounderNameFromItem(dynamic itemId) async {
                   count: groupedClaims['rejected']!.length,
                   isExpanded: _rejectedExpanded,
                   onToggle: () => setState(() => _rejectedExpanded = !_rejectedExpanded),
-                  statusColor: const Color(0xFFF44336),
+                  statusColor: ClaimsColors.rejected,
                   icon: Icons.cancel_outlined,
                   claims: groupedClaims['rejected']!,
                   isMyClaims: true,
@@ -845,7 +846,7 @@ Future<String> _resolveFounderNameFromItem(dynamic itemId) async {
                   count: groupedClaims['completed']!.length,
                   isExpanded: _completedExpanded,
                   onToggle: () => setState(() => _completedExpanded = !_completedExpanded),
-                  statusColor: const Color(0xFF2196F3),
+                  statusColor: ClaimsColors.info,
                   icon: Icons.task_alt,
                   claims: groupedClaims['completed']!,
                   isMyClaims: true,
@@ -928,7 +929,7 @@ Future<String> _resolveFounderNameFromItem(dynamic itemId) async {
                   count: groupedClaims['pending']!.length,
                   isExpanded: _foundPendingExpanded,
                   onToggle: () => setState(() => _foundPendingExpanded = !_foundPendingExpanded),
-                  statusColor: const Color(0xFFF57C00),
+                  statusColor: ClaimsColors.pending,
                   icon: Icons.rate_review_outlined,
                   claims: groupedClaims['pending']!,
                   isMyClaims: false,
@@ -941,7 +942,7 @@ Future<String> _resolveFounderNameFromItem(dynamic itemId) async {
                   count: groupedClaims['approved']!.length,
                   isExpanded: _foundApprovedExpanded,
                   onToggle: () => setState(() => _foundApprovedExpanded = !_foundApprovedExpanded),
-                  statusColor: const Color(0xFF4CAF50),
+                  statusColor: ClaimsColors.approved,
                   icon: Icons.handshake_outlined,
                   claims: groupedClaims['approved']!,
                   isMyClaims: false,
@@ -954,7 +955,7 @@ Future<String> _resolveFounderNameFromItem(dynamic itemId) async {
                   count: groupedClaims['rejected']!.length,
                   isExpanded: _foundRejectedExpanded,
                   onToggle: () => setState(() => _foundRejectedExpanded = !_foundRejectedExpanded),
-                  statusColor: const Color(0xFFF44336),
+                  statusColor: ClaimsColors.rejected,
                   icon: Icons.cancel_outlined,
                   claims: groupedClaims['rejected']!,
                   isMyClaims: false,
@@ -967,7 +968,7 @@ Future<String> _resolveFounderNameFromItem(dynamic itemId) async {
                   count: groupedClaims['completed']!.length,
                   isExpanded: _foundCompletedExpanded,
                   onToggle: () => setState(() => _foundCompletedExpanded = !_foundCompletedExpanded),
-                  statusColor: const Color(0xFF2196F3),
+                  statusColor: ClaimsColors.info,
                   icon: Icons.task_alt,
                   claims: groupedClaims['completed']!,
                   isMyClaims: false,
@@ -1019,26 +1020,10 @@ Future<String> _resolveFounderNameFromItem(dynamic itemId) async {
   Widget _buildEmptyState(String message, IconData icon) {
     return SingleChildScrollView(
       physics: const ClampingScrollPhysics(),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          const SizedBox(height: 60),
-          Icon(icon, size: 72, color: Colors.grey[300]),
-          const SizedBox(height: 16),
-          Text(
-            message,
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Claims you submit or receive will appear here',
-            style: TextStyle(fontSize: 14, color: Colors.grey[400]),
-          ),
-        ],
+      child: ClaimsWidgets.emptyState(
+        message: message,
+        icon: icon,
+        subtitle: 'Claims you submit or receive will appear here',
       ),
     );
   }
@@ -1066,62 +1051,13 @@ Future<String> _resolveFounderNameFromItem(dynamic itemId) async {
       child: Column(
         children: [
           // Section Header (Tap to expand/collapse)
-          InkWell(
-            onTap: onToggle,
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm + 2),
-              child: Row(
-                children: [
-                  // Status Icon
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(AppRadius.sm),
-                    ),
-                    child: Icon(icon, color: statusColor, size: 20),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  
-                  // Title and Count
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        Text(
-                          '$count claim${count == 1 ? '' : 's'}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  // Expand/Collapse Icon
-                  AnimatedRotation(
-                    turns: isExpanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 200),
-                    child: Icon(
-                      Icons.keyboard_arrow_down,
-                      color: AppColors.textSecondary,
-                      size: 24,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          ClaimsWidgets.sectionHeader(
+            title: title,
+            count: count,
+            isExpanded: isExpanded,
+            onToggle: onToggle,
+            color: statusColor,
+            icon: icon,
           ),
           
           // Claims List (Animated)
@@ -1198,29 +1134,10 @@ Future<String> _resolveFounderNameFromItem(dynamic itemId) async {
               child: Row(
                 children: [
                   // Thumbnail
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(AppRadius.sm),
-                    ),
-                    clipBehavior: Clip.hardEdge,
-                    child: imageUrl != null && imageUrl.toString().isNotEmpty
-                        ? Image.network(
-                            imageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Icon(
-                              Icons.image,
-                              color: Colors.grey[400],
-                              size: 24,
-                            ),
-                          )
-                        : Icon(
-                            isMyClaims ? Icons.inventory_2_outlined : Icons.person_outline,
-                            color: AppColors.textSecondary,
-                            size: 22,
-                          ),
+                  ClaimsWidgets.thumbnail(
+                    imageUrl: imageUrl?.toString(),
+                    placeholderIcon: isMyClaims ? Icons.inventory_2_outlined : Icons.person_outline,
+                    size: 44,
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   
@@ -1289,37 +1206,33 @@ Future<String> _resolveFounderNameFromItem(dynamic itemId) async {
 
   Widget _buildStatusBadge(String status, Color color) {
     String label;
+    IconData? icon;
     switch (status) {
       case 'pending':
         label = 'Pending';
+        icon = Icons.schedule;
         break;
       case 'approved':
         label = 'Approved';
+        icon = Icons.check_circle_outline;
         break;
       case 'rejected':
         label = 'Rejected';
+        icon = Icons.cancel_outlined;
         break;
       case 'completed':
         label = 'Done';
+        icon = Icons.task_alt;
         break;
       default:
         label = 'Pending';
+        icon = Icons.schedule;
     }
     
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
-      ),
+    return ClaimsWidgets.statusBadge(
+      label: label,
+      color: color,
+      icon: icon,
     );
   }
 
@@ -1517,27 +1430,11 @@ Widget _buildClaimerAdditionalInfo(Map<String, dynamic> claim) {
         );
       
       case 'approved':
-        return Row(
-          children: [
-            Expanded(
-              child: _buildSingleCTA(
-                label: 'Pickup Details',
-                icon: Icons.location_on_outlined,
-                color: statusColor,
-                onTap: () => _navigateToDetails(claim),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: _buildSingleCTA(
-                label: 'Contact Finder',
-                icon: Icons.chat_outlined,
-                color: Colors.grey[700]!,
-                outlined: true,
-                onTap: () => _navigateToDetails(claim),
-              ),
-            ),
-          ],
+        return _buildSingleCTA(
+          label: 'Pickup Details',
+          icon: Icons.location_on_outlined,
+          color: statusColor,
+          onTap: () => _navigateToDetails(claim),
         );
       
       case 'rejected':
@@ -1577,27 +1474,31 @@ Widget _buildClaimerAdditionalInfo(Map<String, dynamic> claim) {
         );
       
       case 'approved':
-        return Row(
-          children: [
-            Expanded(
-              child: _buildSingleCTA(
-                label: 'Confirm Return',
-                icon: Icons.check_circle_outline,
-                color: statusColor,
-                onTap: () => _navigateToConfirmReturn(claim),
+        return SizedBox(
+          height: 42,
+          child: Row(
+            children: [
+              Expanded(
+                child: ClaimsButton(
+                  label: 'Confirm Return',
+                  icon: Icons.check_circle_outline,
+                  type: ClaimsButtonType.approve,
+                  onPressed: () => _navigateToConfirmReturn(claim),
+                  isFullWidth: false,
+                ),
               ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: _buildSingleCTA(
-                label: 'View Details',
-                icon: Icons.info_outline,
-                color: Colors.grey[700]!,
-                outlined: true,
-                onTap: () => _navigateToDetails(claim),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: ClaimsButton(
+                  label: 'View Details',
+                  icon: Icons.info_outline,
+                  type: ClaimsButtonType.primary,
+                  onPressed: () => _navigateToDetails(claim),
+                  isFullWidth: false,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         );
       
       case 'rejected':
@@ -1633,29 +1534,24 @@ Widget _buildClaimerAdditionalInfo(Map<String, dynamic> claim) {
     required VoidCallback onTap,
     bool outlined = false,
   }) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: onTap,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: outlined ? Colors.transparent : color,
-          foregroundColor: outlined ? color : Colors.white,
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            side: outlined ? BorderSide(color: color) : BorderSide.none,
-          ),
-        ),
-        icon: Icon(icon, size: 18),
-        label: Text(
-          label,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
+    // Determine button type based on action
+    ClaimsButtonType buttonType;
+    if (label.contains('Approve') || label.contains('Confirm')) {
+      buttonType = ClaimsButtonType.approve;
+    } else if (label.contains('Reject')) {
+      buttonType = ClaimsButtonType.reject;
+    } else if (outlined) {
+      buttonType = ClaimsButtonType.secondary;
+    } else {
+      buttonType = ClaimsButtonType.primary;
+    }
+
+    return ClaimsButton(
+      label: label,
+      icon: icon,
+      onPressed: onTap,
+      type: buttonType,
+      isFullWidth: true,
     );
   }
 
@@ -1690,173 +1586,112 @@ Widget _buildClaimerAdditionalInfo(Map<String, dynamic> claim) {
     String? claimerId,
   }) {
     return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF9E6),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+      decoration: ClaimsCardStyles.infoCard(ClaimsColors.pendingLight),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(ClaimsSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header: item image, title, submitted date, claimer name/email
+            // Compact Header
             Row(
               children: [
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    Icons.badge,
-                    color: Colors.grey[600],
-                    size: 40,
-                  ),
+                ClaimsWidgets.thumbnail(
+                  placeholderIcon: Icons.badge,
+                  size: 56,
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: ClaimsSpacing.sm),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                        style: ClaimsTypography.subtitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: ClaimsSpacing.xxs),
+                      ClaimsWidgets.infoRow(
+                        icon: Icons.access_time,
+                        text: submittedDate,
+                        textStyle: ClaimsTypography.caption,
+                      ),
+                      if (claimedBy.isNotEmpty) ...[
+                        const SizedBox(height: ClaimsSpacing.xxs),
+                        ClaimsWidgets.infoRow(
+                          icon: Icons.person_outline,
+                          text: claimerEmail != null && claimerEmail.isNotEmpty
+                              ? '$claimedBy • $claimerEmail'
+                              : claimedBy,
+                          textStyle: ClaimsTypography.caption,
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          const Icon(Icons.access_time, size: 14, color: Colors.grey),
-                          const SizedBox(width: 6),
-                          Text('Claim submitted', style: TextStyle(color: Colors.grey[700], fontSize: 12)),
-                          const SizedBox(width: 8),
-                          Text(submittedDate, style: TextStyle(color: Colors.grey[700], fontSize: 12)),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      if (claimedBy.isNotEmpty) Row(
-                        children: [
-                          const Icon(Icons.person_outline, size: 14, color: Colors.grey),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              '$claimedBy${claimerEmail != null && claimerEmail.isNotEmpty ? ' (${claimerEmail})' : ''}',
-                              style: TextStyle(color: Colors.grey[800]),
-                            ),
-                          ),
-                        ],
-                      ),
+                      ],
                     ],
                   ),
                 ),
               ],
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: ClaimsSpacing.sm),
 
-            // Yellow warning box with claim description
+            // Compact Description
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(ClaimsSpacing.sm),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFF3CD),
-                borderRadius: BorderRadius.circular(8),
+                color: ClaimsColors.pending.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+                border: Border.all(
+                  color: ClaimsColors.pending.withValues(alpha: 0.2),
+                  width: 1,
+                ),
               ),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.info_outline,
-                    color: Color(0xFFF57C00),
-                    size: 20,
+                    color: ClaimsColors.pending,
+                    size: 16,
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: ClaimsSpacing.xs),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Tap to review details and decide',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFFF57C00),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          claimDescription,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.orange[800],
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                    child: Text(
+                      claimDescription,
+                      style: ClaimsTypography.caption.copyWith(
+                        color: ClaimsColors.pending,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: ClaimsSpacing.sm),
 
             // Review Claim Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    SmoothPageRoute(
-                      page: ClaimReviewPage(
-                        claimData: {
-                          'itemTitle': title,
-                          'claimerName': claimedBy,
-                          'claimerEmail': claimerEmail ?? '',
-                          'submittedDate': submittedDate,
-                          'claimDescription': claimDescription,
-                          'claimerId': claimerId ?? '',
-                        },
-                      ),
+            ClaimsButton(
+              label: 'Review Claim',
+              icon: Icons.rate_review,
+              type: ClaimsButtonType.review,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  SmoothPageRoute(
+                    page: ClaimReviewPage(
+                      claimData: {
+                        'itemTitle': title,
+                        'claimerName': claimedBy,
+                        'claimerEmail': claimerEmail ?? '',
+                        'submittedDate': submittedDate,
+                        'claimDescription': claimDescription,
+                        'claimerId': claimerId ?? '',
+                      },
                     ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFF57C00),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
                   ),
-                  elevation: 0,
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.rate_review, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'Review Claim',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+                );
+              },
             ),
           ],
         ),
@@ -2042,107 +1877,40 @@ Widget _buildClaimerAdditionalInfo(Map<String, dynamic> claim) {
           if (isExpanded) ...[
             const Divider(height: 1),
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(ClaimsSpacing.md),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Contact Information
                   Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    padding: EdgeInsets.all(ClaimsSpacing.sm),
+                    decoration: ClaimsCardStyles.compactCard(),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Contact Information',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Icon(Icons.person, size: 20, color: Colors.grey[600]),
-                            const SizedBox(width: 8),
-                            Text(
-                              seekerName,
-                              style: const TextStyle(fontSize: 15),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Icon(Icons.phone, size: 20, color: Colors.grey[600]),
-                            const SizedBox(width: 8),
-                            Text(
-                              seekerPhone,
-                              style: const TextStyle(fontSize: 15),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Icon(Icons.email, size: 20, color: Colors.grey[600]),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                seekerEmail,
-                                style: const TextStyle(fontSize: 15),
-                              ),
-                            ),
-                          ],
-                        ),
+                        Text('Contact Information', style: ClaimsTypography.bodyBold),
+                        SizedBox(height: ClaimsSpacing.xs),
+                        ClaimsWidgets.infoRow(icon: Icons.person, text: seekerName),
+                        SizedBox(height: ClaimsSpacing.xxs),
+                        ClaimsWidgets.infoRow(icon: Icons.phone, text: seekerPhone),
+                        SizedBox(height: ClaimsSpacing.xxs),
+                        ClaimsWidgets.infoRow(icon: Icons.email, text: seekerEmail),
                       ],
                     ),
                   ),
                   
-                  const SizedBox(height: 12),
+                  SizedBox(height: ClaimsSpacing.sm),
                   
                   // Pickup Location
                   Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
+                    padding: EdgeInsets.all(ClaimsSpacing.sm),
+                    decoration: ClaimsCardStyles.compactCard(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(
-                          Icons.location_on,
-                          color: Color(0xFF4CAF50),
-                          size: 24,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Pickup Location',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.black54,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                pickupLocation,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        Text('Pickup Location', style: ClaimsTypography.bodyBold),
+                        SizedBox(height: ClaimsSpacing.xs),
+                        ClaimsWidgets.infoRow(icon: Icons.location_on, text: pickupLocation),
                       ],
                     ),
                   ),
@@ -2150,48 +1918,25 @@ Widget _buildClaimerAdditionalInfo(Map<String, dynamic> claim) {
                   const SizedBox(height: 16),
                   
                   // Confirm Return Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          SmoothPageRoute(
-                            page: ConfirmReturnPage(
-                              itemData: {
-                                'title': title,
-                                'description': itemDetails,
-                                'seekerName': seekerName,
-                              },
-                              claimId: id,
-                            ),
+                  ClaimsButton(
+                    label: 'Confirm Return',
+                    icon: Icons.check_circle,
+                    type: ClaimsButtonType.approve,
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        SmoothPageRoute(
+                          page: ConfirmReturnPage(
+                            itemData: {
+                              'title': title,
+                              'description': itemDetails,
+                              'seekerName': seekerName,
+                            },
+                            claimId: id,
                           ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF4CAF50),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
                         ),
-                        elevation: 0,
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.check_circle, size: 20),
-                          SizedBox(width: 8),
-                          Text(
-                            'Confirm Successful Return',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -2370,27 +2115,23 @@ Widget _buildClaimerAdditionalInfo(Map<String, dynamic> claim) {
           if (isExpanded) ...[
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              padding: EdgeInsets.fromLTRB(ClaimsSpacing.md, 0, ClaimsSpacing.md, ClaimsSpacing.md),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Divider(),
-                  const SizedBox(height: 12),
+                  ClaimsWidgets.divider(),
+                  SizedBox(height: ClaimsSpacing.sm),
                   
                   // Your Claim Request section
-                  const Text(
+                  Text(
                     'Your Claim Request',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
+                    style: ClaimsTypography.subtitle,
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: ClaimsSpacing.sm),
                   
                   // Claim message
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: EdgeInsets.all(ClaimsSpacing.sm),
                     decoration: BoxDecoration(
                       color: Colors.grey[50],
                       borderRadius: BorderRadius.circular(8),
@@ -2401,41 +2142,33 @@ Widget _buildClaimerAdditionalInfo(Map<String, dynamic> claim) {
                     ),
                     child: Text(
                       claimRequest,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[700],
+                      style: ClaimsTypography.body.copyWith(
                         height: 1.5,
                       ),
                     ),
                   ),
                   
-                  const SizedBox(height: 8),
+                  SizedBox(height: ClaimsSpacing.xs),
                   
                   // Submitted date
                   Text(
                     'Submitted:',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
+                    style: ClaimsTypography.caption,
                   ),
                   
                   if (approvedDate != null) ...[
                     Text(
                       'Approved: $approvedDate',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
+                      style: ClaimsTypography.caption,
                     ),
                   ],
                   
-                  const SizedBox(height: 16),
+                  SizedBox(height: ClaimsSpacing.md),
                   
                   // Status-specific message
                   if (isPending)
                     Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(ClaimsSpacing.md),
                       decoration: BoxDecoration(
                         color: const Color(0xFFFFF8E1),
                         borderRadius: BorderRadius.circular(8),
@@ -2445,29 +2178,24 @@ Widget _buildClaimerAdditionalInfo(Map<String, dynamic> claim) {
                         children: [
                           const Icon(
                             Icons.hourglass_empty,
-                            color: Color(0xFFF57C00),
+                            color: ClaimsColors.pending,
                             size: 20,
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: ClaimsSpacing.sm),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
+                                Text(
                                   'Under Review',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFFF57C00),
+                                  style: ClaimsTypography.bodyBold.copyWith(
+                                    color: ClaimsColors.pending,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
+                                SizedBox(height: ClaimsSpacing.xxs),
                                 Text(
                                   'The finder is reviewing your claim request. You\'ll be notified once they make a decision.',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.grey[700],
-                                  ),
+                                  style: ClaimsTypography.body,
                                 ),
                               ],
                             ),
@@ -2478,7 +2206,7 @@ Widget _buildClaimerAdditionalInfo(Map<String, dynamic> claim) {
                   
                   if (isApproved) ...[
                     Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(ClaimsSpacing.md),
                       decoration: BoxDecoration(
                         color: const Color(0xFFE3F2FD),
                         borderRadius: BorderRadius.circular(8),
@@ -2488,29 +2216,24 @@ Widget _buildClaimerAdditionalInfo(Map<String, dynamic> claim) {
                         children: [
                           const Icon(
                             Icons.check_circle,
-                            color: Color(0xFF2196F3),
+                            color: ClaimsColors.info,
                             size: 20,
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: ClaimsSpacing.sm),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
+                                Text(
                                   'Claim Approved!',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF2196F3),
+                                  style: ClaimsTypography.bodyBold.copyWith(
+                                    color: ClaimsColors.info,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
+                                SizedBox(height: ClaimsSpacing.xxs),
                                 Text(
                                   'Your claim has been approved. Please follow the pickup instructions to collect your item.',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.grey[700],
-                                  ),
+                                  style: ClaimsTypography.body,
                                 ),
                               ],
                             ),
@@ -2519,92 +2242,32 @@ Widget _buildClaimerAdditionalInfo(Map<String, dynamic> claim) {
                       ),
                     ),
                     
-                    const SizedBox(height: 12),
+                    SizedBox(height: ClaimsSpacing.sm),
                     
                     // Pickup location details
                     Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(ClaimsSpacing.sm),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: const Color(0xFFE3F2FD),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: const Color(0xFF2196F3),
+                          color: ClaimsColors.info,
                           width: 1,
                         ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.location_on,
-                                color: Color(0xFF2196F3),
-                                size: 20,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Pickup Location: ${pickupLocation ?? 'TBD'}',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF2196F3),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Visit the Library information desk during library hours with a valid ID.',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey[700],
-                            ),
-                          ),
+                          Text('Pickup Instructions', style: ClaimsTypography.bodyBold),
+                          SizedBox(height: ClaimsSpacing.xs),
+                          ClaimsWidgets.infoRow(icon: Icons.location_on, text: pickupLocation ?? 'TBD'),
+                          SizedBox(height: ClaimsSpacing.xxs),
+                          ClaimsWidgets.infoRow(icon: Icons.info_outline, text: 'Visit the Library information desk during library hours with a valid ID.'),
                         ],
                       ),
                     ),
                     
-                    const SizedBox(height: 12),
-                    
-                    // View Contact Details button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            SmoothPageRoute(
-                              page: ClaimDetailsPage(
-                                claimData: {
-                                  'title': title,
-                                  'description': claimRequest,
-                                  'foundBy': foundBy,
-                                  'pickupLocation': pickupLocation,
-                                  'approvedDate': approvedDate,
-                                },
-                              ),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2196F3),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          'View Contact Details',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
+
                   ],
                 ],
               ),

@@ -3,7 +3,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'return_success_page.dart';
 import '../../utils/page_transitions.dart';
-import '../../services/game_service.dart'; // Import GameService
+import '../../utils/app_theme.dart';
+import '../../utils/claims_theme.dart';
+import '../../services/game_service.dart';
 
 class ConfirmReturnPage extends StatefulWidget {
   final Map<String, dynamic> itemData;
@@ -274,24 +276,14 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
             )
           : SingleChildScrollView(
               physics: const ClampingScrollPhysics(),
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(ClaimsSpacing.md),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Item Details Card
                   Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
+                    padding: EdgeInsets.all(ClaimsSpacing.md),
+                    decoration: ClaimsCardStyles.card(),
                     child: Row(
                       children: [
                         // Item Image
@@ -323,65 +315,31 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
                                   size: 35,
                                 ),
                         ),
-                        const SizedBox(width: 16),
+                        SizedBox(width: ClaimsSpacing.md),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 widget.itemData['title'] ?? 'Unknown Item',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.black87,
-                                ),
+                                style: ClaimsTypography.subtitle,
                               ),
-                              const SizedBox(height: 6),
+                              SizedBox(height: ClaimsSpacing.xxs),
                               Text(
                                 widget.itemData['description'] ?? 'No description available',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.grey[600],
-                                ),
+                                style: ClaimsTypography.body,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.location_on,
-                                    size: 16,
-                                    color: Colors.grey[600],
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    widget.itemData['location'] ?? 'Unknown location',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                ],
+                              SizedBox(height: ClaimsSpacing.xs),
+                              ClaimsWidgets.infoRow(
+                                icon: Icons.location_on,
+                                text: widget.itemData['location'] ?? 'Unknown location',
                               ),
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.person,
-                                    size: 16,
-                                    color: Colors.grey[600],
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'Returning to: ${widget.itemData['seekerName'] ?? 'Unknown user'}',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.grey[700],
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
+                              SizedBox(height: ClaimsSpacing.xs),
+                              ClaimsWidgets.infoRow(
+                                icon: Icons.person,
+                                text: 'Returning to: ${widget.itemData['seekerName'] ?? 'Unknown user'}',
                               ),
                             ],
                           ),
@@ -427,16 +385,12 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
                           },
                           controlAffinity: ListTileControlAffinity.leading,
                           contentPadding: EdgeInsets.zero,
-                          title: const Text(
+                          title: Text(
                             'I have verified the owner\'s identity',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black87,
-                            ),
+                            style: ClaimsTypography.bodyBold,
                           ),
                           subtitle: Padding(
-                            padding: const EdgeInsets.only(top: 8),
+                            padding: EdgeInsets.only(top: ClaimsSpacing.xs),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -451,54 +405,35 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
                     ),
                   ),
                   
-                  const SizedBox(height: 20),
+                  SizedBox(height: ClaimsSpacing.lg),
                   
                   // Return Details Card
                   Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
+                    padding: EdgeInsets.all(ClaimsSpacing.lg),
+                    decoration: ClaimsCardStyles.card(),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Return Details',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
+                          style: ClaimsTypography.title,
                         ),
-                        const SizedBox(height: 16),
-                        const Text(
+                        SizedBox(height: ClaimsSpacing.md),
+                        Text(
                           'Where did the return take place?',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
+                          style: ClaimsTypography.bodyBold,
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: ClaimsSpacing.xs),
                         TextField(
                           controller: _meetingLocationController,
                           decoration: InputDecoration(
                             hintText: 'e.g., Library Information Desk, Security Office',
-                            hintStyle: TextStyle(color: Colors.grey[400]),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.grey[300]!),
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                              borderSide: BorderSide(color: AppColors.lightGray, width: 1.5),
                             ),
                             enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(AppRadius.md),
                               borderSide: BorderSide(color: Colors.grey[300]!),
                             ),
                             focusedBorder: OutlineInputBorder(
@@ -569,18 +504,14 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
                         Row(
                           children: [
                             const Icon(Icons.camera_alt, size: 20),
-                            const SizedBox(width: 8),
-                            const Text(
+                            SizedBox(width: ClaimsSpacing.xs),
+                            Text(
                               'Return Photo (Optional)',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black87,
-                              ),
+                              style: ClaimsTypography.title,
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: ClaimsSpacing.md),
                         InkWell(
                           onTap: _pickImage,
                           borderRadius: BorderRadius.circular(12),
@@ -604,14 +535,10 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
                                           size: 48,
                                           color: Colors.green[400],
                                         ),
-                                        const SizedBox(height: 12),
+                                        SizedBox(height: ClaimsSpacing.sm),
                                         Text(
                                           'Photo added',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.grey[600],
-                                            fontWeight: FontWeight.w500,
-                                          ),
+                                          style: ClaimsTypography.bodyBold,
                                         ),
                                       ],
                                     )
@@ -765,44 +692,13 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
                   
                   const SizedBox(height: 24),
                   
-                  // Confirm Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _isProcessing ? null : _confirmReturn,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF4CAF50),
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: _isProcessing
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                              ),
-                            )
-                          : const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.check_circle, color: Colors.white, size: 24),
-                                SizedBox(width: 12),
-                                Text(
-                                  'Confirm Successful Return',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ],
-                            ),
-                    ),
+                  // Confirm Button using ClaimsButton
+                  ClaimsButton(
+                    label: 'Confirm Successful Return',
+                    icon: Icons.check_circle,
+                    onPressed: _confirmReturn,
+                    type: ClaimsButtonType.approve,
+                    isLoading: _isProcessing,
                   ),
                   
                   const SizedBox(height: 24),
@@ -814,7 +710,7 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
 
   Widget _buildCheckItem(String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: EdgeInsets.only(bottom: ClaimsSpacing.xxs),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
