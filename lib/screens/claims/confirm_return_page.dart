@@ -89,14 +89,21 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
       final claimerId = claimData['claimerId'];
       final founderId = claimData['founderId'];
       final itemId = widget.itemData['itemId'];
+      
+      // Validate that current user is the founder
+      if (currentUser.uid != founderId) {
+        throw Exception('Only the item founder can confirm returns. Current user: ${currentUser.uid}, Required founder: $founderId');
+      }
+      
+      print('Founder validation passed - User ${currentUser.uid} is confirming return for claim ${widget.claimId}');
 
       // Create a batch write for all operations
       final batch = _firestore.batch();
 
-      // 1. Update claim status to 'returned'
+      // 1. Update claim status to 'completed' (matches Firestore rules)
       final claimRef = _firestore.collection('claims').doc(widget.claimId);
       batch.update(claimRef, {
-        'status': 'returned',
+        'status': 'completed',
         'returnedAt': FieldValue.serverTimestamp(),
         'returnLocation': _meetingLocationController.text.trim(),
         'returnNotes': _notesController.text.trim(),
@@ -181,9 +188,21 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
 
     } catch (e) {
       print('Return confirmation error: $e');
+      print('Current user: ${_auth.currentUser?.uid}');
+      print('Claim ID: ${widget.claimId}');
+      print('Item ID: ${widget.itemData['itemId']}');
+      
       if (mounted) {
-        _showError('Failed to confirm return: ${e.toString()}');
         setState(() => _isProcessing = false);
+        String errorMessage = 'Failed to confirm return';
+        if (e.toString().contains('Only the item founder')) {
+          errorMessage = 'You are not the founder of this item. Only the person who posted the lost item can confirm its return.';
+        } else if (e.toString().contains('permission')) {
+          errorMessage = 'Permission denied. Please check if you are the item founder.';
+        } else if (e.toString().contains('not-found')) {
+          errorMessage = 'Claim or item not found.';
+        }
+        _showError('$errorMessage');
       }
     }
   }

@@ -1420,6 +1420,14 @@ Widget _buildClaimerAdditionalInfo(Map<String, dynamic> claim) {
   }
 
   Widget _buildMyClaimsCTA(Map<String, dynamic> claim, String status, Color statusColor) {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    final claimerId = claim['claimerId'];
+    
+    // Ensure this is actually the user's claim
+    if (currentUserId != claimerId) {
+      return const SizedBox.shrink();
+    }
+    
     switch (status) {
       case 'pending':
         // No detail view for pending claims
@@ -1447,9 +1455,15 @@ Widget _buildClaimerAdditionalInfo(Map<String, dynamic> claim) {
   }
 
   Widget _buildFoundClaimsCTA(Map<String, dynamic> claim, String status, Color statusColor) {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    final founderId = claim['founderId'];
+    
     switch (status) {
       case 'pending':
-        // Needs Review - show review button
+        // Needs Review - show review button (only if user is founder)
+        if (currentUserId != founderId) {
+          return const SizedBox.shrink();
+        }
         return _buildSingleCTA(
           label: 'Review Claim',
           icon: Icons.rate_review_outlined,
@@ -1458,7 +1472,10 @@ Widget _buildClaimerAdditionalInfo(Map<String, dynamic> claim) {
         );
       
       case 'approved':
-        // Awaiting Return - show both Confirm Return and View Details
+        // Awaiting Return - show both Confirm Return and View Details (only if user is founder)
+        if (currentUserId != founderId) {
+          return const SizedBox.shrink();
+        }
         return SizedBox(
           height: 42,
           child: Row(
@@ -1542,6 +1559,20 @@ Widget _buildClaimerAdditionalInfo(Map<String, dynamic> claim) {
   }
 
   void _navigateToConfirmReturn(Map<String, dynamic> claim) {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    final founderId = claim['founderId'];
+    
+    // Validate that current user is the founder before navigation
+    if (currentUserId != founderId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Only the item founder can confirm returns. Current: $currentUserId, Required: $founderId'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    
     Navigator.push(
       context,
       SmoothPageRoute(page: ConfirmReturnPage(itemData: claim, claimId: claim['docId'])),

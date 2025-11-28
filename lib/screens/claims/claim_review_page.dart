@@ -7,10 +7,17 @@ import '../../utils/claims_theme.dart';
 import '../../services/notification_service.dart';
 import '../../services/activity_service.dart';
 
-class ClaimReviewPage extends StatelessWidget {
+class ClaimReviewPage extends StatefulWidget {
   final Map<String, dynamic> claimData;
 
   const ClaimReviewPage({super.key, required this.claimData});
+
+  @override
+  State<ClaimReviewPage> createState() => _ClaimReviewPageState();
+}
+
+class _ClaimReviewPageState extends State<ClaimReviewPage> {
+  bool _isProcessing = false;
 
   String _formatSubmitted(dynamic ts) {
     if (ts == null) return 'Unknown';
@@ -36,8 +43,8 @@ class ClaimReviewPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final submittedStr = _formatSubmitted(claimData['submittedDate']);
-    final bool hasImage = claimData['proofImage'] != null;
+    final submittedStr = _formatSubmitted(widget.claimData['submittedDate']);
+    final bool hasImage = widget.claimData['proofImage'] != null;
     
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -105,7 +112,7 @@ class ClaimReviewPage extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          claimData['itemTitle'] ?? 'Student ID - Jane Smith',
+                          widget.claimData['itemTitle'] ?? 'Student ID - Jane Smith',
                           style: ClaimsTypography.subtitle,
                         ),
                         SizedBox(height: ClaimsSpacing.xs),
@@ -137,7 +144,7 @@ class ClaimReviewPage extends StatelessWidget {
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(
-                                '${claimData['claimerName'] ?? 'J. Smith'}\nEmail: ${claimData['claimerEmail'] ?? 'jane.smith@wvsu.edu.ph'}\n${claimData['claimerContactMethod'] ?? 'Contact'}: ${claimData['claimerContactValue'] ?? 'No contact provided'}',
+                                '${widget.claimData['claimerName'] ?? 'J. Smith'}\nEmail: ${widget.claimData['claimerEmail'] ?? 'jane.smith@wvsu.edu.ph'}\n${widget.claimData['claimerContactMethod'] ?? 'Contact'}: ${widget.claimData['claimerContactValue'] ?? 'No contact provided'}',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.grey[600],
@@ -193,16 +200,16 @@ class ClaimReviewPage extends StatelessWidget {
                   ),
                   SizedBox(height: ClaimsSpacing.md),
                   Text(
-                    claimData['claimDescription'] ??  
+                    widget.claimData['claimDescription'] ??  
                     'This is my student ID. I lost it yesterday near the gymnasium. My student number is 2021-12345 and I remember dropping it when I was getting my things from my bag after basketball practice.',
                     style: ClaimsTypography.body.copyWith(height: 1.5),
                   ),
-                  if ((claimData['additionalInfo'] ?? '').toString().trim().isNotEmpty) ...[
+                  if ((widget.claimData['additionalInfo'] ?? '').toString().trim().isNotEmpty) ...[
                       SizedBox(height: ClaimsSpacing.sm),
                       Text('Additional Details (provided by claimer):', style: ClaimsTypography.bodyBold.copyWith(color: Colors.orange)),
                       SizedBox(height: ClaimsSpacing.xxs),
                       Text(
-                        claimData['additionalInfo'],
+                        widget.claimData['additionalInfo'],
                         style: ClaimsTypography.body,
                       ),
                   ],
@@ -305,15 +312,15 @@ class ClaimReviewPage extends StatelessWidget {
                     icon: Icons.person,
                     iconColor: ClaimsColors.info,
                     label: 'Claimer Name',
-                    value: claimData['claimerName'] ?? 'Unknown Claimer',
+                    value: widget.claimData['claimerName'] ?? 'Unknown Claimer',
                   ),
                   
                   SizedBox(height: ClaimsSpacing.sm),
                   
                   // Render only the selected contact method
                   ...() {
-                    final contactMethod = claimData['claimerContactMethod'];
-                    final contactValue = claimData['claimerContactValue'];
+                    final contactMethod = widget.claimData['claimerContactMethod'];
+                    final contactValue = widget.claimData['claimerContactValue'];
                     
                     if (contactMethod == null || contactValue == null || contactValue.toString().isEmpty) {
                       return [
@@ -426,6 +433,7 @@ class ClaimReviewPage extends StatelessWidget {
                     icon: Icons.cancel_outlined,
                     onPressed: () => _showRejectDialog(context),
                     type: ClaimsButtonType.reject,
+                    isLoading: _isProcessing,
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
@@ -435,6 +443,7 @@ class ClaimReviewPage extends StatelessWidget {
                     icon: Icons.check_circle,
                     onPressed: () => _showApproveDialog(context),
                     type: ClaimsButtonType.approve,
+                    isLoading: _isProcessing,
                   ),
                 ),
               ],
@@ -537,22 +546,17 @@ class ClaimReviewPage extends StatelessWidget {
               Navigator.pop(context); // Close dialog
               
               // Show loading indicator
-              if (context.mounted) {
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (context) => const Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                );
-              }
+              // Show loading indicator in button only
+              setState(() {
+                _isProcessing = true;
+              });
               
               // Attempt to mark claim as rejected in Firestore
-              final claimId = claimData['docId'] as String?;
-              final claimerId = claimData['claimerId'] as String?;
-              final itemId = claimData['itemId'];
-              final itemTitle = claimData['itemTitle'] ?? '';
-              final claimerName = claimData['claimerName'] ?? 'Unknown';
+              final claimId = widget.claimData['docId'] as String?;
+              final claimerId = widget.claimData['claimerId'] as String?;
+              final itemId = widget.claimData['itemId'];
+              final itemTitle = widget.claimData['itemTitle'] ?? '';
+              final claimerName = widget.claimData['claimerName'] ?? 'Unknown';
               
               if (claimId != null) {
                 try {
@@ -620,13 +624,11 @@ class ClaimReviewPage extends StatelessWidget {
                     );
                   }
                 } catch (e) {
-                  // Close loading dialog
-                  if (context.mounted) {
-                    Navigator.pop(context);
-                  }
-                  
-                  // Show error message
-                  if (context.mounted) {
+                  print('Error rejecting claim: $e');
+                  if (mounted) {
+                    setState(() {
+                      _isProcessing = false;
+                    });
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('Failed to reject claim: $e'),
@@ -637,11 +639,8 @@ class ClaimReviewPage extends StatelessWidget {
                   }
                   return; // Don't navigate on error
                 }
-              } else {
-                // Close loading dialog if it was shown
-                if (context.mounted) {
-                  Navigator.pop(context);
-                }
+                } else {
+                // No loading dialog to close
               }
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
@@ -683,23 +682,18 @@ class ClaimReviewPage extends StatelessWidget {
               Navigator.pop(context); // Close dialog
               
               // Show loading indicator
-              if (context.mounted) {
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (context) => const Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                );
-              }
+              // Show loading indicator in button only
+              setState(() {
+                _isProcessing = true;
+              });
               
               // Approve claim: update claim doc and update lost_items to 'claimed'
-              final claimId = claimData['docId'] as String?;
-              final claimerId = claimData['claimerId'] as String?;
-              final itemId = claimData['itemId'];
+              final claimId = widget.claimData['docId'] as String?;
+              final claimerId = widget.claimData['claimerId'] as String?;
+              final itemId = widget.claimData['itemId'];
               final currentUid = FirebaseAuth.instance.currentUser?.uid;
-              final itemTitle = claimData['itemTitle'] ?? '';
-              final claimerName = claimData['claimerName'] ?? 'Unknown';
+              final itemTitle = widget.claimData['itemTitle'] ?? '';
+              final claimerName = widget.claimData['claimerName'] ?? 'Unknown';
 
               if (claimId != null) {
                 try {
@@ -780,7 +774,10 @@ class ClaimReviewPage extends StatelessWidget {
                   }
                   
                   // Navigate back to Claims Page
-                  if (context.mounted) {
+                  if (mounted) {
+                    setState(() {
+                      _isProcessing = false;
+                    });
                     Navigator.pop(context);
                     
                     // Show success message after navigation
@@ -793,13 +790,11 @@ class ClaimReviewPage extends StatelessWidget {
                     );
                   }
                 } catch (e) {
-                  // Close loading dialog
-                  if (context.mounted) {
-                    Navigator.pop(context);
-                  }
-                  
-                  // Show error message
-                  if (context.mounted) {
+                  print('Error approving claim: $e');
+                  if (mounted) {
+                    setState(() {
+                      _isProcessing = false;
+                    });
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('Failed to approve claim: $e'),
