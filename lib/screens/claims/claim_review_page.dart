@@ -614,21 +614,73 @@ class _ClaimReviewPageState extends State<ClaimReviewPage> {
                     );
                   } catch (_) {}
                   
-                  // Close loading dialog
-                  if (context.mounted) {
-                    Navigator.pop(context);
+                  // Update processing state
+                  if (mounted) {
+                    setState(() {
+                      _isProcessing = false;
+                    });
                   }
                   
-                  // Navigate back to Claims Page
+                  // Show success dialog
                   if (context.mounted) {
-                    Navigator.pop(context);
-                    
-                    // Show success message after navigation
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Claim rejected successfully'),
-                        backgroundColor: Colors.orange,
-                        duration: Duration(seconds: 2),
+                    await showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (context) => AlertDialog(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 60,
+                              height: 60,
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.cancel_outlined,
+                                color: Colors.orange,
+                                size: 32,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Claim Rejected',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'The claim has been rejected. The claimant has been notified.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context); // Close success dialog
+                              Navigator.pop(context); // Go back to claims page
+                            },
+                            child: const Text(
+                              'OK',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     );
                   }
@@ -777,24 +829,73 @@ class _ClaimReviewPageState extends State<ClaimReviewPage> {
                     );
                   } catch (_) {}
                   
-                  // Close loading dialog
-                  if (context.mounted) {
-                    Navigator.pop(context);
-                  }
-                  
-                  // Navigate back to Claims Page
+                  // Update processing state
                   if (mounted) {
                     setState(() {
                       _isProcessing = false;
                     });
-                    Navigator.pop(context);
-                    
-                    // Show success message after navigation
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Claim approved successfully'),
-                        backgroundColor: Colors.green,
-                        duration: Duration(seconds: 2),
+                  }
+                  
+                  // Show success dialog
+                  if (context.mounted) {
+                    await showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (context) => AlertDialog(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 60,
+                              height: 60,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF4CAF50).withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.check_circle,
+                                color: Color(0xFF4CAF50),
+                                size: 32,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Claim Approved!',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'The claim has been approved. The claimant can now coordinate pickup with you.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context); // Close success dialog
+                              Navigator.pop(context); // Go back to claims page
+                            },
+                            child: const Text(
+                              'OK',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     );
                   }
