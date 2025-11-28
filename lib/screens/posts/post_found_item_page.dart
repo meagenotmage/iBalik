@@ -1474,7 +1474,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
               label: 'Try Again',
               textColor: Colors.white,
               onPressed: () {
-                _pickImages(source);
+                _showImageSourceOptions();
               },
             ),
           ),
