@@ -214,10 +214,10 @@ Stream<QuerySnapshot> getLostItems({String status = 'available', int limit = 50}
         final data = doc.data() as Map<String, dynamic>;
         final List<dynamic> images = data['images'] ?? [];
 
-        // Delete images from Cloudinary
+        // Delete images from Supabase Storage
         for (String imageUrl in images) {
           try {
-            await _cloudinary.deleteImage(imageUrl);
+            await _storage.deleteImage(imageUrl);
           } catch (e) {
             print('Failed to delete image: $e');
           }

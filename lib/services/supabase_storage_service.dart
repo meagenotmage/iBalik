@@ -181,7 +181,7 @@ class SupabaseStorageService {
         bucketName,
         const BucketOptions(
           public: true,
-          fileSizeLimit: 10485760, // 10MB per file
+          fileSizeLimit: '10485760', // 10MB per file
           allowedMimeTypes: ['image/jpeg', 'image/png', 'image/jpg'],
         ),
       );
