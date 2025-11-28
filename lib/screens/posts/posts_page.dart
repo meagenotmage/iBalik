@@ -1,8 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../utils/page_transitions.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/shimmer_widgets.dart';
 import 'item_details_page.dart';
 import 'post_found_item_page.dart';
 import '../claims/claims_page.dart';
@@ -420,7 +422,7 @@ class _PostsPageState extends State<PostsPage> {
               stream: _lostItemService.getLostItems(status: 'available', limit: 50),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return ShimmerWidgets.itemList(count: 5);
                 }
                 
                 if (snapshot.hasError) {
@@ -498,9 +500,6 @@ class _PostsPageState extends State<PostsPage> {
         ? (item['datePosted'] as Timestamp).toDate() 
         : DateTime.now();
     
-    // Check if current user is the founder
-    final isFounder = _isCurrentUserFounder(item);
-    
     return InkWell(
       onTap: () {
         Navigator.push(
@@ -531,25 +530,21 @@ class _PostsPageState extends State<PostsPage> {
               child: imageUrl != null
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        imageUrl,
+                      child: CachedNetworkImage(
+                        imageUrl: imageUrl,
                         width: 70,
                         height: 70,
                         fit: BoxFit.cover,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Center(
-                            child: CircularProgressIndicator(
-                              value: loadingProgress.expectedTotalBytes != null
-                                  ? loadingProgress.cumulativeBytesLoaded /
-                                      loadingProgress.expectedTotalBytes!
-                                  : null,
-                            ),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          return Icon(Icons.broken_image, color: Colors.grey[400], size: 32);
-                        },
+                        placeholder: (context, url) => ShimmerWidgets.imagePlaceholder(
+                          width: 70,
+                          height: 70,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        errorWidget: (context, url, error) => Icon(
+                          Icons.broken_image,
+                          color: Colors.grey[400],
+                          size: 32,
+                        ),
                       ),
                     )
                   : Icon(Icons.image, color: Colors.grey[400], size: 32),

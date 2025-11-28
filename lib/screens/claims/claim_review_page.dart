@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../utils/app_theme.dart';
+import '../../utils/claims_theme.dart';
 import '../../services/notification_service.dart';
 import '../../services/activity_service.dart';
 
@@ -69,13 +72,13 @@ class ClaimReviewPage extends StatelessWidget {
       ),
       body: SingleChildScrollView(
         physics: const ClampingScrollPhysics(),
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(ClaimsSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Item Card
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(ClaimsSpacing.md),
               decoration: BoxDecoration(
                 color: const Color(0xFFF3F1FF),
                 borderRadius: BorderRadius.circular(16),
@@ -96,20 +99,16 @@ class ClaimReviewPage extends StatelessWidget {
                       size: 40,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                        SizedBox(width: ClaimsSpacing.md),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           claimData['itemTitle'] ?? 'Student ID - Jane Smith',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
+                          style: ClaimsTypography.subtitle,
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: ClaimsSpacing.xs),
                         Row(
                           children: [
                             Icon(
@@ -138,7 +137,7 @@ class ClaimReviewPage extends StatelessWidget {
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(
-                                '${claimData['claimerName'] ?? 'J. Smith'}\nEmail: ${claimData['claimerEmail'] ?? 'jane.smith@wvsu.edu.ph'}\nContact: ${claimData['claimerProvidedContactValue'] ?? claimData['claimerPhone'] ?? 'No contact provided'}',
+                                '${claimData['claimerName'] ?? 'J. Smith'}\nEmail: ${claimData['claimerEmail'] ?? 'jane.smith@wvsu.edu.ph'}\n${claimData['claimerContactMethod'] ?? 'Contact'}: ${claimData['claimerContactValue'] ?? 'No contact provided'}',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.grey[600],
@@ -178,56 +177,45 @@ class ClaimReviewPage extends StatelessWidget {
                       Icon(
                         Icons.chat_bubble_outline,
                         size: 20,
-                        color: Colors.blue[600],
+                        color: ClaimsColors.info,
                       ),
-                      const SizedBox(width: 8),
-                      const Text(
+                      SizedBox(width: ClaimsSpacing.xs),
+                      Text(
                         'Claim Description',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
+                        style: ClaimsTypography.subtitle,
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: ClaimsSpacing.xxs),
                   Text(
                     'Why they believe this item belongs to them',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
+                    style: ClaimsTypography.caption,
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: ClaimsSpacing.md),
                   Text(
                     claimData['claimDescription'] ??  
                     'This is my student ID. I lost it yesterday near the gymnasium. My student number is 2021-12345 and I remember dropping it when I was getting my things from my bag after basketball practice.',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[800],
-                      height: 1.5,
-                    ),
+                    style: ClaimsTypography.body.copyWith(height: 1.5),
                   ),
                   if ((claimData['additionalInfo'] ?? '').toString().trim().isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      const Text('Additional Details (provided by claimer):', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.orange)),
-                      SizedBox(height: 4),
+                      SizedBox(height: ClaimsSpacing.sm),
+                      Text('Additional Details (provided by claimer):', style: ClaimsTypography.bodyBold.copyWith(color: Colors.orange)),
+                      SizedBox(height: ClaimsSpacing.xxs),
                       Text(
                         claimData['additionalInfo'],
-                        style: TextStyle(fontSize: 14, color: Colors.black87),
+                        style: ClaimsTypography.body,
                       ),
                   ],
                 ],
               ),
             ),
             
-            const SizedBox(height: 20),
+            SizedBox(height: ClaimsSpacing.lg),
             
             // Image Proof Section (only if image exists)
             if (hasImage) ...[
               Container(
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.all(ClaimsSpacing.lg),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
@@ -288,7 +276,7 @@ class ClaimReviewPage extends StatelessWidget {
               const SizedBox(height: 20),
             ],
             
-            // Seeker (founder) Contact Information Card
+            // Claimer Contact Information Card
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -305,66 +293,93 @@ class ClaimReviewPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Claimer Information',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
+                    style: ClaimsTypography.subtitle,
                   ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      const Icon(Icons.person, color: Colors.blueGrey, size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          claimData['claimerName'] ?? 'Unknown Claimer',
-                          style: const TextStyle(fontSize: 15),
+                  SizedBox(height: ClaimsSpacing.md),
+                  
+                  // Name Card
+                  _buildCompactInfoCard(
+                    context,
+                    icon: Icons.person,
+                    iconColor: ClaimsColors.info,
+                    label: 'Claimer Name',
+                    value: claimData['claimerName'] ?? 'Unknown Claimer',
+                  ),
+                  
+                  SizedBox(height: ClaimsSpacing.sm),
+                  
+                  // Render only the selected contact method
+                  ...() {
+                    final contactMethod = claimData['claimerContactMethod'];
+                    final contactValue = claimData['claimerContactValue'];
+                    
+                    if (contactMethod == null || contactValue == null || contactValue.toString().isEmpty) {
+                      return [
+                        _buildCompactInfoCard(
+                          context,
+                          icon: Icons.contact_phone,
+                          iconColor: Colors.grey,
+                          label: 'Contact Information',
+                          value: 'Not provided',
+                          onTap: null,
                         ),
+                      ];
+                    }
+                    
+                    // Determine icon, color, and label based on contact method
+                    IconData icon;
+                    Color iconColor;
+                    String label;
+                    String? subtitle;
+                    
+                    if (contactMethod == 'Phone Call') {
+                      icon = Icons.phone;
+                      iconColor = const Color(0xFF4CAF50);
+                      label = 'Phone Number';
+                      subtitle = 'Tap to copy';
+                    } else if (contactMethod == 'Facebook Messenger') {
+                      icon = Icons.messenger;
+                      iconColor = const Color(0xFF0084FF);
+                      label = 'Facebook Messenger';
+                      subtitle = 'Tap to copy profile link';
+                    } else if (contactMethod == 'Email') {
+                      icon = Icons.email;
+                      iconColor = const Color(0xFFFF9800);
+                      label = 'Email Address';
+                      subtitle = 'Tap to copy';
+                    } else {
+                      icon = Icons.contact_phone;
+                      iconColor = Colors.grey;
+                      label = contactMethod.toString();
+                      subtitle = 'Tap to copy';
+                    }
+                    
+                    return [
+                      _buildCompactInfoCard(
+                        context,
+                        icon: icon,
+                        iconColor: iconColor,
+                        label: label,
+                        value: contactValue.toString(),
+                        subtitle: subtitle,
+                        onTap: () {
+                          _copyToClipboard(context, contactValue.toString());
+                        },
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      const Icon(Icons.phone, color: Colors.blueGrey, size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          claimData['claimerProvidedContactValue'] ?? claimData['claimerPhone'] ?? 'No contact provided',
-                          style: const TextStyle(fontSize: 15),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      const Icon(Icons.email, color: Colors.blueGrey, size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          claimData['claimerEmail'] ?? 'No email provided',
-                          style: const TextStyle(fontSize: 15),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ];
+                  }(),
                 ],
               ),
             ),
             
-            const SizedBox(height: 20),
+            SizedBox(height: ClaimsSpacing.lg),
             
             // Verification Tips Card
             Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF9E6),
-                borderRadius: BorderRadius.circular(16),
-              ),
+              padding: EdgeInsets.all(ClaimsSpacing.lg),
+              decoration: ClaimsCardStyles.infoCard(ClaimsColors.pendingLight),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -372,16 +387,14 @@ class ClaimReviewPage extends StatelessWidget {
                     children: [
                       Icon(
                         Icons.info_outline,
-                        color: Colors.orange[700],
+                        color: ClaimsColors.pending,
                         size: 20,
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: ClaimsSpacing.xs),
                       Text(
                         'Verification Tips',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.orange[900],
+                        style: ClaimsTypography.subtitle.copyWith(
+                          color: ClaimsColors.pending,
                         ),
                       ),
                     ],
@@ -404,80 +417,24 @@ class ClaimReviewPage extends StatelessWidget {
             
             const SizedBox(height: 24),
             
-            // Action Buttons styled as in screenshot
+            // Action Buttons using ClaimsButton
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      _showRejectDialog(context);
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red,
-                      side: const BorderSide(color: Colors.red, width: 1.5),
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.cancel_outlined, size: 20),
-                        SizedBox(width: 8),
-                        Text(
-                          'Reject Claim',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.red,
-                          ),
-                        ),
-                      ],
-                    ),
+                  child: ClaimsButton(
+                    label: 'Reject Claim',
+                    icon: Icons.cancel_outlined,
+                    onPressed: () => _showRejectDialog(context),
+                    type: ClaimsButtonType.reject,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Color(0xFF2196F3), Color(0xFF3F51B5)],
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: ElevatedButton(
-                      onPressed: () {
-                        _showApproveDialog(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.check_circle, size: 20),
-                          SizedBox(width: 8),
-                          Text(
-                            'Approve Claim',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  child: ClaimsButton(
+                    label: 'Approve Claim',
+                    icon: Icons.check_circle,
+                    onPressed: () => _showApproveDialog(context),
+                    type: ClaimsButtonType.approve,
                   ),
                 ),
               ],
@@ -649,12 +606,15 @@ class ClaimReviewPage extends StatelessWidget {
                     Navigator.pop(context);
                   }
                   
-                  // Show success message
+                  // Navigate back to Claims Page
                   if (context.mounted) {
+                    Navigator.pop(context);
+                    
+                    // Show success message after navigation
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Claim rejected successfully'),
-                        backgroundColor: Colors.red,
+                        backgroundColor: Colors.orange,
                         duration: Duration(seconds: 2),
                       ),
                     );
@@ -671,20 +631,17 @@ class ClaimReviewPage extends StatelessWidget {
                       SnackBar(
                         content: Text('Failed to reject claim: $e'),
                         backgroundColor: Colors.red,
+                        duration: Duration(seconds: 3),
                       ),
                     );
                   }
+                  return; // Don't navigate on error
                 }
               } else {
                 // Close loading dialog if it was shown
                 if (context.mounted) {
                   Navigator.pop(context);
                 }
-              }
-              
-              // Go back to claims page (StreamBuilder will automatically update)
-              if (context.mounted) {
-                Navigator.pop(context);
               }
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
@@ -822,8 +779,11 @@ class ClaimReviewPage extends StatelessWidget {
                     Navigator.pop(context);
                   }
                   
-                  // Show success message
+                  // Navigate back to Claims Page
                   if (context.mounted) {
+                    Navigator.pop(context);
+                    
+                    // Show success message after navigation
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Claim approved successfully'),
@@ -844,20 +804,17 @@ class ClaimReviewPage extends StatelessWidget {
                       SnackBar(
                         content: Text('Failed to approve claim: $e'),
                         backgroundColor: Colors.red,
+                        duration: Duration(seconds: 3),
                       ),
                     );
                   }
+                  return; // Don't navigate on error
                 }
               } else {
                 // Close loading dialog if it was shown
                 if (context.mounted) {
                   Navigator.pop(context);
                 }
-              }
-
-              // Go back to claims page (StreamBuilder will automatically update in real-time)
-              if (context.mounted) {
-                Navigator.pop(context);
               }
             },
             style: TextButton.styleFrom(
@@ -869,6 +826,120 @@ class ClaimReviewPage extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _copyToClipboard(BuildContext context, String text) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Copied to clipboard'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  Widget _buildCompactInfoCard(
+    BuildContext context, {
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String value,
+    String? subtitle,
+    VoidCallback? onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: EdgeInsets.all(ClaimsSpacing.md),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: iconColor.withValues(alpha: 0.2),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  icon,
+                  size: 20,
+                  color: iconColor,
+                ),
+              ),
+              SizedBox(width: ClaimsSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: ClaimsTypography.caption.copyWith(
+                        fontSize: 11,
+                      ),
+                    ),
+                    SizedBox(height: ClaimsSpacing.xxs),
+                    Text(
+                      value,
+                      style: ClaimsTypography.bodyBold.copyWith(
+                        fontSize: 15,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (subtitle != null && subtitle.isNotEmpty) ...[
+                      SizedBox(height: ClaimsSpacing.xxs),
+                      Text(
+                        subtitle,
+                        style: ClaimsTypography.caption.copyWith(
+                          fontSize: 11,
+                          fontStyle: FontStyle.italic,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (onTap != null) ...[
+                SizedBox(width: ClaimsSpacing.xs),
+                Container(
+                  padding: EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: iconColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.content_copy,
+                    size: 16,
+                    color: iconColor,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

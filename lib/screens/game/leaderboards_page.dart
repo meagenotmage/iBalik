@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'challenges_page.dart';
 import '../../utils/page_transitions.dart';
 import '../../utils/app_theme.dart';
+import '../../services/game_service.dart'; // Import GameService
 
 class LeaderboardsPage extends StatefulWidget {
   const LeaderboardsPage({super.key});
@@ -13,6 +14,7 @@ class LeaderboardsPage extends StatefulWidget {
 }
 
 class _LeaderboardsPageState extends State<LeaderboardsPage> {
+  final GameService _gameService = GameService(); // Instantiate GameService
   String selectedCollege = 'All Colleges';
   String selectedTimePeriod = 'This Week';
   
@@ -25,6 +27,12 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
   void initState() {
     super.initState();
     _loadUserData();
+  }
+
+  @override
+  void dispose() {
+    _gameService.dispose();
+    super.dispose();
   }
 
   Future<void> _loadUserData() async {
@@ -325,108 +333,113 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
             const SizedBox(height: 16),
 
             // Current User Position Card
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.darkCard,
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                  border: Border.all(
-                    color: AppColors.primary,
-                    width: 2,
-                  ),
-                  boxShadow: AppShadows.soft,
-                ),
-                child: Row(
-                  children: [
-                    // Avatar
-                    Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: currentUser['bgColor'],
-                        shape: BoxShape.circle,
-                        image: profilePictureUrl != null
-                            ? DecorationImage(
-                                image: NetworkImage(profilePictureUrl!),
-                                fit: BoxFit.cover,
-                              )
-                            : null,
+            ListenableBuilder(
+              listenable: _gameService,
+              builder: (context, child) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.darkCard,
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                      border: Border.all(
+                        color: AppColors.primary,
+                        width: 2,
                       ),
-                      child: profilePictureUrl == null
-                          ? Center(
-                              child: Text(
-                                userInitials,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                      boxShadow: AppShadows.soft,
+                    ),
+                    child: Row(
+                      children: [
+                        // Avatar
+                        Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: currentUser['bgColor'],
+                            shape: BoxShape.circle,
+                            image: profilePictureUrl != null
+                                ? DecorationImage(
+                                    image: NetworkImage(profilePictureUrl!),
+                                    fit: BoxFit.cover,
+                                  )
+                                : null,
+                          ),
+                          child: profilePictureUrl == null
+                              ? Center(
+                                  child: Text(
+                                    userInitials,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                )
+                              : null,
+                        ),
+                        const SizedBox(width: 12),
+                        // User Info
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                userName,
+                                style: AppTextStyles.titleSmall.copyWith(
+                                  color: AppColors.lightText,
                                 ),
                               ),
-                            )
-                          : null,
-                    ),
-                    const SizedBox(width: 12),
-                    // User Info
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            userName,
-                            style: AppTextStyles.titleSmall.copyWith(
-                              color: AppColors.lightText,
-                            ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Lvl ${_gameService.currentLevel} • ${_gameService.karma} karma',
+                                style: AppTextStyles.bodySmall.copyWith(
+                                  color: AppColors.lightTextSecondary,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Points: ${_gameService.points}',
+                                style: AppTextStyles.captionSmall.copyWith(
+                                  color: AppColors.lightTextSecondary,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${currentUser['rank']} • ${currentUser['karma']} karma',
-                            style: AppTextStyles.bodySmall.copyWith(
-                              color: AppColors.lightTextSecondary,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            currentUser['badge'],
-                            style: AppTextStyles.captionSmall.copyWith(
-                              color: AppColors.lightTextSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Change indicator
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Row(
+                        ),
+                        // Change indicator
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            const Icon(
-                              Icons.arrow_upward,
-                              color: AppColors.secondary,
-                              size: 16,
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.arrow_upward,
+                                  color: AppColors.secondary,
+                                  size: 16,
+                                ),
+                                Text(
+                                  currentUser['change'],
+                                  style: AppTextStyles.titleSmall.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.secondary,
+                                  ),
+                                ),
+                              ],
                             ),
                             Text(
-                              currentUser['change'],
-                              style: AppTextStyles.titleSmall.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.secondary,
+                              currentUser['changeLabel'],
+                              style: AppTextStyles.overline.copyWith(
+                                color: AppColors.lightTextSecondary,
                               ),
                             ),
                           ],
                         ),
-                        Text(
-                          currentUser['changeLabel'],
-                          style: AppTextStyles.overline.copyWith(
-                            color: AppColors.lightTextSecondary,
-                          ),
-                        ),
                       ],
                     ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             ),
 
             const SizedBox(height: 24),

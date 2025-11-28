@@ -18,7 +18,7 @@ class _ClaimItemPageState extends State<ClaimItemPage> {
   final TextEditingController _detailsController = TextEditingController();
   final TextEditingController _additionalInfoController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _whatsappController = TextEditingController();
+  final TextEditingController _messengerController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   
   String _selectedContactMethod = '';
@@ -28,7 +28,7 @@ class _ClaimItemPageState extends State<ClaimItemPage> {
     _detailsController.dispose();
     _additionalInfoController.dispose();
     _phoneController.dispose();
-    _whatsappController.dispose();
+    _messengerController.dispose();
     _emailController.dispose();
     super.dispose();
   }
@@ -458,11 +458,11 @@ class _ClaimItemPageState extends State<ClaimItemPage> {
                         ),
                         const SizedBox(height: 12),
                         
-                        // WhatsApp option
+                        // Facebook Messenger option
                         _buildContactOption(
-                          'WhatsApp',
-                          'Message via WhatsApp',
-                          Icons.chat,
+                          'Facebook Messenger',
+                          'Contact via Facebook Messenger',
+                          Icons.messenger,
                         ),
                         const SizedBox(height: 12),
                         
@@ -579,10 +579,10 @@ class _ClaimItemPageState extends State<ClaimItemPage> {
       controller = _phoneController;
       hintText = 'Enter your phone number';
       keyboardType = TextInputType.phone;
-    } else if (title == 'WhatsApp') {
-      controller = _whatsappController;
-      hintText = 'Enter your WhatsApp number';
-      keyboardType = TextInputType.phone;
+    } else if (title == 'Facebook Messenger') {
+      controller = _messengerController;
+      hintText = 'Enter your Facebook Messenger profile link';
+      keyboardType = TextInputType.url;
     } else if (title == 'Email') {
       controller = _emailController;
       hintText = 'Enter your email address';
@@ -704,10 +704,10 @@ class _ClaimItemPageState extends State<ClaimItemPage> {
       return;
     }
     
-    if (_selectedContactMethod == 'WhatsApp' && _whatsappController.text.isEmpty) {
+    if (_selectedContactMethod == 'Facebook Messenger' && _messengerController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please enter your WhatsApp number'),
+          content: Text('Please enter your Facebook Messenger profile link'),
           backgroundColor: Colors.red,
         ),
       );
@@ -731,10 +731,11 @@ class _ClaimItemPageState extends State<ClaimItemPage> {
       builder: (context) => const _ProcessingDialog(),
     );
     
-    // Prepare contact value
+    // Prepare contact value - only store selected method
     String contactValue = '';
+    
     if (_selectedContactMethod == 'Phone Call') contactValue = _phoneController.text.trim();
-    if (_selectedContactMethod == 'WhatsApp') contactValue = _whatsappController.text.trim();
+    if (_selectedContactMethod == 'Facebook Messenger') contactValue = _messengerController.text.trim();
     if (_selectedContactMethod == 'Email') contactValue = _emailController.text.trim();
 
     try {
@@ -747,8 +748,8 @@ class _ClaimItemPageState extends State<ClaimItemPage> {
         'claimerId': user?.uid,
         'claimerName': user?.displayName,
         'claimerEmail': user?.email,
-        'claimerProvidedContactMethod': _selectedContactMethod,
-        'claimerProvidedContactValue': contactValue,
+        'claimerContactMethod': _selectedContactMethod,
+        'claimerContactValue': contactValue,
         'claimDescription': _detailsController.text.trim(),
         'additionalInfo': _additionalInfoController.text.trim(),
         'proofImage': null,
@@ -757,9 +758,8 @@ class _ClaimItemPageState extends State<ClaimItemPage> {
         // founder contact copied from the lost item where possible so claim details don't need extra lookups
         'founderId': widget.item['userId'] ?? widget.item['foundById'] ?? widget.item['posterId'],
         'founderName': widget.item['userName'] ?? widget.item['foundBy'] ?? widget.item['posterName'] ?? widget.item['founderName'],
-        'founderPhone': widget.item['userPhone'] ?? widget.item['posterPhone'] ?? widget.item['founderPhone'] ?? widget.item['phone'],
-        'founderEmail': widget.item['userEmail'] ?? widget.item['posterEmail'] ?? widget.item['founderEmail'] ?? widget.item['email'],
-        'founderMessenger': widget.item['founderMessenger'] ?? widget.item['posterMessenger'],
+        'founderContactMethod': widget.item['founderContactMethod'],
+        'founderContactValue': widget.item['founderContactValue'],
       };
 
       final firestore = FirebaseFirestore.instance;
@@ -797,11 +797,10 @@ class _ClaimItemPageState extends State<ClaimItemPage> {
 
           if (itemDoc != null && itemDoc.exists) {
             final d = itemDoc.data() ?? {};
-            claimData['founderId'] ??= d['userId'] ?? d['foundById'] ?? d['posterId'];
+            claimData['founderId'] ??= d['userId'] ?? d['founderId'] ?? d['posterId'];
             claimData['founderName'] ??= d['userName'] ?? d['posterName'] ?? d['foundBy'];
-            claimData['founderPhone'] ??= d['userPhone'] ?? d['posterPhone'] ?? d['founderPhone'] ?? d['phone'];
-            claimData['founderEmail'] ??= d['userEmail'] ?? d['posterEmail'] ?? d['founderEmail'] ?? d['email'];
-            claimData['founderMessenger'] ??= d['founderMessenger'] ?? d['posterMessenger'];
+            claimData['founderContactMethod'] ??= d['founderContactMethod'];
+            claimData['founderContactValue'] ??= d['founderContactValue'];
           }
         }
       } catch (_) {
@@ -983,7 +982,8 @@ class _SuccessDialog extends StatelessWidget {
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.pop(context); // Close success dialog
-                  Navigator.pop(context); // Go back to item details
+                  // Navigate to Home Page (clear stack back to home)
+                  Navigator.of(context).popUntil((route) => route.isFirst);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF4CAF50),

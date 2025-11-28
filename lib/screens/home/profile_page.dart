@@ -3,10 +3,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:io';
 import '../../utils/page_transitions.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/shimmer_widgets.dart';
 import '../../services/activity_service.dart';
+import '../../services/game_service.dart';
 import '../posts/posts_page.dart';
 import '../game/game_hub_page.dart';
 import '../game/leaderboards_page.dart';
@@ -24,6 +27,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   int _selectedTabIndex = 0;
   int _selectedIndex = 4; // Profile tab is selected
+  final GameService _gameService = GameService(); // Add GameService instance
 
   // User data
   String userName = 'username';
@@ -33,13 +37,10 @@ class _ProfilePageState extends State<ProfilePage> {
   String bio = 'Passionate about helping the WVSU community. Always happy to help reunite lost items with their owners!';
   String? profileImageUrl;
 
-  // Stats
-  int karma = 90;
-  int points = 245;
+  // Stats (non-gamification stats)
   int rank = 8;
   int returned = 12;
   int streak = 5;
-  int level = 3;
 
   // Settings state
   bool pushNotifications = true;
@@ -131,6 +132,12 @@ class _ProfilePageState extends State<ProfilePage> {
     _loadUserData();
   }
 
+  @override
+  void dispose() {
+    _gameService.dispose();
+    super.dispose();
+  }
+
  Future<void> _loadUserData() async {
   try {
     final user = firebase_auth.FirebaseAuth.instance.currentUser;
@@ -161,12 +168,10 @@ class _ProfilePageState extends State<ProfilePage> {
           bio = (data['bio'] as String?) ?? 
                 'Passionate about helping the WVSU community. Always happy to help reunite lost items with their owners!';
           profileImageUrl = data['profileImageUrl'] as String?;
-          karma = (data['karma'] as int?) ?? 90;
-          points = (data['points'] as int?) ?? 245;
+          // karma, points, and level are now handled by GameService
           rank = (data['rank'] as int?) ?? 8;
           returned = (data['returned'] as int?) ?? 12;
           streak = (data['streak'] as int?) ?? 5;
-          level = (data['level'] as int?) ?? 3;
 
           // Load settings
           final settings = data['settings'] as Map<String, dynamic>?;
@@ -206,12 +211,10 @@ class _ProfilePageState extends State<ProfilePage> {
       'course': 'BS Information Technology',
       'year': '3rd Year',
       'bio': 'Passionate about helping the WVSU community. Always happy to help reunite lost items with their owners!',
-      'karma': 90,
-      'points': 245,
+      // karma, points, and level will be initialized by GameService
       'rank': 8,
       'returned': 12,
       'streak': 5,
-      'level': 3,
       'settings': {
         'notifications': {
           'pushNotifications': true,
@@ -402,7 +405,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   
                   // Department Dropdown
                   DropdownButtonFormField<String>(
-                    value: selectedDepartment,
+                    initialValue: selectedDepartment,
                     decoration: const InputDecoration(
                       labelText: 'Department',
                       border: OutlineInputBorder(),
@@ -427,7 +430,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   
                   // Course Dropdown (dynamically filtered by department)
                   DropdownButtonFormField<String>(
-                    value: availableCourses.contains(selectedCourse) ? selectedCourse : null,
+                    initialValue: availableCourses.contains(selectedCourse) ? selectedCourse : null,
                     decoration: const InputDecoration(
                       labelText: 'Course',
                       border: OutlineInputBorder(),
@@ -456,7 +459,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   
                   // Year Dropdown
                   DropdownButtonFormField<String>(
-                    value: selectedYear,
+                    initialValue: selectedYear,
                     decoration: const InputDecoration(
                       labelText: 'Year',
                       border: OutlineInputBorder(),
@@ -1015,29 +1018,21 @@ Future<void> _updateProfile(
                                     child: ClipRRect(
                                       borderRadius: BorderRadius.circular(17),
                                       child: profileImageUrl != null && profileImageUrl!.isNotEmpty
-                                          ? Image.network(
-                                              profileImageUrl!,
+                                          ? CachedNetworkImage(
+                                              imageUrl: profileImageUrl!,
                                               width: 64,
                                               height: 64,
                                               fit: BoxFit.cover,
-                                              errorBuilder: (context, error, stackTrace) {
-                                                return Icon(
-                                                  Icons.person,
-                                                  size: 32,
-                                                  color: Colors.grey[400],
-                                                );
-                                              },
-                                              loadingBuilder: (context, child, loadingProgress) {
-                                                if (loadingProgress == null) return child;
-                                                return Center(
-                                                  child: CircularProgressIndicator(
-                                                    value: loadingProgress.expectedTotalBytes != null
-                                                        ? loadingProgress.cumulativeBytesLoaded /
-                                                          loadingProgress.expectedTotalBytes!
-                                                        : null,
-                                                  ),
-                                                );
-                                              },
+                                              placeholder: (context, url) => ShimmerWidgets.imagePlaceholder(
+                                                width: 64,
+                                                height: 64,
+                                                borderRadius: BorderRadius.circular(17),
+                                              ),
+                                              errorWidget: (context, url, error) => Icon(
+                                                Icons.person,
+                                                size: 32,
+                                                color: Colors.grey[400],
+                                              ),
                                             )
                                           : Icon(
                                               Icons.person,
@@ -1151,73 +1146,82 @@ Future<void> _updateProfile(
                         const SizedBox(height: AppSpacing.lg),
                         
                         // Primary Stats Row
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildCompactStatCard(
-                                icon: Icons.star_rounded,
-                                value: karma.toString(),
-                                label: 'Karma',
-                                subtitle: 'Community Score',
-                                color: AppColors.secondary,
-                                isPrimary: true,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _buildCompactStatCard(
-                                icon: Icons.bolt_rounded,
-                                value: points.toString(),
-                                label: 'Points',
-                                subtitle: 'Exchange Points',
-                                color: AppColors.primary,
-                                isPrimary: true,
-                              ),
-                            ),
-                          ],
-                        ),
-                        
-                        const SizedBox(height: AppSpacing.sm),
-                        
-                        // Secondary Stats Row
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildCompactStatCard(
-                                icon: Icons.emoji_events_rounded,
-                                value: '#$rank',
-                                label: 'Rank',
-                                color: AppColors.mediumGray,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _buildCompactStatCard(
-                                icon: Icons.autorenew_rounded,
-                                value: returned.toString(),
-                                label: 'Returned',
-                                color: AppColors.mediumGray,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _buildCompactStatCard(
-                                icon: Icons.local_fire_department_rounded,
-                                value: streak.toString(),
-                                label: 'Streak',
-                                color: AppColors.mediumGray,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _buildCompactStatCard(
-                                icon: Icons.star_border_rounded,
-                                value: 'Lv $level',
-                                label: 'Level',
-                                color: AppColors.mediumGray,
-                              ),
-                            ),
-                          ],
+                        ListenableBuilder(
+                          listenable: _gameService,
+                          builder: (context, child) {
+                            return Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildCompactStatCard(
+                                        icon: Icons.star_rounded,
+                                        value: _gameService.karma.toString(),
+                                        label: 'Karma',
+                                        subtitle: 'Community Score',
+                                        color: AppColors.secondary,
+                                        isPrimary: true,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: _buildCompactStatCard(
+                                        icon: Icons.bolt_rounded,
+                                        value: _gameService.points.toString(),
+                                        label: 'Points',
+                                        subtitle: 'Exchange Points',
+                                        color: AppColors.primary,
+                                        isPrimary: true,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                
+                                const SizedBox(height: AppSpacing.sm),
+                                
+                                // Secondary Stats Row
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildCompactStatCard(
+                                        icon: Icons.emoji_events_rounded,
+                                        value: '#$rank',
+                                        label: 'Rank',
+                                        color: AppColors.mediumGray,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: _buildCompactStatCard(
+                                        icon: Icons.autorenew_rounded,
+                                        value: returned.toString(),
+                                        label: 'Returned',
+                                        color: AppColors.mediumGray,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: _buildCompactStatCard(
+                                        icon: Icons.local_fire_department_rounded,
+                                        value: streak.toString(),
+                                        label: 'Streak',
+                                        color: AppColors.mediumGray,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: _buildCompactStatCard(
+                                        icon: Icons.star_border_rounded,
+                                        value: 'Lv ${_gameService.currentLevel}',
+                                        label: 'Level',
+                                        color: AppColors.mediumGray,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            );
+                          },
                         ),
                       ],
                     ),

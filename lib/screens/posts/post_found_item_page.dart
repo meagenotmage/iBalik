@@ -9,6 +9,7 @@ import '../claims/drop_off_page.dart';
 import 'post_success_page.dart';
 import '../../services/lost_item_service.dart';
 import '../../services/activity_service.dart';
+import '../../services/game_service.dart'; // Import GameService
 
 class PostFoundItemPage extends StatefulWidget {
   const PostFoundItemPage({super.key});
@@ -27,12 +28,19 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
   bool _isUploading = false;
   bool _isOnCooldown = false;
   Duration _remainingCooldown = Duration.zero;
+  Timer? _cooldownTimer;
   
   String _selectedCategory = 'Select category';
   String _selectedLocation = 'Select location';
   String _selectedAvailability = 'Keep with me';
   String _selectedDropOffLocation = 'Library';
   DateTime _selectedDate = DateTime.now();
+  
+  // Contact Information
+  String _selectedContactMethod = '';
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _messengerController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
 
   final List<String> _categories = [
     'Select category',
@@ -95,8 +103,12 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
 
   @override
   void dispose() {
+    _cooldownTimer?.cancel();
     _titleController.dispose();
     _descriptionController.dispose();
+    _phoneController.dispose();
+    _messengerController.dispose();
+    _emailController.dispose();
     super.dispose();
   }
 
@@ -112,6 +124,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
       final cooldownDuration = const Duration(minutes: 10);
       
       if (difference < cooldownDuration) {
+        if (!mounted) return;
         setState(() {
           _isOnCooldown = true;
           _remainingCooldown = cooldownDuration - difference;
@@ -122,6 +135,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
       } else {
         // Cooldown period has passed
         await prefs.remove('lastPostTimestamp');
+        if (!mounted) return;
         setState(() {
           _isOnCooldown = false;
           _remainingCooldown = Duration.zero;
@@ -132,13 +146,19 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
 
   // Start countdown timer
   void _startCooldownTimer() {
-    Timer.periodic(const Duration(seconds: 1), (timer) {
+    _cooldownTimer?.cancel(); // Cancel any existing timer
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
       if (_remainingCooldown.inSeconds > 0) {
         setState(() {
           _remainingCooldown = _remainingCooldown - const Duration(seconds: 1);
         });
       } else {
         timer.cancel();
+        _cooldownTimer = null;
         setState(() {
           _isOnCooldown = false;
         });
@@ -449,6 +469,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                                   lastDate: DateTime.now(),
                                 );
                                 if (picked != null && picked != _selectedDate) {
+                                  if (!mounted) return;
                                   setState(() {
                                     _selectedDate = picked;
                                   });
@@ -638,6 +659,79 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                     ),
                   ],
                   const SizedBox(height: 12),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            // Contact Information Card
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF4CAF50),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.contact_phone,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Contact Information',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'How can claimers reach you?',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Phone Call option
+                  _buildContactOption(
+                    'Phone Call',
+                    'Direct phone communication',
+                    Icons.phone,
+                  ),
+                  const SizedBox(height: 12),
+                  
+                  // Facebook Messenger option
+                  _buildContactOption(
+                    'Facebook Messenger',
+                    'Contact via Facebook Messenger',
+                    Icons.messenger,
+                  ),
+                  const SizedBox(height: 12),
+                  
+                  // Email option
+                  _buildContactOption(
+                    'Email',
+                    'Contact via WVSU email',
+                    Icons.email,
+                  ),
                 ],
               ),
             ),
@@ -992,6 +1086,119 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
     );
   }
 
+  Widget _buildContactOption(String title, String subtitle, IconData icon) {
+    bool isSelected = _selectedContactMethod == title;
+    TextEditingController? controller;
+    String? hintText;
+    TextInputType? keyboardType;
+    
+    // Determine which controller and settings to use
+    if (title == 'Phone Call') {
+      controller = _phoneController;
+      hintText = 'Enter your phone number';
+      keyboardType = TextInputType.phone;
+    } else if (title == 'Facebook Messenger') {
+      controller = _messengerController;
+      hintText = 'Enter your Facebook Messenger profile link';
+      keyboardType = TextInputType.url;
+    } else if (title == 'Email') {
+      controller = _emailController;
+      hintText = 'Enter your email address';
+      keyboardType = TextInputType.emailAddress;
+    }
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: isSelected ? const Color(0xFFE8F5E9) : const Color(0xFFF5F5F5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isSelected ? const Color(0xFF4CAF50) : Colors.transparent,
+          width: 2,
+        ),
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: _isOnCooldown ? null : () {
+              setState(() {
+                _selectedContactMethod = title;
+              });
+            },
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Icon(
+                    isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                    color: isSelected ? const Color(0xFF4CAF50) : Colors.grey[400],
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: isSelected ? const Color(0xFF4CAF50) : Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    icon,
+                    color: isSelected ? const Color(0xFF4CAF50) : Colors.grey[400],
+                    size: 24,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (isSelected && controller != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFF4CAF50).withValues(alpha: 0.3),
+                    width: 2,
+                  ),
+                ),
+                child: TextField(
+                  controller: controller,
+                  keyboardType: keyboardType,
+                  enabled: !_isOnCooldown,
+                  decoration: InputDecoration(
+                    hintText: hintText,
+                    border: InputBorder.none,
+                    hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+                    icon: Icon(icon, color: const Color(0xFF4CAF50), size: 20),
+                  ),
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _pickImages() async {
     if (_isOnCooldown) return;
     
@@ -1105,6 +1312,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
           );
           
           if (images.isNotEmpty) {
+            if (!mounted) return;
             setState(() {
               // Add new images but limit to 5 total
               for (int i = 0; i < images.length && i < remainingSlots; i++) {
@@ -1130,6 +1338,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
             imageQuality: 70,
           );
           if (image != null) {
+            if (!mounted) return;
             setState(() {
               _selectedImages.add(File(image.path));
             });
@@ -1205,6 +1414,47 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
       return;
     }
     
+    // Validate contact information
+    if (_selectedContactMethod.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a contact method'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    
+    if (_selectedContactMethod == 'Phone Call' && _phoneController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter your phone number'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    
+    if (_selectedContactMethod == 'Facebook Messenger' && _messengerController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter your Facebook Messenger profile link'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    
+    if (_selectedContactMethod == 'Email' && _emailController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter your email address'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    
     // Set cooldown immediately when user posts
     await _setCooldown();
     setState(() {
@@ -1216,11 +1466,23 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
     // Navigate to drop-off page based on availability selection
     if (_selectedAvailability == 'Keep with me') {
       // Upload to Firebase and post immediately
+      if (!mounted) return;
       setState(() {
         _isUploading = true;
       });
       
         try {
+        // Prepare contact info - only store selected method and value
+        String contactValue = '';
+        
+        if (_selectedContactMethod == 'Phone Call') {
+          contactValue = _phoneController.text.trim();
+        } else if (_selectedContactMethod == 'Facebook Messenger') {
+          contactValue = _messengerController.text.trim();
+        } else if (_selectedContactMethod == 'Email') {
+          contactValue = _emailController.text.trim();
+        }
+        
         final String itemId = await _lostItemService.createLostItem(
           itemName: _titleController.text,
           description: _descriptionController.text,
@@ -1231,6 +1493,8 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
           additionalDetails: {
             'availability': _selectedAvailability,
             'dropOffLocation': null,
+            'founderContactMethod': _selectedContactMethod,
+            'founderContactValue': contactValue,
           },
         );
         
@@ -1242,10 +1506,16 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
             category: _selectedCategory,
             itemId: itemId,
           );
+          
+          // Add GameService reward
+          final gameService = GameService();
+          await gameService.rewardItemPost(_titleController.text);
+          
         } catch (_) {
           // Ignore activity recording errors
         }
         
+        if (!mounted) return;
         setState(() {
           _isUploading = false;
         });
@@ -1265,6 +1535,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
           SmoothPageRoute(page: PostSuccessPage(itemData: itemData)),
         );
       } catch (e) {
+        if (!mounted) return;
         setState(() {
           _isUploading = false;
         });

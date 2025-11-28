@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/notification_service.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/shimmer_widgets.dart';
 
 /// Notifications page displaying user notifications with gamified styling
 /// - Limited to 20 notifications or past 3 months
@@ -114,7 +115,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
               builder: (context, snapshot) {
                 // Show loading only on initial load
                 if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
+                  return ShimmerWidgets.notificationList(count: 6);
                 }
 
                 if (snapshot.hasError) {

@@ -3,8 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../utils/app_theme.dart';
+import '../../utils/claims_theme.dart';
 import '../../services/notification_service.dart';
 import '../../services/activity_service.dart';
+import '../../services/game_service.dart';
 
 class ClaimDetailsPage extends StatefulWidget {
   final Map<String, dynamic> claimData;
@@ -32,6 +35,7 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
             'rejectedBy': FirebaseAuth.instance.currentUser?.uid,
             'rejectedAt': FieldValue.serverTimestamp(),
           });
+          if (!mounted) return;
           setState(() {
             _data['status'] = 'rejected';
             _processing = false;
@@ -50,6 +54,7 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
               ),
             );
         } catch (e) {
+          if (!mounted) return;
           setState(() {
             _processing = false;
           });
@@ -133,6 +138,7 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
 
       if (itemDoc != null && itemDoc.exists) {
         final d = itemDoc.data() ?? {};
+        if (!mounted) return;
         setState(() {
           // copy fields if missing
           _data['itemTitle'] = _data['itemTitle'] ??
@@ -157,13 +163,8 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
           _data['founderName'] = _data['founderName'] ??
               d['founderName'] ??
               d['founderDisplayName'];
-          _data['founderPhone'] =
-              _data['founderPhone'] ?? d['founderPhone'] ?? d['finderPhone'];
-          _data['founderEmail'] =
-              _data['founderEmail'] ?? d['founderEmail'] ?? d['finderEmail'];
-          _data['founderMessenger'] = _data['founderMessenger'] ??
-              d['founderMessenger'] ??
-              d['finderMessenger'];
+          _data['founderContactMethod'] = _data['founderContactMethod'] ?? d['founderContactMethod'];
+          _data['founderContactValue'] = _data['founderContactValue'] ?? d['founderContactValue'];
         });
       }
     } catch (_) {}
@@ -245,13 +246,17 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
             .get();
         if (doc.exists) {
           final d = doc.data();
+          if (!mounted) return;
           setState(() {
             _data['founderName'] = _data['founderName'] ??
                 (d?['displayName'] ?? d?['name'] ?? d?['userName']);
-            _data['founderPhone'] = _data['founderPhone'] ?? d?['phone'];
-            _data['founderEmail'] = _data['founderEmail'] ?? d?['email'];
             _data['founderAffiliation'] =
                 _data['founderAffiliation'] ?? d?['affiliation'];
+            // Only load contact if not already set from claim data
+            if (_data['founderContactMethod'] == null && d?['phone'] != null) {
+              _data['founderContactMethod'] = 'Phone Call';
+              _data['founderContactValue'] = d?['phone'];
+            }
           });
         }
       }
@@ -268,10 +273,56 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
     final claimId = _data['docId'] as String?;
     final itemId = _data['itemId'];
     final claimerId = _data['claimerId'] as String?;
+    final founderId = _data['founderId'] ?? _data['posterId'];
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final currentUserId = currentUser?.uid;
 
+    // Validate authentication
+    if (currentUser == null || currentUserId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You must be logged in to confirm return'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    // Validate claim ID
     if (claimId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Cannot locate claim document')));
+        const SnackBar(
+          content: Text('Cannot locate claim document'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Validate user authorization (must be founder to confirm return)
+    final isFounder = founderId != null && currentUserId == founderId.toString();
+    if (!isFounder) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Only the item finder can confirm the return'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    // Validate claim status (must be approved to confirm return)
+    final currentStatus = (_data['status'] ?? '').toString().toLowerCase();
+    if (currentStatus != 'approved') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Cannot confirm return. Claim status is: $currentStatus'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 3),
+        ),
+      );
       return;
     }
 
@@ -280,30 +331,34 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
       builder: (context) => AlertDialog(
         title: const Text('Confirm Successful Return'),
         content: const Text(
-            'Mark this claim as successfully returned? This will complete the claim.'),
+            'Mark this claim as successfully returned? This will complete the claim and cannot be undone.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
               child: const Text('Cancel')),
           TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Confirm')),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF4CAF50),
+              ),
+              child: const Text('Confirm Return')),
         ],
       ),
     );
 
     if (confirm != true) return;
 
+    if (!mounted) return;
     setState(() {
       _processing = true;
     });
 
     final fs = FirebaseFirestore.instance;
     try {
-      // Update claim
+      // Update claim status to completed
       await fs.collection('claims').doc(claimId).update({
         'status': 'completed',
-        'completedBy': FirebaseAuth.instance.currentUser?.uid,
+        'completedBy': currentUserId,
         'completedAt': FieldValue.serverTimestamp(),
       });
 
@@ -341,16 +396,22 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
       final notificationService = NotificationService();
       final activityService = ActivityService();
 
+      // Reward points for successful return
+      const karmaReward = 20; // Updated to match Verified Claim Fulfillment
+      const pointsReward = 25; // Updated to match Verified Claim Fulfillment
+
       // Notify claimer (owner) about successful return
       if (claimerId != null) {
         await notificationService.notifyUserReturnCompleted(
           userId: claimerId,
           itemName: itemTitle,
-          itemId: itemId ?? 0,
+          karmaEarned: karmaReward,
+          pointsEarned: pointsReward,
         );
         await activityService.recordReturnCompleted(
           itemName: itemTitle,
-          itemId: itemId ?? 0,
+          karmaEarned: karmaReward,
+          pointsEarned: pointsReward,
         );
       }
 
@@ -359,39 +420,119 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
         await notificationService.notifyUserReturnCompleted(
           userId: founderId,
           itemName: itemTitle,
-          itemId: itemId ?? 0,
+          karmaEarned: karmaReward,
+          pointsEarned: pointsReward,
         );
-        await activityService.recordUserReturnCompleted(
-          userId: founderId,
-          itemName: itemTitle,
-          itemId: itemId ?? 0,
-        );
+        
+        // Use GameService for points/karma update and activity log
+        final gameService = GameService();
+        await gameService.rewardUserVerifiedClaimFulfillment(founderId, itemTitle);
       }
 
+      if (!mounted) return;
       setState(() {
         _data['status'] = 'completed';
         _processing = false;
       });
 
-          await showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('Claim Approved'),
-              content: const Text('The claim was successfully approved and marked as completed.'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('OK'),
-                ),
-              ],
-            ),
-          );
-    } catch (e) {
+      // Navigate back to Claims Page
+      Navigator.of(context).pop();
+      
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Return confirmed successfully! Claim completed.'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } on FirebaseException catch (e) {
+      if (!mounted) return;
       setState(() {
         _processing = false;
       });
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Failed: $e')));
+
+      String errorMessage = 'Failed to confirm return';
+      
+      // Handle specific error codes
+      if (e.code == 'permission-denied') {
+        errorMessage = 'Permission denied. You may not have access to complete this claim.';
+        
+        // Show dialog with retry option
+        await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.red),
+                SizedBox(width: 8),
+                Text('Permission Denied'),
+              ],
+            ),
+            content: const Text(
+              'You do not have permission to complete this claim. Please ensure you are the item finder and the claim is in "Approved" status.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  // Reload claim data
+                  _resolveLostItemIfNeeded();
+                  _loadFounderIfNeeded();
+                },
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF2196F3),
+                ),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        );
+      } else if (e.code == 'not-found') {
+        errorMessage = 'Claim not found. It may have been deleted.';
+      } else if (e.code == 'unavailable') {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      } else {
+        errorMessage = 'Failed to confirm return: ${e.message ?? e.code}';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+          action: e.code != 'permission-denied' ? SnackBarAction(
+            label: 'Retry',
+            textColor: Colors.white,
+            onPressed: () {
+              _markSuccessfulClaim();
+            },
+          ) : null,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _processing = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Unexpected error: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+          action: SnackBarAction(
+            label: 'Retry',
+            textColor: Colors.white,
+            onPressed: () {
+              _markSuccessfulClaim();
+            },
+          ),
+        ),
+      );
     }
   }
 
@@ -428,7 +569,7 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
                 ? 'With ${_data['founderName']}'
                 : 'Location unknown');
         final pickupInstr = _data['pickupInstructions'] ??
-            'Pick up from $pickupLoc. Contact ${_data['founderName'] ?? 'the finder'} at ${_data['founderPhone'] ?? _data['founderEmail'] ?? ''} to arrange time. Bring a valid ID for verification.';
+            'Pick up from $pickupLoc. Contact ${_data['founderName'] ?? 'the finder'} via ${_data['founderContactMethod'] ?? 'their contact method'} to arrange time. Bring a valid ID for verification.';
 
         return Scaffold(
           backgroundColor: Colors.grey[50],
@@ -444,23 +585,22 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
                         if (isPending)
                           Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 28, horizontal: 24),
-                            color: Colors.amber[700],
+                            padding: EdgeInsets.symmetric(
+                                vertical: ClaimsSpacing.xl, horizontal: ClaimsSpacing.xl),
+                            color: ClaimsColors.pending,
                             child: Column(
-                              children: const [
-                                Icon(Icons.hourglass_top,
+                              children: [
+                                const Icon(Icons.hourglass_top,
                                     color: Colors.white, size: 48),
-                                SizedBox(height: 12),
+                                SizedBox(height: ClaimsSpacing.sm),
                                 Text('Under Review',
-                                    style: TextStyle(
+                                    style: ClaimsTypography.title.copyWith(
                                         color: Colors.white,
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.bold)),
-                                SizedBox(height: 6),
+                                        fontSize: 22)),
+                                SizedBox(height: ClaimsSpacing.xs),
                                 Text(
                                     'The founder is reviewing your claim. Please wait for their response.',
-                                    style: TextStyle(color: Colors.white),
+                                    style: ClaimsTypography.body.copyWith(color: Colors.white),
                                     textAlign: TextAlign.center),
                               ],
                             ),
@@ -468,29 +608,24 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
                         else if (isApproved)
                           Container(
                             width: double.infinity,
-                            decoration: const BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [Color(0xFF2196F3), Color(0xFF1565C0)],
-                              ),
+                            decoration: BoxDecoration(
+                              color: ClaimsColors.approved,
                             ),
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 36, horizontal: 24),
+                            padding: EdgeInsets.symmetric(
+                                vertical: ClaimsSpacing.xl, horizontal: ClaimsSpacing.xl),
                             child: Column(
-                              children: const [
-                                Icon(Icons.check_circle,
+                              children: [
+                                const Icon(Icons.check_circle,
                                     color: Colors.white, size: 56),
-                                SizedBox(height: 16),
+                                SizedBox(height: ClaimsSpacing.md),
                                 Text('Claim Approved!',
-                                    style: TextStyle(
+                                    style: ClaimsTypography.title.copyWith(
                                         color: Colors.white,
-                                        fontSize: 26,
-                                        fontWeight: FontWeight.bold)),
-                                SizedBox(height: 6),
+                                        fontSize: 26)),
+                                SizedBox(height: ClaimsSpacing.xs),
                                 Text(
                                     'Your claim has been approved. Contact the finder to arrange pickup.',
-                                    style: TextStyle(color: Colors.white),
+                                    style: ClaimsTypography.body.copyWith(color: Colors.white),
                                     textAlign: TextAlign.center),
                               ],
                             ),
@@ -498,23 +633,22 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
                         else if (isCompleted)
                           Container(
                             width: double.infinity,
-                            color: Colors.green[900],
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 28, horizontal: 24),
+                            color: ClaimsColors.info,
+                            padding: EdgeInsets.symmetric(
+                                vertical: ClaimsSpacing.xl, horizontal: ClaimsSpacing.xl),
                             child: Column(
-                              children: const [
-                                Icon(Icons.verified,
+                              children: [
+                                const Icon(Icons.verified,
                                     color: Colors.white, size: 48),
-                                SizedBox(height: 12),
+                                SizedBox(height: ClaimsSpacing.sm),
                                 Text('Claim Completed',
-                                    style: TextStyle(
+                                    style: ClaimsTypography.title.copyWith(
                                         color: Colors.white,
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.bold)),
-                                SizedBox(height: 6),
+                                        fontSize: 22)),
+                                SizedBox(height: ClaimsSpacing.xs),
                                 Text(
                                     'This claim is completed. The item has been returned.',
-                                    style: TextStyle(color: Colors.white),
+                                    style: ClaimsTypography.body.copyWith(color: Colors.white),
                                     textAlign: TextAlign.center),
                               ],
                             ),
@@ -522,151 +656,46 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
                         else if (isRejected)
                           Container(
                             width: double.infinity,
-                            color: Colors.red[600],
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 28, horizontal: 24),
+                            color: ClaimsColors.rejected,
+                            padding: EdgeInsets.symmetric(
+                                vertical: ClaimsSpacing.xl, horizontal: ClaimsSpacing.xl),
                             child: Column(
-                              children: const [
-                                Icon(Icons.cancel,
+                              children: [
+                                const Icon(Icons.cancel,
                                     color: Colors.white, size: 48),
-                                SizedBox(height: 12),
+                                SizedBox(height: ClaimsSpacing.sm),
                                 Text('Claim Rejected',
-                                    style: TextStyle(
+                                    style: ClaimsTypography.title.copyWith(
                                         color: Colors.white,
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.bold)),
-                                SizedBox(height: 6),
+                                        fontSize: 22)),
+                                SizedBox(height: ClaimsSpacing.xs),
                                 Text(
                                     'The founder has rejected this claim. You may contact them for more information.',
-                                    style: TextStyle(color: Colors.white),
+                                    style: ClaimsTypography.body.copyWith(color: Colors.white),
                                     textAlign: TextAlign.center),
                               ],
                             ),
                           ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: ClaimsSpacing.xl),
 
                         // Item Details Card
                         Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 24),
-                          padding: const EdgeInsets.all(16),
+                          margin: EdgeInsets.symmetric(horizontal: ClaimsSpacing.xl),
+                          padding: EdgeInsets.all(ClaimsSpacing.lg),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: Colors.grey[300]!,
+                              width: 1,
+                            ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.08),
-                                blurRadius: 15,
-                                offset: const Offset(0, 3),
+                                color: Colors.black.withValues(alpha: 0.03),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
                               ),
                             ],
-                          ),
-                          child: Row(
-                            children: [
-                              // Item Image
-                              Container(
-                                width: 70,
-                                height: 70,
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[200],
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(
-                                  Icons.image,
-                                  color: Colors.grey[400],
-                                  size: 35,
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      (_data['itemTitle'] ??
-                                              _data['title'] ??
-                                              _data['itemName'] ??
-                                              _data['name']) ??
-                                          'Black iPhone 13',
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      (_data['itemDescription'] ??
-                                              _data['claimDescription'] ??
-                                              _data['description'] ??
-                                              _data['details']) ??
-                                          'Found in the library, has a cracked screen protector',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    // Found timestamp
-                                    if ((_data['foundAt'] ??
-                                            _data['foundWhen'] ??
-                                            _data['createdAt']) !=
-                                        null)
-                                      Padding(
-                                        padding:
-                                            const EdgeInsets.only(bottom: 8.0),
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.calendar_today,
-                                                size: 14,
-                                                color: Colors.grey[600]),
-                                            const SizedBox(width: 6),
-                                            Text(
-                                              _formatTimestamp(_data['foundAt'] ??
-                                                  _data['foundWhen'] ??
-                                                  _data['createdAt']),
-                                              style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: Colors.grey[600]),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    const SizedBox(height: 8),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.location_on,
-                                          size: 16,
-                                          color: Colors.grey[600],
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          (_data['location'] ??
-                                                  _data['pickupLocation'] ??
-                                                  _data['foundAt']) ??
-                                              'Found at Library',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: Colors.grey[600],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Contact Card: show the other party's profile depending on who is viewing
-                        Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 24),
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE3F2FD),
-                            borderRadius: BorderRadius.circular(16),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -674,321 +703,273 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
                               Row(
                                 children: [
                                   Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFF2196F3),
-                                      shape: BoxShape.circle,
+                                    padding: EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(8),
                                     ),
-                                    child: const Icon(
-                                      Icons.person,
-                                      color: Colors.white,
-                                      size: 24,
+                                    child: Icon(
+                                      Icons.info_outline,
+                                      color: AppColors.primary,
+                                      size: 20,
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
+                                  SizedBox(width: ClaimsSpacing.sm),
+                                  Text(
+                                    'Item Posted',
+                                    style: ClaimsTypography.subtitle.copyWith(
+                                      color: Colors.black87,
+                                      fontSize: 17,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: ClaimsSpacing.md),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Item Image
+                                  Container(
+                                    width: 64,
+                                    height: 64,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[100],
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: Colors.grey[300]!,
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(11),
+                                      child: Icon(
+                                        Icons.image,
+                                        color: Colors.grey[400],
+                                        size: 32,
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(width: ClaimsSpacing.md),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          // If the viewer is the founder, show claimer info; otherwise show founder info
-                                          viewerIsFounder
-                                              ? (_data['claimerName'] ??
-                                                  'Claimer')
-                                              : (_data['founderName'] ??
-                                                  'Item Finder'),
-                                          style: const TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                            color: Color(0xFF2196F3),
+                                          (_data['itemTitle'] ??
+                                                  _data['title'] ??
+                                                  _data['itemName'] ??
+                                                  _data['name']) ??
+                                              'Black iPhone 13',
+                                          style: ClaimsTypography.subtitle.copyWith(
+                                            fontSize: 16,
                                           ),
                                         ),
-                                        const SizedBox(height: 2),
+                                        SizedBox(height: ClaimsSpacing.xxs),
                                         Text(
-                                          viewerIsFounder
-                                              ? 'Claimer — contact them to verify ownership'
-                                              : 'Contact them to arrange pickup',
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            color: Colors.black54,
-                                          ),
+                                          (_data['itemDescription'] ??
+                                                  _data['claimDescription'] ??
+                                                  _data['description'] ??
+                                                  _data['details']) ??
+                                              'Found in the library, has a cracked screen protector',
+                                          style: ClaimsTypography.body,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
                                       ],
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 20),
-                              // Details: show claimer contact when founder views, otherwise show founder contact
-                              if (viewerIsFounder)
-                                _buildContactRow(
-                                  icon: Icons.person_outline,
-                                  title: _data['claimerName'] ?? 'Claimer',
-                                  subtitle: '',
-                                  isVerified: false,
-                                )
-                              else
-                                _buildContactRow(
-                                  icon: Icons.person_outline,
-                                  title: _data['founderName'] ?? 'Finder',
-                                  subtitle: _data['founderAffiliation'] ?? '',
-                                  isVerified: true,
+                              SizedBox(height: ClaimsSpacing.sm),
+                              Container(
+                                padding: EdgeInsets.all(ClaimsSpacing.sm),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: Colors.grey[200]!,
+                                    width: 1,
+                                  ),
                                 ),
-                              const SizedBox(height: 16),
-                              if (viewerIsFounder)
-                                _buildContactRow(
-                                  icon: Icons.phone_outlined,
-                                  title: _data['claimerProvidedContactValue'] ??
-                                      _data['claimerPhone'] ??
-                                      '',
-                                  subtitle:
-                                      _data['claimerProvidedContactMethod'] ??
-                                          'Contact method',
-                                  onCopy: () => _copyToClipboard(
-                                      context,
-                                      _data['claimerProvidedContactValue'] ??
-                                          _data['claimerPhone'] ??
-                                          ''),
-                                )
-                              else
-                                _buildContactRow(
-                                  icon: Icons.phone_outlined,
-                                  title: _data['founderPhone'] ?? '',
-                                  subtitle: 'Mobile number',
-                                  onCopy: () => _copyToClipboard(
-                                      context, _data['founderPhone'] ?? ''),
+                                child: Column(
+                                  children: [
+                                    // Found timestamp
+                                    if ((_data['foundAt'] ??
+                                            _data['foundWhen'] ??
+                                            _data['createdAt']) !=
+                                        null) ...[
+                                      ClaimsWidgets.infoRow(
+                                        icon: Icons.calendar_today,
+                                        text: _formatTimestamp(_data['foundAt'] ??
+                                            _data['foundWhen'] ??
+                                            _data['createdAt']),
+                                        iconColor: AppColors.primary,
+                                      ),
+                                      SizedBox(height: ClaimsSpacing.xs),
+                                    ],
+                                    ClaimsWidgets.infoRow(
+                                      icon: Icons.location_on,
+                                      text: (_data['location'] ??
+                                              _data['pickupLocation'] ??
+                                              _data['foundAt']) ??
+                                          'Found at Library',
+                                      iconColor: AppColors.primary,
+                                    ),
+                                  ],
                                 ),
-                              const SizedBox(height: 16),
-                              if (viewerIsFounder)
-                                _buildContactRow(
-                                  icon: Icons.email_outlined,
-                                  title: _data['claimerEmail'] ?? '',
-                                  subtitle: 'Email',
-                                  onCopy: () => _copyToClipboard(
-                                      context, _data['claimerEmail'] ?? ''),
-                                )
-                              else
-                                _buildContactRow(
-                                  icon: Icons.email_outlined,
-                                  title: _data['founderEmail'] ?? '',
-                                  subtitle: 'Email',
-                                  onCopy: () => _copyToClipboard(
-                                      context, _data['founderEmail'] ?? ''),
-                                ),
-                              if ((!viewerIsFounder &&
-                                      (_data['founderMessenger'] ?? '')
-                                          .toString()
-                                          .isNotEmpty) ||
-                                  (viewerIsFounder &&
-                                      (_data['claimerMessenger'] ?? '')
-                                          .toString()
-                                          .isNotEmpty)) ...[
-                                const SizedBox(height: 16),
-                                _buildContactRow(
-                                  icon: Icons.message_outlined,
-                                  title: viewerIsFounder
-                                      ? (_data['claimerMessenger'] ?? '')
-                                      : (_data['founderMessenger'] ?? ''),
-                                  subtitle: 'Messenger',
-                                  onCopy: () => _copyToClipboard(
-                                      context,
-                                      viewerIsFounder
-                                          ? (_data['claimerMessenger'] ?? '')
-                                          : (_data['founderMessenger'] ?? '')),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Quick Contact Card
-                        Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 24),
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 10,
-                                offset: const Offset(0, 2),
                               ),
                             ],
                           ),
+                        ),
+                        SizedBox(height: ClaimsSpacing.xl),
+
+                        // Contact Card: show the other party's profile depending on who is viewing
+                        Container(
+                          margin: EdgeInsets.symmetric(horizontal: ClaimsSpacing.xl),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Quick Contact',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
+                              // Title
+                              Padding(
+                                padding: EdgeInsets.only(bottom: ClaimsSpacing.sm),
+                                child: Text(
+                                  'Contact Information',
+                                  style: ClaimsTypography.title.copyWith(
+                                    fontSize: 20,
+                                  ),
                                 ),
                               ),
-                              const SizedBox(height: 16),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: ElevatedButton.icon(
-                                      onPressed: () => _launchWhatsapp(
-                                          _data['founderPhone'] ??
-                                              _data['founderPhoneRaw']),
-                                      icon: const Icon(Icons.chat,
-                                          color: Colors.white, size: 20),
-                                      label: Text(
-                                        (_data['founderMessenger'] != null &&
-                                                (_data['founderMessenger']
-                                                        as String)
-                                                    .isNotEmpty)
-                                            ? 'Messenger'
-                                            : 'WhatsApp',
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: (_data[
-                                                        'founderMessenger'] !=
-                                                    null &&
-                                                (_data['founderMessenger']
-                                                        as String)
-                                                    .isNotEmpty)
-                                            ? const Color(0xFF0084FF)
-                                            : const Color(0xFF25D366),
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 16),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                        ),
-                                        elevation: 0,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: OutlinedButton.icon(
-                                      onPressed: () =>
-                                          _launchPhone(_data['founderPhone']),
-                                      icon: const Icon(Icons.phone,
-                                          color: Colors.black87, size: 20),
-                                      label: const Text(
-                                        'Call',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.black87,
-                                        ),
-                                      ),
-                                      style: OutlinedButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 16),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                        ),
-                                        side: BorderSide(
-                                            color: Colors.grey[300]!, width: 2),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                              
+                              // Name Card with Verified Badge
+                              _buildCompactInfoCard(
+                                icon: Icons.person,
+                                iconColor: ClaimsColors.info,
+                                label: viewerIsFounder ? 'Claimer' : 'Item Finder',
+                                value: viewerIsFounder
+                                    ? (_data['claimerName'] ?? 'Unknown')
+                                    : (_data['founderName'] ?? 'Unknown'),
+                                isVerified: !viewerIsFounder,
+                                affiliation: viewerIsFounder ? null : (_data['founderAffiliation'] ?? ''),
                               ),
+                              
+                              SizedBox(height: ClaimsSpacing.sm),
+                              
+                              // Render only the selected contact method
+                              ...() {
+                                final contactMethod = viewerIsFounder
+                                    ? _data['claimerContactMethod']
+                                    : _data['founderContactMethod'];
+                                final contactValue = viewerIsFounder
+                                    ? _data['claimerContactValue']
+                                    : _data['founderContactValue'];
+                                
+                                if (contactMethod == null || contactValue == null || contactValue.toString().isEmpty) {
+                                  return [
+                                    _buildCompactInfoCard(
+                                      icon: Icons.contact_phone,
+                                      iconColor: Colors.grey,
+                                      label: 'Contact Information',
+                                      value: 'Not provided',
+                                      onTap: null,
+                                    ),
+                                  ];
+                                }
+                                
+                                // Determine icon, color, and label based on contact method
+                                IconData icon;
+                                Color iconColor;
+                                String label;
+                                String? subtitle;
+                                
+                                if (contactMethod == 'Phone Call') {
+                                  icon = Icons.phone;
+                                  iconColor = const Color(0xFF4CAF50);
+                                  label = 'Phone Number';
+                                  subtitle = 'Tap to copy';
+                                } else if (contactMethod == 'Facebook Messenger') {
+                                  icon = Icons.messenger;
+                                  iconColor = const Color(0xFF0084FF);
+                                  label = 'Facebook Messenger';
+                                  subtitle = 'Tap to copy profile link';
+                                } else if (contactMethod == 'Email') {
+                                  icon = Icons.email;
+                                  iconColor = const Color(0xFFFF9800);
+                                  label = 'Email Address';
+                                  subtitle = 'Tap to copy';
+                                } else {
+                                  icon = Icons.contact_phone;
+                                  iconColor = Colors.grey;
+                                  label = contactMethod.toString();
+                                  subtitle = 'Tap to copy';
+                                }
+                                
+                                return [
+                                  _buildCompactInfoCard(
+                                    icon: icon,
+                                    iconColor: iconColor,
+                                    label: label,
+                                    value: contactValue.toString(),
+                                    subtitle: subtitle,
+                                    onTap: () {
+                                      _copyToClipboard(context, contactValue.toString());
+                                    },
+                                  ),
+                                ];
+                              }(),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: ClaimsSpacing.xl),
 
                         // Pickup Information Card
                         Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 24),
-                          padding: const EdgeInsets.all(20),
+                          margin: EdgeInsets.symmetric(horizontal: ClaimsSpacing.xl),
+                          padding: EdgeInsets.all(ClaimsSpacing.lg),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFE0F2F1),
-                            borderRadius: BorderRadius.circular(16),
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(AppRadius.lg),
+                            border: Border.all(
+                              color: Colors.grey[300]!,
+                              width: 1,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.03),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
-                                children: const [
-                                  Icon(
-                                    Icons.location_on,
-                                    color: Color(0xFF00897B),
-                                    size: 24,
-                                  ),
-                                  SizedBox(width: 12),
-                                  Text(
-                                    'Pickup Information',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF00897B),
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: ClaimsColors.approved.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(AppRadius.md),
+                                    ),
+                                    child: Icon(
+                                      Icons.location_on,
+                                      color: ClaimsColors.approved,
+                                      size: 24,
                                     ),
                                   ),
+                                  SizedBox(width: ClaimsSpacing.sm),
+                                  Text('Pickup Information', style: ClaimsTypography.title),
                                 ],
                               ),
-                              const SizedBox(height: 16),
-                              Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                  Text(
-                                  'Pickup Location: $pickupLoc',
-                                  style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
-                                  ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                  pickupInstr,
-                                  style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.grey[700],
-                                  ),
-                                  ),
-                                  ],
-                                  ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Row(
-                                  children: [
-                                  Icon(
-                                  Icons.access_time,
-                                  size: 16,
-                                  color: Colors.grey[600],
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                  _data['approvedAt'] != null
-                                  ? 'Approved ${_formatTimestamp(_data['approvedAt'])}'
-                                  : (_data['status'] == 'approved'
-                                  ? 'Approved'
-                                  : ''),
-                                  style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.grey[600],
-                                  ),
-                                  ),
-                                  ],
-                                  ),
-                                  ],
-                                  ),
-                                  ),
-                                  const SizedBox(height: 24),
+                              SizedBox(height: ClaimsSpacing.md),
+                              ClaimsWidgets.detailRow(label: 'Location', value: pickupLoc),
+                              SizedBox(height: ClaimsSpacing.sm),
+                              ClaimsWidgets.detailRow(label: 'Instructions', value: pickupInstr),
+                            ],
+                          ),
+                        ),
+                        
+                        SizedBox(height: ClaimsSpacing.xl),
                     // Meeting Guidelines Card
                     Container(
                       margin: const EdgeInsets.symmetric(horizontal: 24),
@@ -1043,100 +1024,51 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (isApproved && viewerIsClaimer)
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _processing
-                            ? null
-                            : () async {
-                                final confirm = await _showConfirmationDialog(
-                                  'Confirm Claim Item',
-                                  'Are you sure you want to mark this claim as completed and claim the item? This action cannot be undone.',
-                                );
-                                if (!confirm) return;
-                                await _markSuccessfulClaim();
+                    ClaimsButton(
+                      label: 'Item Claimed',
+                      icon: Icons.check_circle,
+                      type: ClaimsButtonType.primary,
+                      isLoading: _processing,
+                      onPressed: () async {
+                        final confirm = await _showConfirmationDialog(
+                          'Confirm Claim Item',
+                          'Are you sure you want to mark this claim as completed and claim the item? This action cannot be undone.',
+                        );
+                        if (!confirm) return;
+                        await _markSuccessfulClaim();
 
-                                // Award karma/points to founder
-                                if (founderId != null &&
-                                    founderId.isNotEmpty) {
-                                  final fs = FirebaseFirestore.instance;
-                                  final userRef = fs
-                                      .collection('users')
-                                      .doc(founderId);
-                                  await fs.runTransaction((tx) async {
-                                    final snap = await tx.get(userRef);
-                                    final data = snap.data() ?? {};
-                                    final int oldKarma =
-                                        (data['karma'] ?? 0) as int;
-                                    final int oldPoints =
-                                        (data['points'] ?? 0) as int;
-                                    tx.update(userRef, {
-                                      'karma': oldKarma + 1,
-                                      'points': oldPoints + 10,
-                                    });
-                                  });
-                                }
-                              },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2196F3),
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: _processing
-                            ? const SizedBox(
-                                height: 18,
-                                width: 18,
-                                child: CircularProgressIndicator(
-                                    color: Colors.white, strokeWidth: 2))
-                            : const Text(
-                                'Item Claimed',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                      ),
+                        // Award karma/points to founder - handled in _markSuccessfulClaim via GameService
+                      },
                     )
                   else
-                    SizedBox(
+                    Container(
                       width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isPending
-                              ? Colors.amber[700]
-                              : (isRejected
-                                  ? Colors.red[600]
-                                  : (isCompleted
-                                      ? Colors.green[900]
-                                      : Colors.grey[400])),
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: Text(
-                          isPending
-                              ? 'Under Review'
-                              : (isRejected
-                                  ? 'Claim Rejected'
-                                  : (isCompleted
-                                      ? 'Claim Completed'
-                                      : (isApproved
-                                          ? 'Awaiting Claimer'
-                                          : 'Not available'))),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      decoration: BoxDecoration(
+                        color: isPending
+                            ? ClaimsColors.pending
+                            : (isRejected
+                                ? ClaimsColors.rejected
+                                : (isCompleted
+                                    ? ClaimsColors.info
+                                    : Colors.grey[400])),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                      ),
+                      child: Text(
+                        isPending
+                            ? 'Under Review'
+                            : (isRejected
+                                ? 'Claim Rejected'
+                                : (isCompleted
+                                    ? 'Claim Completed'
+                                    : (isApproved
+                                        ? 'Awaiting Claimer'
+                                        : 'Not available'))),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
                       ),
                     ),
@@ -1205,6 +1137,8 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
   },
 );
 }
+}
+
 Widget _buildContactRow({
 required IconData icon,
 required String title,
@@ -1213,19 +1147,34 @@ bool isVerified = false,
 VoidCallback? onCopy,
 }) {
 return Container(
-padding: const EdgeInsets.all(12),
+padding: EdgeInsets.all(ClaimsSpacing.sm),
 decoration: BoxDecoration(
-color: Colors.white,
+color: Colors.grey[50],
 borderRadius: BorderRadius.circular(12),
+border: Border.all(
+color: Colors.grey[200]!,
+width: 1,
+),
 ),
 child: Row(
 children: [
-Icon(
-icon,
-size: 20,
-color: Colors.grey[700],
+Container(
+padding: EdgeInsets.all(8),
+decoration: BoxDecoration(
+color: Colors.white,
+shape: BoxShape.circle,
+border: Border.all(
+color: ClaimsColors.info.withValues(alpha: 0.2),
+width: 1,
 ),
-const SizedBox(width: 12),
+),
+child: Icon(
+icon,
+size: 18,
+color: ClaimsColors.info,
+),
+),
+SizedBox(width: ClaimsSpacing.sm),
 Expanded(
 child: Column(
 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1235,11 +1184,11 @@ children: [
 Expanded(
 child: Text(
 title,
-style: const TextStyle(
+style: ClaimsTypography.bodyBold.copyWith(
 fontSize: 15,
-fontWeight: FontWeight.w600,
-color: Colors.black87,
 ),
+maxLines: 1,
+overflow: TextOverflow.ellipsis,
 ),
 ),
 if (isVerified)
@@ -1271,31 +1220,194 @@ color: Color(0xFF4CAF50),
 ),
 ],
 ),
-const SizedBox(height: 2),
+if (subtitle.isNotEmpty) ...[
+SizedBox(height: ClaimsSpacing.xxs),
 Text(
 subtitle,
-style: TextStyle(
-fontSize: 12,
-color: Colors.grey[600],
+style: ClaimsTypography.caption,
 ),
-),
+],
 ],
 ),
 ),
 if (onCopy != null) ...[
-const SizedBox(width: 8),
-IconButton(
-onPressed: onCopy,
-icon: const Icon(Icons.copy, size: 20),
-color: Colors.grey[600],
-padding: EdgeInsets.zero,
-constraints: const BoxConstraints(),
+SizedBox(width: ClaimsSpacing.xs),
+Material(
+color: Colors.transparent,
+child: InkWell(
+onTap: onCopy,
+borderRadius: BorderRadius.circular(8),
+child: Container(
+padding: EdgeInsets.all(8),
+decoration: BoxDecoration(
+color: ClaimsColors.info.withValues(alpha: 0.08),
+borderRadius: BorderRadius.circular(8),
+),
+child: Icon(
+Icons.content_copy,
+size: 18,
+color: ClaimsColors.info,
+),
+),
+),
 ),
 ],
 ],
 ),
 );
 }
+
+Widget _buildCompactInfoCard({
+  required IconData icon,
+  required Color iconColor,
+  required String label,
+  required String value,
+  bool isVerified = false,
+  String? affiliation,
+  String? subtitle,
+  VoidCallback? onTap,
+}) {
+  return Material(
+    color: Colors.transparent,
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: EdgeInsets.all(ClaimsSpacing.md),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: iconColor.withValues(alpha: 0.2),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                icon,
+                size: 20,
+                color: iconColor,
+              ),
+            ),
+            SizedBox(width: ClaimsSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: ClaimsTypography.caption.copyWith(
+                      fontSize: 11,
+                    ),
+                  ),
+                  SizedBox(height: ClaimsSpacing.xxs),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          value,
+                          style: ClaimsTypography.bodyBold.copyWith(
+                            fontSize: 15,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (isVerified)
+                        Container(
+                          margin: EdgeInsets.only(left: ClaimsSpacing.xs),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: ClaimsColors.approved.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.verified,
+                                size: 12,
+                                color: ClaimsColors.approved,
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                'Verified',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: ClaimsColors.approved,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                  if (affiliation != null && affiliation.isNotEmpty) ...[
+                    SizedBox(height: ClaimsSpacing.xxs),
+                    Text(
+                      affiliation,
+                      style: ClaimsTypography.caption.copyWith(
+                        fontSize: 12,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                  if (subtitle != null && subtitle.isNotEmpty) ...[
+                    SizedBox(height: ClaimsSpacing.xxs),
+                    Text(
+                      subtitle,
+                      style: ClaimsTypography.caption.copyWith(
+                        fontSize: 11,
+                        fontStyle: FontStyle.italic,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (onTap != null) ...[
+              SizedBox(width: ClaimsSpacing.xs),
+              Container(
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.content_copy,
+                  size: 16,
+                  color: iconColor,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 Widget _buildGuideline(String text) {
 return Row(
 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1321,5 +1433,4 @@ color: Colors.grey[800],
 ),
 ],
 );
-}
 }

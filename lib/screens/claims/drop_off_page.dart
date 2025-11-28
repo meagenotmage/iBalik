@@ -304,7 +304,7 @@ class _DropOffPageState extends State<DropOffPage> {
                         child: Column(
                           children: const [
                             Text(
-                              '+15',
+                              '+5',
                               style: TextStyle(
                                 fontSize: 32,
                                 fontWeight: FontWeight.bold,
@@ -331,7 +331,7 @@ class _DropOffPageState extends State<DropOffPage> {
                         child: Column(
                           children: const [
                             Text(
-                              '+25',
+                              '+4',
                               style: TextStyle(
                                 fontSize: 32,
                                 fontWeight: FontWeight.bold,
