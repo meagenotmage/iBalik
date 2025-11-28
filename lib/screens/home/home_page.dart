@@ -18,6 +18,7 @@ import '../game/challenges_page.dart';
 import 'profile_page.dart';
 import '../../services/game_service.dart'; // Import GameService
 import '../../services/game_data_service.dart'; // Import GameDataService
+import '../store/points_store_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -284,12 +285,20 @@ class _HomePageState extends State<HomePage> {
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
-                                    child: _buildStatCard(
-                                      '${_gameService.points}',
-                                      'Points',
-                                      AppColors.white,
-                                      icon: Icons.bolt_outlined,
-                                      iconColor: AppColors.primary,
+                                    child: GestureDetector(
+                                        onTap: () {
+                                          Navigator.of(context).push(
+                                            SmoothPageRoute(page: PointsStorePage()),
+                                          );
+                                        },
+                                      child: _buildStatCard(
+                                        '${_gameService.points}',
+                                        'Points',
+                                        AppColors.white,
+                                        icon: Icons.bolt_outlined,
+                                        iconColor: AppColors.primary,
+                                        isTappable: true,
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(width: 12),
@@ -585,6 +594,7 @@ class _HomePageState extends State<HomePage> {
     Color? textColor,
     IconData? icon,
     Color? iconColor,
+    bool isTappable = false,
   }) {
     final effectiveTextColor = textColor ?? AppColors.textPrimary;
     return Container(
@@ -593,10 +603,16 @@ class _HomePageState extends State<HomePage> {
         color: bgColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppColors.lightGray.withOpacity(0.3),
-          width: 1,
+          color: isTappable ? AppColors.primary.withOpacity(0.3) : AppColors.lightGray.withOpacity(0.3),
+          width: isTappable ? 1.5 : 1,
         ),
-        boxShadow: AppShadows.soft,
+        boxShadow: isTappable ? [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.1),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ] : AppShadows.soft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -618,14 +634,25 @@ class _HomePageState extends State<HomePage> {
             ).copyWith(color: effectiveTextColor),
           ),
           const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ).copyWith(
-              color: effectiveTextColor.withOpacity(0.7),
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ).copyWith(
+                  color: effectiveTextColor.withOpacity(0.7),
+                ),
+              ),
+              if (isTappable)
+                Icon(
+                  Icons.arrow_forward_ios,
+                  color: effectiveTextColor.withOpacity(0.5),
+                  size: 12,
+                ),
+            ],
           ),
         ],
       ),

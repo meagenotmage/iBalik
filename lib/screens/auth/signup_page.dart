@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../utils/page_transitions.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/security_validation_utils.dart';
 import 'login_page.dart';
 import '../../services/auth_service.dart';
 
@@ -25,6 +26,15 @@ class _SignUpPageState extends State<SignUpPage> {
   bool _isLoading = false;
   bool _isCheckingUsername = false;
   String? _usernameError;
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -73,8 +83,41 @@ class _SignUpPageState extends State<SignUpPage> {
         _isLoading = true;
       });
 
-      // Append WVSU domain to username
-      final email = '${_emailController.text.trim()}@wvsu.edu.ph';
+      // Enhanced validation before submission
+      final username = _emailController.text.trim();
+      final email = '${username}@wvsu.edu.ph';
+      
+      // Validate email format
+      final emailValidation = SecurityValidationUtils.validateWvsuEmail(email);
+      if (!emailValidation['isValid']) {
+        setState(() => _isLoading = false);
+        _showErrorSnackBar(emailValidation['error']);
+        return;
+      }
+      
+      // Validate username
+      final usernameValidation = SecurityValidationUtils.validateUsername(_usernameController.text.trim());
+      if (!usernameValidation['isValid']) {
+        setState(() => _isLoading = false);
+        _showErrorSnackBar(usernameValidation['error']);
+        return;
+      }
+      
+      // Validate password strength
+      final passwordValidation = SecurityValidationUtils.validatePassword(_passwordController.text);
+      if (!passwordValidation['isValid']) {
+        setState(() => _isLoading = false);
+        _showErrorSnackBar(passwordValidation['error']);
+        return;
+      }
+      
+      // Validate phone number if provided
+      final phoneValidation = SecurityValidationUtils.validatePhoneNumber(_phoneController.text.trim());
+      if (!phoneValidation['isValid']) {
+        setState(() => _isLoading = false);
+        _showErrorSnackBar(phoneValidation['error']);
+        return;
+      }
       
       final result = await _authService.signUpWithEmailAndPassword(
         email: email,

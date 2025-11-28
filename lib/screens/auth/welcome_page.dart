@@ -4,7 +4,9 @@ import 'login_page.dart';
 import 'signup_page.dart';
 
 class WelcomePage extends StatelessWidget {
-  const WelcomePage({super.key});
+  final String? errorMessage;
+  
+  const WelcomePage({super.key, this.errorMessage});
 
   @override
   Widget build(BuildContext context) {
@@ -24,6 +26,27 @@ class WelcomePage extends StatelessWidget {
                   'assets/ibalik_words.png',
                   height: 56,
                 ),
+                
+                // Show error message if provided
+                if (errorMessage != null) ...[
+                  const SizedBox(height: AppSpacing.lg),
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      border: Border.all(color: Colors.red.withOpacity(0.3)),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      errorMessage!,
+                      style: const TextStyle(
+                        color: Colors.red,
+                        fontSize: 14,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
                 
                 const Spacer(flex: 3),
                 

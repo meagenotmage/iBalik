@@ -10,6 +10,7 @@ import 'leaderboards_page.dart';
 import '../posts/posts_page.dart';
 import '../claims/claims_page.dart';
 import '../home/profile_page.dart';
+import '../store/points_store_page.dart';
 
 class GameHubPage extends StatefulWidget {
   const GameHubPage({super.key});
@@ -342,13 +343,21 @@ class _GameHubPageState extends State<GameHubPage> {
                         return Row(
                           children: [
                             Expanded(
-                              child: _buildStatCard(
-                                _gameService.points.toString(),
-                                'Points',
-                                'Currency',
-                                Icons.bolt,
-                                AppColors.primary,
-                                isSmallScreen: isSmallScreen,
+                              child: GestureDetector(
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    SmoothPageRoute(page: PointsStorePage()),
+                                  );
+                                },
+                                child: _buildStatCard(
+                                  _gameService.points.toString(),
+                                  'Points',
+                                  'Currency',
+                                  Icons.bolt,
+                                  AppColors.primary,
+                                  isSmallScreen: isSmallScreen,
+                                  isTappable: true,
+                                ),
                               ),
                             ),
                             SizedBox(width: cardSpacing),
@@ -545,7 +554,7 @@ class _GameHubPageState extends State<GameHubPage> {
     );
   }
 
-  Widget _buildStatCard(String value, String label, String subtitle, IconData icon, Color color, {bool isSmallScreen = false}) {
+  Widget _buildStatCard(String value, String label, String subtitle, IconData icon, Color color, {bool isSmallScreen = false, bool isTappable = false}) {
     final cardPadding = isSmallScreen ? AppSpacing.md : AppSpacing.lg;
     final iconSize = isSmallScreen ? 18.0 : 22.0;
     final iconContainerPadding = isSmallScreen ? AppSpacing.xs : AppSpacing.sm;
@@ -560,9 +569,16 @@ class _GameHubPageState extends State<GameHubPage> {
         color: AppColors.darkCard,
         borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(
-          color: color.withOpacity(0.3),
-          width: 1.5,
+          color: isTappable ? color.withOpacity(0.6) : color.withOpacity(0.3),
+          width: isTappable ? 2.0 : 1.5,
         ),
+        boxShadow: isTappable ? [
+          BoxShadow(
+            color: color.withOpacity(0.2),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ] : null,
       ),
       child: Row(
         children: [
@@ -622,6 +638,14 @@ class _GameHubPageState extends State<GameHubPage> {
               ],
             ),
           ),
+          if (isTappable) ...[
+            SizedBox(width: spacing),
+            Icon(
+              Icons.arrow_forward_ios,
+              color: AppColors.lightTextSecondary,
+              size: isSmallScreen ? 12.0 : 14.0,
+            ),
+          ],
         ],
       ),
     );

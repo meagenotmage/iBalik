@@ -18,6 +18,7 @@ import '../game/leaderboards_page.dart';
 import '../game/challenges_page.dart';
 import '../claims/claims_page.dart';
 import '../auth/login_page.dart';
+import '../store/points_store_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -1294,13 +1295,21 @@ Future<void> _updateProfile(
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(
-                                      child: _buildCompactStatCard(
-                                        icon: Icons.bolt_rounded,
-                                        value: _gameService.points.toString(),
-                                        label: 'Points',
-                                        subtitle: 'Exchange Points',
-                                        color: AppColors.primary,
-                                        isPrimary: true,
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          Navigator.of(context).push(
+                                            SmoothPageRoute(page: PointsStorePage()),
+                                          );
+                                        },
+                                        child: _buildCompactStatCard(
+                                          icon: Icons.bolt_rounded,
+                                          value: _gameService.points.toString(),
+                                          label: 'Points',
+                                          subtitle: 'Exchange Points',
+                                          color: AppColors.primary,
+                                          isPrimary: true,
+                                          isTappable: true,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -1477,6 +1486,7 @@ Future<void> _updateProfile(
     String? subtitle,
     required Color color,
     bool isPrimary = false,
+    bool isTappable = false,
   }) {
     return Container(
       padding: EdgeInsets.all(isPrimary ? AppSpacing.md : AppSpacing.sm),
@@ -1484,10 +1494,16 @@ Future<void> _updateProfile(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(
-          color: color.withOpacity(0.2),
-          width: 2,
+          color: isTappable ? color.withOpacity(0.4) : color.withOpacity(0.2),
+          width: isTappable ? 2.5 : 2,
         ),
-        boxShadow: AppShadows.soft,
+        boxShadow: isTappable ? [
+          BoxShadow(
+            color: color.withOpacity(0.15),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ] : AppShadows.soft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -1519,14 +1535,27 @@ Future<void> _updateProfile(
           ),
           if (isPrimary && subtitle != null) ...[
             const SizedBox(height: 2),
-            Text(
-              subtitle,
-              style: const TextStyle(
-                color: AppColors.textTertiary,
-                fontSize: 10,
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.center,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: AppColors.textTertiary,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                if (isTappable) ...[
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    color: AppColors.textTertiary,
+                    size: 8,
+                  ),
+                ],
+              ],
             ),
           ],
         ],
