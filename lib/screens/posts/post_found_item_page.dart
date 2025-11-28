@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:io';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/page_transitions.dart';
+import '../../utils/image_picker_data.dart';
+import '../../utils/cross_platform_image.dart';
 import '../claims/drop_off_page.dart';
 import 'post_success_page.dart';
 import '../../services/lost_item_service.dart';
@@ -24,7 +27,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
   final LostItemService _lostItemService = LostItemService();
   final ImagePicker _imagePicker = ImagePicker();
   
-  final List<File> _selectedImages = [];
+  final List<ImagePickerData> _selectedImages = [];
   bool _isUploading = false;
   int _uploadedCount = 0;
   int _totalImages = 0;
@@ -830,97 +833,102 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                   else
                     Column(
                       children: [
-                        // Display selected images
-                        SizedBox(
-                          height: 120,
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: _selectedImages.length + (_selectedImages.length < 5 ? 1 : 0),
-                            itemBuilder: (context, index) {
-                              if (index == _selectedImages.length && _selectedImages.length < 5) {
-                                // Add more button
-                                return Padding(
-                                  padding: const EdgeInsets.only(right: 8),
-                                  child: InkWell(
-                                    onTap: _isOnCooldown ? null : _pickImages,
+                        // Display selected images in responsive grid
+                        GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            crossAxisSpacing: 8,
+                            mainAxisSpacing: 8,
+                            childAspectRatio: 1,
+                          ),
+                          itemCount: _selectedImages.length + (_selectedImages.length < 5 ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            if (index == _selectedImages.length && _selectedImages.length < 5) {
+                              // Add more button
+                              return InkWell(
+                                onTap: _isOnCooldown ? null : _pickImages,
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: _isOnCooldown ? Colors.grey[200] : const Color(0xFFF5F5F5),
                                     borderRadius: BorderRadius.circular(12),
-                                    child: Container(
-                                      width: 120,
-                                      decoration: BoxDecoration(
-                                        color: _isOnCooldown ? Colors.grey[200] : const Color(0xFFF5F5F5),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: Colors.grey[300]!,
-                                          width: 2,
+                                    border: Border.all(
+                                      color: Colors.grey[300]!,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.add_a_photo_outlined,
+                                        size: 28,
+                                        color: _isOnCooldown ? Colors.grey[400] : Colors.grey[400],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Add',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.grey[600],
+                                          fontWeight: FontWeight.w600,
                                         ),
                                       ),
-                                      child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Icon(
-                                            Icons.add_a_photo_outlined,
-                                            size: 32,
-                                            color: _isOnCooldown ? Colors.grey[400] : Colors.grey[400],
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            'Add more',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.grey[600],
-                                            ),
-                                          ),
-                                        ],
+                                      Text(
+                                        '${5 - _selectedImages.length} left',
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          color: Colors.grey[500],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }
+                            
+                            // Display image using CrossPlatformImage widget
+                            return Stack(
+                              children: [
+                                CrossPlatformImage(
+                                  imageData: _selectedImages[index],
+                                  width: double.infinity,
+                                  height: double.infinity,
+                                  fit: BoxFit.cover,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                // Remove button
+                                if (!_isOnCooldown)
+                                Positioned(
+                                  top: 4,
+                                  right: 4,
+                                  child: InkWell(
+                                    onTap: () {
+                                      if (mounted) {
+                                        setState(() {
+                                          _selectedImages.removeAt(index);
+                                        });
+                                      }
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: const BoxDecoration(
+                                        color: Colors.red,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.close,
+                                        size: 14,
+                                        color: Colors.white,
                                       ),
                                     ),
                                   ),
-                                );
-                              }
-                              
-                              // Display image
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: Stack(
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: Image.file(
-                                        _selectedImages[index],
-                                        width: 120,
-                                        height: 120,
-                                        fit: BoxFit.cover,
-                                      ),
-                                    ),
-                                    // Remove button
-                                    if (!_isOnCooldown)
-                                    Positioned(
-                                      top: 4,
-                                      right: 4,
-                                      child: InkWell(
-                                        onTap: () {
-                                          setState(() {
-                                            _selectedImages.removeAt(index);
-                                          });
-                                        },
-                                        child: Container(
-                                          padding: const EdgeInsets.all(4),
-                                          decoration: const BoxDecoration(
-                                            color: Colors.red,
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: const Icon(
-                                            Icons.close,
-                                            size: 16,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
                                 ),
-                              );
-                            },
-                          ),
+                              ],
+                            );
+                          },
                         ),
                         const SizedBox(height: 12),
                         Row(
@@ -1392,11 +1400,16 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
           
           if (images.isNotEmpty) {
             if (!mounted) return;
+            
+            // Convert XFiles to ImagePickerData
+            final List<ImagePickerData> newImages = [];
+            for (int i = 0; i < images.length && i < remainingSlots; i++) {
+              final imageData = await ImagePickerData.fromXFile(images[i]);
+              newImages.add(imageData);
+            }
+            
             setState(() {
-              // Add new images but limit to 5 total
-              for (int i = 0; i < images.length && i < remainingSlots; i++) {
-                _selectedImages.add(File(images[i].path));
-              }
+              _selectedImages.addAll(newImages);
             });
             
             if (images.length > remainingSlots && mounted) {
@@ -1418,8 +1431,9 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
           );
           if (image != null) {
             if (!mounted) return;
+            final imageData = await ImagePickerData.fromXFile(image);
             setState(() {
-              _selectedImages.add(File(image.path));
+              _selectedImages.add(imageData);
             });
           }
         }
@@ -1432,17 +1446,37 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
           imageQuality: 70,
         );
         if (image != null) {
+          if (!mounted) return;
+          final imageData = await ImagePickerData.fromXFile(image);
           setState(() {
-            _selectedImages.add(File(image.path));
+            _selectedImages.add(imageData);
           });
         }
       }
     } catch (e) {
       if (mounted) {
+        String errorMessage = 'Error selecting image';
+        
+        if (e.toString().contains('permission')) {
+          errorMessage = 'Permission denied. Please allow photo access';
+        } else if (e.toString().contains('file') || e.toString().contains('read')) {
+          errorMessage = 'Cannot read selected file. Please try another image';
+        } else if (kIsWeb && e.toString().contains('not supported')) {
+          errorMessage = 'File type not supported. Please select a JPEG or PNG image';
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: ${e.toString()}'),
+            content: Text(errorMessage),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'Try Again',
+              textColor: Colors.white,
+              onPressed: () {
+                _pickImages(source);
+              },
+            ),
           ),
         );
       }
@@ -1568,28 +1602,64 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
           _uploadedCount = 0;
         });
         
-        final String itemId = await _lostItemService.createLostItem(
-          itemName: _titleController.text,
-          description: _descriptionController.text,
-          category: _selectedCategory,
-          location: _selectedLocation,
-          images: _selectedImages,
-          dateFound: _selectedDate.toIso8601String(),
-          onImageUploadProgress: (current, total) {
-            if (mounted) {
-              setState(() {
-                _uploadedCount = current;
-                _totalImages = total;
-              });
-            }
-          },
-          additionalDetails: {
-            'availability': _selectedAvailability,
-            'dropOffLocation': null,
-            'founderContactMethod': _selectedContactMethod,
-            'founderContactValue': contactValue,
-          },
-        );
+        // Cross-platform upload handling
+        final String itemId;
+        if (kIsWeb) {
+          // Web: Use bytes upload
+          itemId = await _lostItemService.createLostItem(
+            itemName: _titleController.text,
+            description: _descriptionController.text,
+            category: _selectedCategory,
+            location: _selectedLocation,
+            imagesBytes: _selectedImages.map((img) => img.bytes).toList(),
+            imageFileNames: _selectedImages.map((img) => img.name).toList(),
+            dateFound: _selectedDate.toIso8601String(),
+            onImageUploadProgress: (current, total) {
+              if (mounted) {
+                setState(() {
+                  _uploadedCount = current;
+                  _totalImages = total;
+                });
+              }
+            },
+            additionalDetails: {
+              'availability': _selectedAvailability,
+              'dropOffLocation': null,
+              'founderContactMethod': _selectedContactMethod,
+              'founderContactValue': contactValue,
+            },
+          );
+        } else {
+          // Mobile/Desktop: Use file upload
+          final files = _selectedImages
+              .map((img) => img.file)
+              .where((file) => file != null)
+              .cast<File>()
+              .toList();
+          
+          itemId = await _lostItemService.createLostItem(
+            itemName: _titleController.text,
+            description: _descriptionController.text,
+            category: _selectedCategory,
+            location: _selectedLocation,
+            images: files,
+            dateFound: _selectedDate.toIso8601String(),
+            onImageUploadProgress: (current, total) {
+              if (mounted) {
+                setState(() {
+                  _uploadedCount = current;
+                  _totalImages = total;
+                });
+              }
+            },
+            additionalDetails: {
+              'availability': _selectedAvailability,
+              'dropOffLocation': null,
+              'founderContactMethod': _selectedContactMethod,
+              'founderContactValue': contactValue,
+            },
+          );
+        }
         
         // Record activity for posting the item
         try {
@@ -1633,10 +1703,36 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
           _isUploading = false;
         });
         
+        // Enhanced error handling with retry option
+        String errorMessage = 'Error posting item';
+        bool showRetry = true;
+        
+        if (e.toString().contains('network') || 
+            e.toString().contains('connection') ||
+            e.toString().contains('timeout')) {
+          errorMessage = 'Network error. Please check your connection';
+        } else if (e.toString().contains('permission') ||
+                   e.toString().contains('unauthorized')) {
+          errorMessage = 'Permission denied. Please sign in again';
+          showRetry = false;
+        } else if (kIsWeb && e.toString().contains('CORS')) {
+          errorMessage = 'Upload error. Please try again';
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error posting item: $e'),
+            content: Text(errorMessage),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+            action: showRetry
+                ? SnackBarAction(
+                    label: 'Retry',
+                    textColor: Colors.white,
+                    onPressed: () {
+                      _postItem();
+                    },
+                  )
+                : null,
           ),
         );
       }

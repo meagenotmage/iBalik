@@ -9,7 +9,26 @@ class SupabaseStorageService {
   final SupabaseClient _supabase = Supabase.instance.client;
   static const String bucketName = 'lost-item';
   
-  /// Compress image before upload to optimize performance
+  /// Compress image bytes before upload (works on all platforms)
+  Future<Uint8List> _compressImageBytes(Uint8List imageBytes, String fileName) async {
+    try {
+      var result = await FlutterImageCompress.compressWithList(
+        imageBytes,
+        quality: 85,
+        minWidth: 1024,
+        minHeight: 1024,
+      );
+
+      debugPrint('Image compressed: ${imageBytes.length} -> ${result.length} bytes');
+      return result;
+    } catch (e) {
+      debugPrint('Image compression error: $e');
+      // Fallback to original
+      return imageBytes;
+    }
+  }
+  
+  /// Compress image file before upload (mobile/desktop only)
   Future<Uint8List> _compressImage(File imageFile) async {
     try {
       final filePath = imageFile.absolute.path;
@@ -38,13 +57,65 @@ class SupabaseStorageService {
     }
   }
 
-  /// Upload a single image to Supabase Storage
+  /// Upload image from bytes (works on all platforms including web)
   /// Returns the public URL of the uploaded image
+  Future<String> uploadImageBytes({
+    required Uint8List imageBytes,
+    required String fileName,
+    required String itemId,
+    required String type, // 'posts' or 'claims'
+  }) async {
+    try {
+      // Get current user
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Generate unique filename
+      final uniqueFileName = '${DateTime.now().millisecondsSinceEpoch}_$fileName';
+      final filePath = '$type/$itemId/$uniqueFileName';
+
+      // Compress image
+      final compressedBytes = await _compressImageBytes(imageBytes, fileName);
+
+      // Upload to Supabase
+      await _supabase.storage
+          .from(bucketName)
+          .uploadBinary(
+            filePath,
+            compressedBytes,
+            fileOptions: const FileOptions(
+              contentType: 'image/jpeg',
+              upsert: false,
+            ),
+          );
+
+      // Get public URL
+      final publicUrl = _supabase.storage
+          .from(bucketName)
+          .getPublicUrl(filePath);
+
+      debugPrint('Image uploaded successfully: $publicUrl');
+      return publicUrl;
+    } catch (e) {
+      debugPrint('Error uploading image: $e');
+      rethrow;
+    }
+  }
+
+  /// Upload a single image to Supabase Storage (mobile/desktop only)
+  /// Returns the public URL of the uploaded image
+  /// For web, use uploadImageBytes instead
   Future<String> uploadImage({
     required File imageFile,
     required String itemId,
     required String type, // 'posts' or 'claims'
   }) async {
+    if (kIsWeb) {
+      throw UnsupportedError('Use uploadImageBytes for web uploads');
+    }
+    
     try {
       // Get current user
       final user = FirebaseAuth.instance.currentUser;
@@ -65,7 +136,7 @@ class SupabaseStorageService {
           .uploadBinary(
             filePath,
             compressedBytes,
-            fileOptions: FileOptions(
+            fileOptions: const FileOptions(
               contentType: 'image/jpeg',
               upsert: false,
             ),
@@ -84,14 +155,57 @@ class SupabaseStorageService {
     }
   }
 
-  /// Upload multiple images to Supabase Storage
+  /// Upload multiple images from bytes (works on all platforms)
   /// Returns list of public URLs
+  Future<List<String>> uploadMultipleImagesBytes({
+    required List<Uint8List> imagesBytes,
+    required List<String> fileNames,
+    required String itemId,
+    required String type, // 'posts' or 'claims'
+    Function(int current, int total)? onProgress,
+  }) async {
+    if (imagesBytes.length != fileNames.length) {
+      throw ArgumentError('imagesBytes and fileNames must have the same length');
+    }
+
+    final List<String> uploadedUrls = [];
+    
+    for (int i = 0; i < imagesBytes.length; i++) {
+      try {
+        final url = await uploadImageBytes(
+          imageBytes: imagesBytes[i],
+          fileName: fileNames[i],
+          itemId: itemId,
+          type: type,
+        );
+        uploadedUrls.add(url);
+        
+        // Report progress
+        if (onProgress != null) {
+          onProgress(i + 1, imagesBytes.length);
+        }
+      } catch (e) {
+        debugPrint('Error uploading image ${i + 1}: $e');
+        // Continue with other images even if one fails
+      }
+    }
+
+    return uploadedUrls;
+  }
+
+  /// Upload multiple images to Supabase Storage (mobile/desktop only)
+  /// Returns list of public URLs
+  /// For web, use uploadMultipleImagesBytes instead
   Future<List<String>> uploadMultipleImages({
     required List<File> imageFiles,
     required String itemId,
     required String type, // 'posts' or 'claims'
     Function(int current, int total)? onProgress,
   }) async {
+    if (kIsWeb) {
+      throw UnsupportedError('Use uploadMultipleImagesBytes for web uploads');
+    }
+
     final List<String> uploadedUrls = [];
     
     for (int i = 0; i < imageFiles.length; i++) {
