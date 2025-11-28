@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
+
 import 'return_success_page.dart';
 import '../../utils/page_transitions.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/claims_theme.dart';
 import '../../services/game_service.dart';
+import '../../services/supabase_storage_service.dart';
 
 class ConfirmReturnPage extends StatefulWidget {
   final Map<String, dynamic> itemData;
@@ -25,10 +29,14 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
   bool _verifiedIdentity = false;
   final TextEditingController _meetingLocationController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
-  bool _hasPhoto = false;
+  final List<Uint8List> _returnImagesBytes = [];
+  final List<String> _returnImageNames = [];
+  final int maxImages = 5;
   bool _isProcessing = false;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final ImagePicker _picker = ImagePicker();
+  final SupabaseStorageService _storageService = SupabaseStorageService();
 
   @override
   void dispose() {
@@ -37,14 +45,79 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
     super.dispose();
   }
 
-  void _pickImage() {
+  Future<void> _pickReturnImages() async {
+    if (_returnImagesBytes.length >= maxImages) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Maximum $maxImages images allowed'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    try {
+      final List<XFile> pickedFiles = await _picker.pickMultiImage(
+        imageQuality: 85,
+      );
+      
+      if (pickedFiles.isEmpty) return;
+
+      final int remainingSlots = maxImages - _returnImagesBytes.length;
+      final List<XFile> filesToAdd = pickedFiles.take(remainingSlots).toList();
+
+      for (var file in filesToAdd) {
+        final bytes = await file.readAsBytes();
+        setState(() {
+          _returnImagesBytes.add(bytes);
+          _returnImageNames.add(file.name);
+        });
+      }
+
+      if (pickedFiles.length > remainingSlots) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Only added $remainingSlots images (limit: $maxImages)'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${filesToAdd.length} image(s) added'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to pick images: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _removeImage(int index) {
     setState(() {
-      _hasPhoto = true;
+      _returnImagesBytes.removeAt(index);
+      _returnImageNames.removeAt(index);
     });
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Photo added successfully'),
-        duration: Duration(seconds: 2),
+        content: Text('Image removed'),
+        duration: Duration(seconds: 1),
+      ),
+    );
+  }
+
+  void _viewImage(int index) {
+    showDialog(
+      context: context,
+      builder: (context) => _ImageViewerDialog(
+        imagesBytes: _returnImagesBytes,
+        initialIndex: index,
       ),
     );
   }
@@ -100,16 +173,46 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
       // Create a batch write for all operations
       final batch = _firestore.batch();
 
+      // Upload return images if any
+      List<String> returnImageUrls = [];
+      if (_returnImagesBytes.isNotEmpty) {
+        try {
+          final itemId = widget.itemData['itemId']?.toString() ?? widget.claimId;
+          
+          returnImageUrls = await _storageService.uploadMultipleImagesBytes(
+            imagesBytes: _returnImagesBytes,
+            fileNames: _returnImageNames,
+            itemId: itemId,
+            type: 'returns',
+          );
+          
+          print('Uploaded ${returnImageUrls.length} return images');
+        } catch (e) {
+          print('Error uploading return images: $e');
+          // Continue with the return process even if image upload fails
+        }
+      }
+
       // 1. Update claim status to 'completed' (matches Firestore rules)
       final claimRef = _firestore.collection('claims').doc(widget.claimId);
-      batch.update(claimRef, {
+      final Map<String, dynamic> claimUpdate = {
         'status': 'completed',
         'returnedAt': FieldValue.serverTimestamp(),
         'returnLocation': _meetingLocationController.text.trim(),
         'returnNotes': _notesController.text.trim(),
-        'hasReturnPhoto': _hasPhoto,
         'returnedBy': currentUser.uid,
-      });
+      };
+      
+      // Add image data if available
+      if (returnImageUrls.isNotEmpty) {
+        claimUpdate['returnImages'] = returnImageUrls;
+        claimUpdate['returnImage'] = returnImageUrls.first; // Backward compatibility
+        claimUpdate['hasReturnPhoto'] = true;
+      } else {
+        claimUpdate['hasReturnPhoto'] = false;
+      }
+      
+      batch.update(claimRef, claimUpdate);
 
       // 2. Update lost item status to 'returned'
       if (itemId != null) {
@@ -176,7 +279,7 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
 
       // 6. Use GameService for consistent rewards (points, karma, activity, notifications)
       final gameService = GameService();
-      await gameService.rewardSuccessfulReturn(widget.itemData['title'] ?? 'Item');
+      await gameService.rewardSuccessfulReturn(widget.itemData['itemName'] ?? widget.itemData['title'] ?? 'Item');
 
       // Commit all operations
       await batch.commit();
@@ -309,11 +412,11 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
                             color: Colors.grey[200],
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: widget.itemData['imageUrl'] != null
+                          child: widget.itemData['itemImageUrl'] != null
                               ? ClipRRect(
                                   borderRadius: BorderRadius.circular(12),
                                   child: Image.network(
-                                    widget.itemData['imageUrl'],
+                                    widget.itemData['itemImageUrl'],
                                     fit: BoxFit.cover,
                                     errorBuilder: (context, error, stackTrace) {
                                       return Icon(
@@ -336,12 +439,12 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                widget.itemData['title'] ?? 'Unknown Item',
+                                widget.itemData['itemName'] ?? widget.itemData['title'] ?? 'Unknown Item',
                                 style: ClaimsTypography.subtitle,
                               ),
                               SizedBox(height: ClaimsSpacing.xxs),
                               Text(
-                                widget.itemData['description'] ?? 'No description available',
+                                widget.itemData['itemDetails'] ?? widget.itemData['description'] ?? 'No description available',
                                 style: ClaimsTypography.body,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
@@ -349,12 +452,12 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
                               SizedBox(height: ClaimsSpacing.xs),
                               ClaimsWidgets.infoRow(
                                 icon: Icons.location_on,
-                                text: widget.itemData['location'] ?? 'Unknown location',
+                                text: widget.itemData['pickupLocation'] ?? widget.itemData['location'] ?? 'Unknown location',
                               ),
                               SizedBox(height: ClaimsSpacing.xs),
                               ClaimsWidgets.infoRow(
                                 icon: Icons.person,
-                                text: 'Returning to: ${widget.itemData['seekerName'] ?? 'Unknown user'}',
+                                text: 'Returning to: ${widget.itemData['claimerName'] ?? widget.itemData['seekerName'] ?? 'Unknown user'}',
                               ),
                             ],
                           ),
@@ -499,7 +602,7 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
                   
                   const SizedBox(height: 20),
                   
-                  // Return Photo Card
+                  // Return Photos Card
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
@@ -521,69 +624,138 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
                             const Icon(Icons.camera_alt, size: 20),
                             SizedBox(width: ClaimsSpacing.xs),
                             Text(
-                              'Return Photo (Optional)',
+                              'Return Photos (Optional)',
                               style: ClaimsTypography.title,
                             ),
+                            const Spacer(),
+                            if (_returnImagesBytes.isNotEmpty)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF2196F3).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  '${_returnImagesBytes.length}/$maxImages',
+                                  style: const TextStyle(
+                                    color: Color(0xFF2196F3),
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                         SizedBox(height: ClaimsSpacing.md),
+                        
+                        // Image Grid
+                        if (_returnImagesBytes.isNotEmpty)
+                          GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 3,
+                              crossAxisSpacing: 8,
+                              mainAxisSpacing: 8,
+                              childAspectRatio: 1.0,
+                            ),
+                            itemCount: _returnImagesBytes.length,
+                            itemBuilder: (context, index) {
+                              return Stack(
+                                children: [
+                                  InkWell(
+                                    onTap: () => _viewImage(index),
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: const Color(0xFF2196F3).withOpacity(0.5),
+                                          width: 2,
+                                        ),
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(6),
+                                        child: Image.memory(
+                                          _returnImagesBytes[index],
+                                          fit: BoxFit.cover,
+                                          width: double.infinity,
+                                          height: double.infinity,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: 4,
+                                    right: 4,
+                                    child: InkWell(
+                                      onTap: () => _removeImage(index),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: const BoxDecoration(
+                                          color: Colors.red,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.close,
+                                          color: Colors.white,
+                                          size: 16,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        
+                        if (_returnImagesBytes.isNotEmpty)
+                          SizedBox(height: ClaimsSpacing.md),
+                        
+                        // Add Images Button
                         InkWell(
-                          onTap: _pickImage,
+                          onTap: _pickReturnImages,
                           borderRadius: BorderRadius.circular(12),
                           child: Container(
-                            height: 180,
+                            height: 120,
                             decoration: BoxDecoration(
                               color: Colors.grey[50],
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
                                 color: Colors.grey[300]!,
                                 width: 2,
+                                style: BorderStyle.solid,
                               ),
                             ),
                             child: Center(
-                              child: _hasPhoto
-                                  ? Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.check_circle,
-                                          size: 48,
-                                          color: Colors.green[400],
-                                        ),
-                                        SizedBox(height: ClaimsSpacing.sm),
-                                        Text(
-                                          'Photo added',
-                                          style: ClaimsTypography.bodyBold,
-                                        ),
-                                      ],
-                                    )
-                                  : Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.camera_alt,
-                                          size: 48,
-                                          color: Colors.grey[400],
-                                        ),
-                                        const SizedBox(height: 12),
-                                        Text(
-                                          'Add a photo of the successful return',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.grey[600],
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          'Optional: Helps build trust in the community',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey[500],
-                                          ),
-                                        ),
-                                      ],
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    _returnImagesBytes.isEmpty ? Icons.camera_alt : Icons.add_photo_alternate,
+                                    size: 40,
+                                    color: Colors.grey[400],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    _returnImagesBytes.isEmpty
+                                        ? 'Add photos of the successful return'
+                                        : 'Add more photos (${_returnImagesBytes.length}/$maxImages)',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey[600],
+                                      fontWeight: FontWeight.w500,
                                     ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Optional: Helps build trust in the community',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey[500],
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -653,7 +825,7 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            _buildRewardItem('+12', 'Points', const Color(0xFF2196F3)),
+                            _buildRewardItem('+20', 'Points', const Color(0xFF2196F3)),
                             _buildRewardItem('+15', 'Karma', const Color(0xFF9C27B0)),
                             _buildRewardItem('🏆', 'Helper Badge', const Color(0xFFFFA726)),
                           ],
@@ -779,6 +951,179 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
         content: Text(message),
         backgroundColor: Colors.red,
         duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+}
+
+// Image Viewer Dialog for local images
+class _ImageViewerDialog extends StatefulWidget {
+  final List<Uint8List> imagesBytes;
+  final int initialIndex;
+
+  const _ImageViewerDialog({
+    required this.imagesBytes,
+    this.initialIndex = 0,
+  });
+
+  @override
+  State<_ImageViewerDialog> createState() => _ImageViewerDialogState();
+}
+
+class _ImageViewerDialogState extends State<_ImageViewerDialog> {
+  late PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.black,
+      insetPadding: EdgeInsets.zero,
+      child: Stack(
+        children: [
+          // Image PageView
+          PageView.builder(
+            controller: _pageController,
+            itemCount: widget.imagesBytes.length,
+            onPageChanged: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            itemBuilder: (context, index) {
+              return Center(
+                child: InteractiveViewer(
+                  minScale: 0.5,
+                  maxScale: 4.0,
+                  child: Image.memory(
+                    widget.imagesBytes[index],
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              );
+            },
+          ),
+          
+          // Close button
+          Positioned(
+            top: 40,
+            right: 16,
+            child: IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.close,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+            ),
+          ),
+          
+          // Image counter
+          Positioned(
+            top: 50,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${_currentIndex + 1} / ${widget.imagesBytes.length}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          
+          // Navigation arrows (if more than 1 image)
+          if (widget.imagesBytes.length > 1) ...[
+            // Previous button
+            if (_currentIndex > 0)
+              Positioned(
+                left: 16,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: IconButton(
+                    onPressed: () {
+                      _pageController.previousPage(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                      );
+                    },
+                    icon: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: const BoxDecoration(
+                        color: Colors.black54,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.chevron_left,
+                        color: Colors.white,
+                        size: 32,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            // Next button
+            if (_currentIndex < widget.imagesBytes.length - 1)
+              Positioned(
+                right: 16,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: IconButton(
+                    onPressed: () {
+                      _pageController.nextPage(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                      );
+                    },
+                    icon: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: const BoxDecoration(
+                        color: Colors.black54,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.chevron_right,
+                        color: Colors.white,
+                        size: 32,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ],
       ),
     );
   }

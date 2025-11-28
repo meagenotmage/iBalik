@@ -1,8 +1,12 @@
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../services/notification_service.dart';
 import '../../services/activity_service.dart';
+import '../../services/supabase_storage_service.dart';
 // no external date package required; we'll format DateTime manually
 
 class ClaimItemPage extends StatefulWidget {
@@ -22,6 +26,12 @@ class _ClaimItemPageState extends State<ClaimItemPage> {
   final TextEditingController _emailController = TextEditingController();
   
   String _selectedContactMethod = '';
+  
+  // Multiple images upload state
+  List<Uint8List> _proofImagesBytes = [];
+  List<String> _proofImageNames = [];
+  final ImagePicker _imagePicker = ImagePicker();
+  static const int maxImages = 5;
 
   @override
   void dispose() {
@@ -31,6 +41,74 @@ class _ClaimItemPageState extends State<ClaimItemPage> {
     _messengerController.dispose();
     _emailController.dispose();
     super.dispose();
+  }
+  
+  Future<void> _pickProofImages() async {
+    try {
+      if (_proofImagesBytes.length >= maxImages) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Maximum $maxImages images allowed'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      final List<XFile> pickedFiles = await _imagePicker.pickMultiImage(
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (pickedFiles.isNotEmpty) {
+        final remainingSlots = maxImages - _proofImagesBytes.length;
+        final filesToAdd = pickedFiles.take(remainingSlots).toList();
+        
+        for (var file in filesToAdd) {
+          final bytes = await file.readAsBytes();
+          _proofImagesBytes.add(bytes);
+          _proofImageNames.add(file.name);
+        }
+        
+        setState(() {});
+        
+        if (pickedFiles.length > remainingSlots) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Only $remainingSlots more images could be added (max $maxImages)'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to pick images: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+  
+  void _removeImage(int index) {
+    setState(() {
+      _proofImagesBytes.removeAt(index);
+      _proofImageNames.removeAt(index);
+    });
+  }
+  
+  void _viewImage(int index) {
+    showDialog(
+      context: context,
+      builder: (context) => _ImageViewerDialog(
+        images: _proofImagesBytes,
+        initialIndex: index,
+      ),
+    );
   }
 
   @override
@@ -353,51 +431,183 @@ class _ClaimItemPageState extends State<ClaimItemPage> {
                         ),
                         const SizedBox(height: 16),
                         
-                        // Upload area
-                        InkWell(
-                          onTap: () {
-                            // TODO: Implement photo picker
-                          },
-                          borderRadius: BorderRadius.circular(12),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 40),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF5F5F5),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: Colors.grey[300]!,
-                                style: BorderStyle.solid,
+                        // Upload area - Multiple images support
+                        Column(
+                          children: [
+                            if (_proofImagesBytes.isNotEmpty) ...[
+                              // Image grid
+                              GridView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 3,
+                                  crossAxisSpacing: 8,
+                                  mainAxisSpacing: 8,
+                                ),
+                                itemCount: _proofImagesBytes.length,
+                                itemBuilder: (context, index) {
+                                  return Stack(
+                                    children: [
+                                      InkWell(
+                                        onTap: () => _viewImage(index),
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: Border.all(
+                                              color: const Color(0xFF9C27B0),
+                                              width: 2,
+                                            ),
+                                          ),
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(6),
+                                            child: Image.memory(
+                                              _proofImagesBytes[index],
+                                              fit: BoxFit.cover,
+                                              width: double.infinity,
+                                              height: double.infinity,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      Positioned(
+                                        top: 4,
+                                        right: 4,
+                                        child: InkWell(
+                                          onTap: () => _removeImage(index),
+                                          child: Container(
+                                            padding: const EdgeInsets.all(4),
+                                            decoration: const BoxDecoration(
+                                              color: Colors.red,
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(
+                                              Icons.close,
+                                              color: Colors.white,
+                                              size: 14,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      Positioned(
+                                        bottom: 4,
+                                        right: 4,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black54,
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(
+                                                Icons.zoom_in,
+                                                color: Colors.white,
+                                                size: 12,
+                                              ),
+                                              const SizedBox(width: 2),
+                                              Text(
+                                                'View',
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
                               ),
-                            ),
-                            child: Center(
-                              child: Column(
-                                children: [
-                                  Icon(
-                                    Icons.add_a_photo_outlined,
-                                    size: 48,
-                                    color: Colors.grey[400],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    'Add supporting photo',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.grey[600],
+                              const SizedBox(height: 12),
+                            ],
+                            // Add more button
+                            if (_proofImagesBytes.length < maxImages)
+                              InkWell(
+                                onTap: _pickProofImages,
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 32),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF5F5F5),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: _proofImagesBytes.isNotEmpty 
+                                          ? const Color(0xFF9C27B0) 
+                                          : Colors.grey[300]!,
+                                      width: _proofImagesBytes.isNotEmpty ? 2 : 1,
+                                      style: BorderStyle.solid,
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Screenshots, receipts, or related photos',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[500],
+                                  child: Center(
+                                    child: Column(
+                                      children: [
+                                        Icon(
+                                          _proofImagesBytes.isEmpty 
+                                              ? Icons.add_a_photo_outlined 
+                                              : Icons.add_photo_alternate_outlined,
+                                          size: 48,
+                                          color: Colors.grey[400],
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          _proofImagesBytes.isEmpty 
+                                              ? 'Add supporting photos' 
+                                              : 'Add more photos',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '${_proofImagesBytes.length}/$maxImages photos selected',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey[500],
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                ],
+                                ),
+                              )
+                            else
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE8F5E9),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: const Color(0xFF4CAF50),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.check_circle,
+                                      color: Color(0xFF4CAF50),
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        'Maximum $maxImages photos added',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.green[800],
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ),
+                          ],
                         ),
                       ],
                     ),
@@ -748,6 +958,34 @@ class _ClaimItemPageState extends State<ClaimItemPage> {
         itemImageUrl = images[0] as String;
       }
       
+      // Upload proof images if provided
+      List<String> proofImageUrls = [];
+      if (_proofImagesBytes.isNotEmpty) {
+        try {
+          final storage = SupabaseStorageService();
+          final itemId = widget.item['itemId'] ?? widget.item['id'] ?? widget.item['docId'] ?? DateTime.now().millisecondsSinceEpoch.toString();
+          
+          for (int i = 0; i < _proofImagesBytes.length; i++) {
+            try {
+              final url = await storage.uploadImageBytes(
+                imageBytes: _proofImagesBytes[i],
+                fileName: _proofImageNames[i],
+                itemId: itemId.toString(),
+                type: 'claims',
+              );
+              proofImageUrls.add(url);
+              debugPrint('Proof image ${i + 1} uploaded: $url');
+            } catch (e) {
+              debugPrint('Failed to upload proof image ${i + 1}: $e');
+              // Continue with other images
+            }
+          }
+        } catch (e) {
+          debugPrint('Failed to upload proof images: $e');
+          // Continue without proof images if upload fails
+        }
+      }
+      
       // Normalize item fields and copy founder contact info into the claim
       final claimData = <String, dynamic>{
         'itemId': widget.item['itemId'] ?? widget.item['id'] ?? widget.item['docId'],
@@ -761,7 +999,8 @@ class _ClaimItemPageState extends State<ClaimItemPage> {
         'claimerContactValue': contactValue,
         'claimDescription': _detailsController.text.trim(),
         'additionalInfo': _additionalInfoController.text.trim(),
-        'proofImage': null,
+        'proofImages': proofImageUrls,
+        'proofImage': proofImageUrls.isNotEmpty ? proofImageUrls[0] : null, // Backward compatibility
         'submittedDate': FieldValue.serverTimestamp(),
         'status': 'pending',
         // founder contact copied from the lost item where possible so claim details don't need extra lookups
@@ -1014,6 +1253,179 @@ class _SuccessDialog extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// Image Viewer Dialog Widget
+class _ImageViewerDialog extends StatefulWidget {
+  final List<Uint8List> images;
+  final int initialIndex;
+
+  const _ImageViewerDialog({
+    required this.images,
+    this.initialIndex = 0,
+  });
+
+  @override
+  State<_ImageViewerDialog> createState() => _ImageViewerDialogState();
+}
+
+class _ImageViewerDialogState extends State<_ImageViewerDialog> {
+  late PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.black,
+      insetPadding: EdgeInsets.zero,
+      child: Stack(
+        children: [
+          // Image PageView
+          PageView.builder(
+            controller: _pageController,
+            itemCount: widget.images.length,
+            onPageChanged: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            itemBuilder: (context, index) {
+              return Center(
+                child: InteractiveViewer(
+                  minScale: 0.5,
+                  maxScale: 4.0,
+                  child: Image.memory(
+                    widget.images[index],
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              );
+            },
+          ),
+          
+          // Close button
+          Positioned(
+            top: 40,
+            right: 16,
+            child: IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.close,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+            ),
+          ),
+          
+          // Image counter
+          Positioned(
+            top: 50,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${_currentIndex + 1} / ${widget.images.length}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          
+          // Navigation arrows (if more than 1 image)
+          if (widget.images.length > 1) ...[
+            // Previous button
+            if (_currentIndex > 0)
+              Positioned(
+                left: 16,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: IconButton(
+                    onPressed: () {
+                      _pageController.previousPage(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                      );
+                    },
+                    icon: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.chevron_left,
+                        color: Colors.white,
+                        size: 32,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            // Next button
+            if (_currentIndex < widget.images.length - 1)
+              Positioned(
+                right: 16,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: IconButton(
+                    onPressed: () {
+                      _pageController.nextPage(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                      );
+                    },
+                    icon: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.chevron_right,
+                        color: Colors.white,
+                        size: 32,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ],
       ),
     );
   }

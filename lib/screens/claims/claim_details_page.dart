@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/claims_theme.dart';
 import '../../services/notification_service.dart';
@@ -855,6 +856,228 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
                         ),
                         SizedBox(height: ClaimsSpacing.xl),
 
+                        // Claim Description Card
+                        if ((_data['claimDescription'] ?? '').toString().trim().isNotEmpty) ...[
+                          Container(
+                            margin: EdgeInsets.symmetric(horizontal: ClaimsSpacing.xl),
+                            padding: EdgeInsets.all(ClaimsSpacing.lg),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: Colors.grey[300]!,
+                                width: 1,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.03),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 1),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: ClaimsColors.info.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Icon(
+                                        Icons.chat_bubble_outline,
+                                        color: ClaimsColors.info,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    SizedBox(width: ClaimsSpacing.sm),
+                                    Text(
+                                      'Claim Description',
+                                      style: ClaimsTypography.subtitle.copyWith(
+                                        fontSize: 17,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: ClaimsSpacing.md),
+                                Text(
+                                  _data['claimDescription'].toString(),
+                                  style: ClaimsTypography.body.copyWith(
+                                    height: 1.5,
+                                  ),
+                                ),
+                                if ((_data['additionalInfo'] ?? '').toString().trim().isNotEmpty) ...[
+                                  SizedBox(height: ClaimsSpacing.md),
+                                  Text(
+                                    'Additional Information:',
+                                    style: ClaimsTypography.bodyBold.copyWith(
+                                      color: Colors.orange,
+                                    ),
+                                  ),
+                                  SizedBox(height: ClaimsSpacing.xs),
+                                  Text(
+                                    _data['additionalInfo'].toString(),
+                                    style: ClaimsTypography.body.copyWith(
+                                      height: 1.5,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: ClaimsSpacing.xl),
+                        ],
+
+                        // Proof Images Card (only if images exist)
+                        ...() {
+                          final List<String> proofImages = [];
+                          if (_data['proofImages'] is List) {
+                            proofImages.addAll((_data['proofImages'] as List).cast<String>());
+                          } else if (_data['proofImage'] != null && _data['proofImage'].toString().isNotEmpty) {
+                            proofImages.add(_data['proofImage'].toString());
+                          }
+                          
+                          if (proofImages.isEmpty) return <Widget>[];
+                          
+                          return <Widget>[
+                          Container(
+                            margin: EdgeInsets.symmetric(horizontal: ClaimsSpacing.xl),
+                            padding: EdgeInsets.all(ClaimsSpacing.lg),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: Colors.grey[300]!,
+                                width: 1,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.03),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 1),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF9C27B0).withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Icon(
+                                        Icons.photo_library_outlined,
+                                        color: const Color(0xFF9C27B0),
+                                        size: 20,
+                                      ),
+                                    ),
+                                    SizedBox(width: ClaimsSpacing.sm),
+                                    Text(
+                                      'Proof Images (${proofImages.length})',
+                                      style: ClaimsTypography.subtitle.copyWith(
+                                        fontSize: 17,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: ClaimsSpacing.xs),
+                                Text(
+                                  'Photos provided by claimer - Tap to enlarge',
+                                  style: ClaimsTypography.caption,
+                                ),
+                                SizedBox(height: ClaimsSpacing.md),
+                                proofImages.length == 1
+                                    ? _buildSingleProofImage(proofImages[0], 0, proofImages)
+                                    : _buildProofImageGrid(proofImages),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: ClaimsSpacing.xl),
+                          ];
+                        }(),
+
+                        // Return Images Card (only for completed claims with return images)
+                        if (isCompleted) ...() {
+                          final List<String> returnImages = [];
+                          if (_data['returnImages'] is List) {
+                            returnImages.addAll((_data['returnImages'] as List).cast<String>());
+                          } else if (_data['returnImage'] != null && _data['returnImage'].toString().isNotEmpty) {
+                            returnImages.add(_data['returnImage'].toString());
+                          }
+                          
+                          if (returnImages.isEmpty) return <Widget>[];
+                          
+                          return <Widget>[
+                          Container(
+                            margin: EdgeInsets.symmetric(horizontal: ClaimsSpacing.xl),
+                            padding: EdgeInsets.all(ClaimsSpacing.lg),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF1F8E9),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: const Color(0xFF4CAF50).withValues(alpha: 0.3),
+                                width: 2,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF4CAF50).withValues(alpha: 0.1),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF4CAF50),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Icon(
+                                        Icons.check_circle,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    SizedBox(width: ClaimsSpacing.sm),
+                                    Text(
+                                      'Return Photos (${returnImages.length})',
+                                      style: ClaimsTypography.subtitle.copyWith(
+                                        fontSize: 17,
+                                        color: const Color(0xFF2E7D32),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: ClaimsSpacing.xs),
+                                Text(
+                                  'Photos from successful return - Tap to enlarge',
+                                  style: ClaimsTypography.caption.copyWith(
+                                    color: const Color(0xFF558B2F),
+                                  ),
+                                ),
+                                SizedBox(height: ClaimsSpacing.md),
+                                returnImages.length == 1
+                                    ? _buildSingleProofImage(returnImages[0], 0, returnImages)
+                                    : _buildProofImageGrid(returnImages),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: ClaimsSpacing.xl),
+                          ];
+                        }(),
+
                         // Contact Card: show the other party's profile depending on who is viewing
                         Container(
                           margin: EdgeInsets.symmetric(horizontal: ClaimsSpacing.xl),
@@ -1153,10 +1376,9 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
     );
   },
 );
-}
-}
+  }
 
-Widget _buildContactRow({
+  Widget _buildContactRow({
 required IconData icon,
 required String title,
 required String subtitle,
@@ -1424,30 +1646,417 @@ Widget _buildCompactInfoCard({
     ),
   );
 }
+  Widget _buildGuideline(String text) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          margin: const EdgeInsets.only(top: 4),
+          width: 8,
+          height: 8,
+          decoration: const BoxDecoration(
+            color: Color(0xFFF57C00),
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[800],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
-Widget _buildGuideline(String text) {
-return Row(
-crossAxisAlignment: CrossAxisAlignment.start,
-children: [
-Container(
-margin: const EdgeInsets.only(top: 4),
-width: 8,
-height: 8,
-decoration: const BoxDecoration(
-color: Color(0xFFF57C00),
-shape: BoxShape.circle,
-),
-),
-const SizedBox(width: 12),
-Expanded(
-child: Text(
-text,
-style: TextStyle(
-fontSize: 14,
-color: Colors.grey[800],
-),
-),
-),
-],
-);
+  void _viewProofImage(List<String> imageUrls, int initialIndex) {
+    showDialog(
+      context: context,
+      builder: (context) => _NetworkImageViewerDialog(
+        imageUrls: imageUrls,
+        initialIndex: initialIndex,
+      ),
+    );
+  }
+
+  Widget _buildSingleProofImage(String imageUrl, int index, List<String> allImages) {
+    return InkWell(
+      onTap: () => _viewProofImage(allImages, index),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: double.infinity,
+          constraints: const BoxConstraints(minHeight: 200, maxHeight: 400),
+          color: Colors.grey[200],
+          child: Stack(
+            children: [
+              CachedNetworkImage(
+                imageUrl: imageUrl,
+                fit: BoxFit.contain,
+                width: double.infinity,
+                placeholder: (context, url) => Container(
+                  height: 200,
+                  child: const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+                errorWidget: (context, url, error) => Container(
+                  height: 200,
+                  color: Colors.grey[200],
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.broken_image,
+                        size: 60,
+                        color: Colors.grey[400],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Failed to load image',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(
+                        Icons.zoom_in,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        'Tap to enlarge',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProofImageGrid(List<String> imageUrls) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 1.0,
+      ),
+      itemCount: imageUrls.length,
+      itemBuilder: (context, index) {
+        return InkWell(
+          onTap: () => _viewProofImage(imageUrls, index),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: const Color(0xFF9C27B0).withOpacity(0.5),
+                width: 2,
+              ),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  CachedNetworkImage(
+                    imageUrl: imageUrls[index],
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      color: Colors.grey[200],
+                      child: const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      color: Colors.grey[200],
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.broken_image,
+                            size: 40,
+                            color: Colors.grey[400],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Failed',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 4,
+                    right: 4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.zoom_in,
+                            color: Colors.white,
+                            size: 12,
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            '${index + 1}/${imageUrls.length}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// Network Image Viewer Dialog for ClaimDetailsPage
+class _NetworkImageViewerDialog extends StatefulWidget {
+  final List<String> imageUrls;
+  final int initialIndex;
+
+  const _NetworkImageViewerDialog({
+    required this.imageUrls,
+    this.initialIndex = 0,
+  });
+
+  @override
+  State<_NetworkImageViewerDialog> createState() => _NetworkImageViewerDialogState();
+}
+
+class _NetworkImageViewerDialogState extends State<_NetworkImageViewerDialog> {
+  late PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.black,
+      insetPadding: EdgeInsets.zero,
+      child: Stack(
+        children: [
+          // Image PageView
+          PageView.builder(
+            controller: _pageController,
+            itemCount: widget.imageUrls.length,
+            onPageChanged: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            itemBuilder: (context, index) {
+              return Center(
+                child: InteractiveViewer(
+                  minScale: 0.5,
+                  maxScale: 4.0,
+                  child: CachedNetworkImage(
+                    imageUrl: widget.imageUrls[index],
+                    fit: BoxFit.contain,
+                    placeholder: (context, url) => const Center(
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.broken_image,
+                            size: 80,
+                            color: Colors.white54,
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            'Failed to load image',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+          
+          // Close button
+          Positioned(
+            top: 40,
+            right: 16,
+            child: IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.close,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+            ),
+          ),
+          
+          // Image counter
+          Positioned(
+            top: 50,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${_currentIndex + 1} / ${widget.imageUrls.length}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          
+          // Navigation arrows (if more than 1 image)
+          if (widget.imageUrls.length > 1) ...[
+            // Previous button
+            if (_currentIndex > 0)
+              Positioned(
+                left: 16,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: IconButton(
+                    onPressed: () {
+                      _pageController.previousPage(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                      );
+                    },
+                    icon: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: const BoxDecoration(
+                        color: Colors.black54,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.chevron_left,
+                        color: Colors.white,
+                        size: 32,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            // Next button
+            if (_currentIndex < widget.imageUrls.length - 1)
+              Positioned(
+                right: 16,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: IconButton(
+                    onPressed: () {
+                      _pageController.nextPage(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                      );
+                    },
+                    icon: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: const BoxDecoration(
+                        color: Colors.black54,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.chevron_right,
+                        color: Colors.white,
+                        size: 32,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
 }

@@ -189,19 +189,19 @@ StreamBuilder<QuerySnapshot>(
 ## Supabase Storage Configuration
 
 ### Bucket Settings
-- **Name:** `lost-item`
+- **Name:** `lost-items`
 - **Public Access:** Yes (read-only public URLs)
 - **File Size Limit:** 10MB per file
-- **Allowed MIME Types:** image/jpeg, image/png, image/jpg
+- **Allowed MIME Types:** image/jpeg, image/png, image/jpg, image/webp
 
 ### Storage Policies
-Required Supabase policies for the `lost-item` bucket:
+Required Supabase policies for the `lost-items` bucket:
 
 #### 1. Public Read Access
 ```sql
 CREATE POLICY "Public read access" ON storage.objects
 FOR SELECT
-USING (bucket_id = 'lost-item');
+USING (bucket_id = 'lost-items');
 ```
 
 #### 2. Authenticated Upload
@@ -209,7 +209,7 @@ USING (bucket_id = 'lost-item');
 CREATE POLICY "Authenticated users can upload" ON storage.objects
 FOR INSERT
 WITH CHECK (
-  bucket_id = 'lost-item' AND
+  bucket_id = 'lost-items' AND
   auth.role() = 'authenticated'
 );
 ```
@@ -219,7 +219,7 @@ WITH CHECK (
 CREATE POLICY "Users can delete own uploads" ON storage.objects
 FOR DELETE
 USING (
-  bucket_id = 'lost-item' AND
+  bucket_id = 'lost-items' AND
   auth.uid()::text = (storage.foldername(name))[1]
 );
 ```

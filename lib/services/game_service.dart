@@ -165,7 +165,7 @@ class GameService with ChangeNotifier {
   /// Reward for successful return (direct): +12 Pts, +15 Karma
   Future<void> rewardSuccessfulReturn(String itemName, {String? category}) async {
     await _addRewards(
-      points: 12,
+      points: 20,
       karma: 15,
       xp: 25,
       action: 'Successful Return',

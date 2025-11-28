@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/claims_theme.dart';
 import '../../services/notification_service.dart';
@@ -41,10 +42,28 @@ class _ClaimReviewPageState extends State<ClaimReviewPage> {
     }
   }
 
+  void _viewImage(List<String> imageUrls, int initialIndex) {
+    showDialog(
+      context: context,
+      builder: (context) => _NetworkImageViewerDialog(
+        imageUrls: imageUrls,
+        initialIndex: initialIndex,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final submittedStr = _formatSubmitted(widget.claimData['submittedDate']);
-    final bool hasImage = widget.claimData['proofImage'] != null;
+    
+    // Support both old single image and new multiple images
+    final List<String> proofImages = [];
+    if (widget.claimData['proofImages'] is List) {
+      proofImages.addAll((widget.claimData['proofImages'] as List).cast<String>());
+    } else if (widget.claimData['proofImage'] != null) {
+      proofImages.add(widget.claimData['proofImage'].toString());
+    }
+    final bool hasImages = proofImages.isNotEmpty;
     
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -219,8 +238,8 @@ class _ClaimReviewPageState extends State<ClaimReviewPage> {
             
             SizedBox(height: ClaimsSpacing.lg),
             
-            // Image Proof Section (only if image exists)
-            if (hasImage) ...[
+            // Image Proof Section (only if images exist)
+            if (hasImages) ...[
               Container(
                 padding: EdgeInsets.all(ClaimsSpacing.lg),
                 decoration: BoxDecoration(
@@ -245,9 +264,9 @@ class _ClaimReviewPageState extends State<ClaimReviewPage> {
                           color: Colors.blue[600],
                         ),
                         const SizedBox(width: 8),
-                        const Text(
-                          'Image Proof',
-                          style: TextStyle(
+                        Text(
+                          'Image Proof (${proofImages.length})',
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                             color: Colors.black87,
@@ -257,26 +276,16 @@ class _ClaimReviewPageState extends State<ClaimReviewPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Photo provided by claimant',
+                      'Photos provided by claimant - Tap to enlarge',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey[600],
                       ),
                     ),
                     const SizedBox(height: 16),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        width: double.infinity,
-                        height: 200,
-                        color: Colors.grey[200],
-                        child: Icon(
-                          Icons.image,
-                          size: 60,
-                          color: Colors.grey[400],
-                        ),
-                      ),
-                    ),
+                    proofImages.length == 1
+                        ? _buildSingleImage(proofImages[0], 0)
+                        : _buildImageGrid(proofImages),
                   ],
                 ),
               ),
@@ -935,6 +944,383 @@ class _ClaimReviewPageState extends State<ClaimReviewPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSingleImage(String imageUrl, int index) {
+    return InkWell(
+      onTap: () => _viewImage([imageUrl], index),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: double.infinity,
+          constraints: const BoxConstraints(minHeight: 200, maxHeight: 400),
+          color: Colors.grey[200],
+          child: Stack(
+            children: [
+              CachedNetworkImage(
+                imageUrl: imageUrl,
+                fit: BoxFit.contain,
+                width: double.infinity,
+                placeholder: (context, url) => Container(
+                  height: 200,
+                  child: const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+                errorWidget: (context, url, error) => Container(
+                  height: 200,
+                  color: Colors.grey[200],
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.broken_image,
+                        size: 60,
+                        color: Colors.grey[400],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Failed to load image',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(
+                        Icons.zoom_in,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        'Tap to enlarge',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageGrid(List<String> imageUrls) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 1.0,
+      ),
+      itemCount: imageUrls.length,
+      itemBuilder: (context, index) {
+        return InkWell(
+          onTap: () => _viewImage(imageUrls, index),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.blue.withOpacity(0.3),
+                width: 2,
+              ),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  CachedNetworkImage(
+                    imageUrl: imageUrls[index],
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      color: Colors.grey[200],
+                      child: const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      color: Colors.grey[200],
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.broken_image,
+                            size: 40,
+                            color: Colors.grey[400],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Failed',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 4,
+                    right: 4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.zoom_in,
+                            color: Colors.white,
+                            size: 12,
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            '${index + 1}/${imageUrls.length}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// Network Image Viewer Dialog Widget
+class _NetworkImageViewerDialog extends StatefulWidget {
+  final List<String> imageUrls;
+  final int initialIndex;
+
+  const _NetworkImageViewerDialog({
+    required this.imageUrls,
+    this.initialIndex = 0,
+  });
+
+  @override
+  State<_NetworkImageViewerDialog> createState() => _NetworkImageViewerDialogState();
+}
+
+class _NetworkImageViewerDialogState extends State<_NetworkImageViewerDialog> {
+  late PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.black,
+      insetPadding: EdgeInsets.zero,
+      child: Stack(
+        children: [
+          // Image PageView
+          PageView.builder(
+            controller: _pageController,
+            itemCount: widget.imageUrls.length,
+            onPageChanged: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            itemBuilder: (context, index) {
+              return Center(
+                child: InteractiveViewer(
+                  minScale: 0.5,
+                  maxScale: 4.0,
+                  child: CachedNetworkImage(
+                    imageUrl: widget.imageUrls[index],
+                    fit: BoxFit.contain,
+                    placeholder: (context, url) => const Center(
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.broken_image,
+                            size: 80,
+                            color: Colors.white54,
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            'Failed to load image',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+          
+          // Close button
+          Positioned(
+            top: 40,
+            right: 16,
+            child: IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.close,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+            ),
+          ),
+          
+          // Image counter
+          Positioned(
+            top: 50,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${_currentIndex + 1} / ${widget.imageUrls.length}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          
+          // Navigation arrows (if more than 1 image)
+          if (widget.imageUrls.length > 1) ...[
+            // Previous button
+            if (_currentIndex > 0)
+              Positioned(
+                left: 16,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: IconButton(
+                    onPressed: () {
+                      _pageController.previousPage(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                      );
+                    },
+                    icon: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: const BoxDecoration(
+                        color: Colors.black54,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.chevron_left,
+                        color: Colors.white,
+                        size: 32,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            // Next button
+            if (_currentIndex < widget.imageUrls.length - 1)
+              Positioned(
+                right: 16,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: IconButton(
+                    onPressed: () {
+                      _pageController.nextPage(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                      );
+                    },
+                    icon: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: const BoxDecoration(
+                        color: Colors.black54,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.chevron_right,
+                        color: Colors.white,
+                        size: 32,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ],
       ),
     );
   }

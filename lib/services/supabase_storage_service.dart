@@ -7,7 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 class SupabaseStorageService {
   final SupabaseClient _supabase = Supabase.instance.client;
-  static const String bucketName = 'lost-item';
+  static const String bucketName = 'lost-items';
   
   /// Ensure bucket exists before uploading
   Future<void> ensureBucketExists() async {
