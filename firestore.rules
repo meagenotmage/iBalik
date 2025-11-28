@@ -17,6 +17,32 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if isOwner(userId);
       allow update, delete: if isOwner(userId);
+      
+      // User's challenges subcollection
+      match /challenges/{challengeId} {
+        allow read: if isAuthenticated();
+        allow write: if isOwner(userId);
+      }
+      
+      // User's badges subcollection
+      match /badges/{badgeId} {
+        allow read: if isAuthenticated();
+        allow write: if isOwner(userId);
+      }
+    }
+    
+    // Challenge definitions (global)
+    // Note: In production, restrict write to admin only
+    match /challenge_definitions/{challengeId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated(); // TODO: Restrict to admin in production
+    }
+    
+    // Badge definitions (global)
+    // Note: In production, restrict write to admin only
+    match /badge_definitions/{badgeId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated(); // TODO: Restrict to admin in production
     }
     
     // Lost items collection

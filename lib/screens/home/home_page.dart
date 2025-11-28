@@ -17,6 +17,7 @@ import '../game/leaderboards_page.dart';
 import '../game/challenges_page.dart';
 import 'profile_page.dart';
 import '../../services/game_service.dart'; // Import GameService
+import '../../services/game_data_service.dart'; // Import GameDataService
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -29,13 +30,17 @@ class _HomePageState extends State<HomePage> {
   final AuthService _authService = AuthService();
   final LostItemService _lostItemService = LostItemService();
   final GameService _gameService = GameService(); // Instantiate GameService
+  late GameDataService _gameDataService;
   int _selectedIndex = 0;
   String _userName = '';
+  int _userRank = 0;
 
   @override
   void initState() {
     super.initState();
+    _gameDataService = _gameService.gameData;
     _loadUserName();
+    _loadUserRank();
     // GameService initializes its listener in constructor
   }
 
@@ -43,6 +48,15 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     _gameService.dispose(); // Dispose GameService
     super.dispose();
+  }
+
+  Future<void> _loadUserRank() async {
+    final rank = await _gameDataService.getCurrentUserRank();
+    if (mounted) {
+      setState(() {
+        _userRank = rank;
+      });
+    }
   }
 
   Future<void> _loadUserName() async {
@@ -483,46 +497,52 @@ class _HomePageState extends State<HomePage> {
                     ),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: InkWell(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  SmoothPageRoute(page: const ChallengesPage()),
-                                );
-                              },
-                              borderRadius: BorderRadius.circular(12),
-                              child: _buildGameCard(
-                                'Challenges',
-                                '2 active',
-                                AppColors.black,
-                                Icons.flag_outlined,
-                                AppColors.secondary,
+                      child: ListenableBuilder(
+                        listenable: _gameDataService,
+                        builder: (context, _) {
+                          final activeCount = _gameDataService.activeChallenges.length;
+                          return Row(
+                            children: [
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      SmoothPageRoute(page: const ChallengesPage()),
+                                    );
+                                  },
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: _buildGameCard(
+                                    'Challenges',
+                                    activeCount > 0 ? '$activeCount active' : 'No active',
+                                    AppColors.black,
+                                    Icons.flag_outlined,
+                                    AppColors.secondary,
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: InkWell(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  SmoothPageRoute(page: const LeaderboardsPage()),
-                                );
-                              },
-                              borderRadius: BorderRadius.circular(12),
-                              child: _buildGameCard(
-                                'Leaderboard',
-                                'Rank #8',
-                                AppColors.black,
-                                Icons.emoji_events_outlined,
-                                AppColors.primary,
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      SmoothPageRoute(page: const LeaderboardsPage()),
+                                    );
+                                  },
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: _buildGameCard(
+                                    'Leaderboard',
+                                    _userRank > 0 ? 'Rank #$_userRank' : 'Unranked',
+                                    AppColors.black,
+                                    Icons.emoji_events_outlined,
+                                    AppColors.primary,
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
-                        ],
+                            ],
+                          );
+                        },
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xl),
