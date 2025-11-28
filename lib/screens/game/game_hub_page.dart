@@ -124,7 +124,7 @@ class _GameHubPageState extends State<GameHubPage> {
     final subtitleFontSize = isSmallScreen ? 12.0 : (isLargeScreen ? 16.0 : 14.0);
     final smallFontSize = isSmallScreen ? 10.0 : (isLargeScreen ? 14.0 : 12.0);
     final sectionTitleFontSize = isSmallScreen ? 16.0 : (isLargeScreen ? 24.0 : 20.0);
-    final cardSpacing = isSmallScreen ? 10.0 : 16.0;
+    final cardSpacing = isSmallScreen ? 12.0 : 16.0;
     final sectionSpacing = isSmallScreen ? 16.0 : 24.0;
     
     return Scaffold(
@@ -557,95 +557,67 @@ class _GameHubPageState extends State<GameHubPage> {
   Widget _buildStatCard(String value, String label, String subtitle, IconData icon, Color color, {bool isSmallScreen = false, bool isTappable = false}) {
     final cardPadding = isSmallScreen ? AppSpacing.md : AppSpacing.lg;
     final iconSize = isSmallScreen ? 18.0 : 22.0;
-    final iconContainerPadding = isSmallScreen ? AppSpacing.xs : AppSpacing.sm;
-    final valueFontSize = isSmallScreen ? 18.0 : 22.0;
-    final labelFontSize = isSmallScreen ? 12.0 : 14.0;
-    final subtitleFontSize = isSmallScreen ? 10.0 : 12.0;
-    final spacing = isSmallScreen ? 8.0 : 12.0;
+    final valueFontSize = isSmallScreen ? 20.0 : 24.0;
+    final labelFontSize = isSmallScreen ? 10.0 : 12.0;
+    final subtitleFontSize = isSmallScreen ? 9.0 : 11.0;
     
     return Container(
+      height: isSmallScreen ? 120 : 140,
       padding: EdgeInsets.all(cardPadding),
       decoration: BoxDecoration(
         color: AppColors.darkCard,
-        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderRadius: BorderRadius.circular(AppRadius.standard),
         border: Border.all(
-          color: isTappable ? color.withOpacity(0.6) : color.withOpacity(0.3),
-          width: isTappable ? 2.0 : 1.5,
+          color: isTappable ? color : color.withOpacity(0.3),
+          width: isTappable ? 2.0 : 1.0,
         ),
-        boxShadow: isTappable ? [
-          BoxShadow(
-            color: color.withOpacity(0.2),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ] : null,
+        boxShadow: isTappable ? AppShadows.standard : null,
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            padding: EdgeInsets.all(iconContainerPadding),
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              icon,
-              color: color == AppColors.secondary ? AppColors.black : AppColors.white,
-              size: iconSize,
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(isSmallScreen ? 4 : 6),
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(AppRadius.standard),
+                ),
+                child: Icon(
+                  icon,
+                  color: color == AppColors.secondary ? AppColors.black : AppColors.white,
+                  size: iconSize,
+                ),
+              ),
+              const Spacer(),
+              if (isTappable)
+                Icon(
+                  Icons.arrow_forward_ios,
+                  color: AppColors.lightTextSecondary,
+                  size: isSmallScreen ? 12.0 : 14.0,
+                ),
+            ],
+          ),
+          SizedBox(height: isSmallScreen ? 6 : 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: valueFontSize,
+              fontWeight: FontWeight.bold,
+              color: AppColors.lightText,
             ),
           ),
-          SizedBox(width: spacing),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        value,
-                        style: TextStyle(
-                          fontSize: valueFontSize,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.lightText,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    SizedBox(width: isSmallScreen ? 4 : 6),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 2),
-                      child: Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: labelFontSize,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.lightText,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: subtitleFontSize,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.lightTextSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (isTappable) ...[
-            SizedBox(width: spacing),
-            Icon(
-              Icons.arrow_forward_ios,
+          SizedBox(height: isSmallScreen ? 1 : 2),
+          Text(
+            '$label • $subtitle',
+            style: TextStyle(
+              fontSize: subtitleFontSize,
+              fontWeight: FontWeight.w500,
               color: AppColors.lightTextSecondary,
-              size: isSmallScreen ? 12.0 : 14.0,
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -665,7 +637,7 @@ class _GameHubPageState extends State<GameHubPage> {
         padding: EdgeInsets.all(isSmallScreen ? 14 : 20),
         decoration: BoxDecoration(
           color: AppColors.darkCard,
-          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderRadius: BorderRadius.circular(AppRadius.standard),
         ),
         child: Center(
           child: Text(
@@ -702,7 +674,7 @@ class _GameHubPageState extends State<GameHubPage> {
               padding: EdgeInsets.all(itemPadding),
               decoration: BoxDecoration(
                 color: AppColors.darkCard,
-                borderRadius: BorderRadius.circular(AppRadius.md),
+                borderRadius: BorderRadius.circular(AppRadius.standard),
                 border: Border.all(
                   color: rarityColor.withOpacity(0.5),
                   width: 1.5,
@@ -802,7 +774,7 @@ class _GameHubPageState extends State<GameHubPage> {
               padding: EdgeInsets.all(cardPadding),
               decoration: BoxDecoration(
                 color: AppColors.darkCard,
-                borderRadius: BorderRadius.circular(AppRadius.md),
+                borderRadius: BorderRadius.circular(AppRadius.standard),
                 border: Border.all(
                   color: rarityColor.withOpacity(0.3),
                 ),
@@ -901,7 +873,7 @@ class _GameHubPageState extends State<GameHubPage> {
       padding: EdgeInsets.all(cardPadding),
       decoration: BoxDecoration(
         color: AppColors.darkCard,
-        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderRadius: BorderRadius.circular(AppRadius.standard),
         border: Border.all(
           color: AppColors.primary.withOpacity(0.3),
           width: 1,
@@ -960,7 +932,7 @@ class _GameHubPageState extends State<GameHubPage> {
                 ),
                 decoration: BoxDecoration(
                   color: AppColors.secondary.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppRadius.standard),
                 ),
                 child: Text(
                   '+${challenge.rewardKarma} karma',
@@ -1028,7 +1000,7 @@ class _GameHubPageState extends State<GameHubPage> {
       padding: EdgeInsets.all(isSmallScreen ? 16 : 24),
       decoration: BoxDecoration(
         color: AppColors.darkCard,
-        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderRadius: BorderRadius.circular(AppRadius.standard),
       ),
       child: Column(
         children: [
@@ -1071,20 +1043,21 @@ class _GameHubPageState extends State<GameHubPage> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(vertical: isSmallScreen ? AppSpacing.sm : AppSpacing.md),
+        height: isSmallScreen ? 120 : 140,
+        padding: EdgeInsets.all(isSmallScreen ? AppSpacing.md : AppSpacing.lg),
         decoration: BoxDecoration(
           color: bgColor,
-          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderRadius: BorderRadius.circular(AppRadius.standard),
         ),
-        child: Row(
+        child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: iconColor, size: isSmallScreen ? 16 : 20),
-            SizedBox(width: isSmallScreen ? 6 : 8),
+            Icon(icon, color: iconColor, size: isSmallScreen ? 24 : 28),
+            SizedBox(height: isSmallScreen ? 8 : 12),
             Text(
               label,
               style: TextStyle(
-                fontSize: isSmallScreen ? 12 : 14,
+                fontSize: isSmallScreen ? 14 : 16,
                 fontWeight: FontWeight.w600,
                 color: iconColor,
               ),

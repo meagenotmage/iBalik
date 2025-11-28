@@ -280,11 +280,11 @@ class _PostsPageState extends State<PostsPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF4318FF) : Colors.white,
+          color: isSelected ? AppColors.primary : Colors.white,
           border: Border.all(
-            color: isSelected ? const Color(0xFF4318FF) : Colors.black12,
+            color: isSelected ? AppColors.primary : AppColors.lightGray,
           ),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppRadius.standard),
         ),
         child: Text(
           label,
@@ -407,7 +407,7 @@ class _PostsPageState extends State<PostsPage> {
                     filled: true,
                     fillColor: AppColors.background,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      borderRadius: BorderRadius.circular(AppRadius.standard),
                       borderSide: BorderSide.none,
                     ),
                     contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
@@ -513,8 +513,8 @@ class _PostsPageState extends State<PostsPage> {
         padding: const EdgeInsets.all(AppSpacing.lg),
         decoration: BoxDecoration(
           color: AppColors.white,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          boxShadow: AppShadows.soft,
+          borderRadius: BorderRadius.circular(AppRadius.standard),
+          boxShadow: AppShadows.standard,
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -525,7 +525,7 @@ class _PostsPageState extends State<PostsPage> {
               height: 70,
               decoration: BoxDecoration(
                 color: AppColors.background,
-                borderRadius: BorderRadius.circular(AppRadius.sm),
+                borderRadius: BorderRadius.circular(AppRadius.standard),
               ),
               child: imageUrl != null
                   ? ClipRRect(
@@ -538,7 +538,7 @@ class _PostsPageState extends State<PostsPage> {
                         placeholder: (context, url) => ShimmerWidgets.imagePlaceholder(
                           width: 70,
                           height: 70,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(AppRadius.standard),
                         ),
                         errorWidget: (context, url, error) => Icon(
                           Icons.broken_image,

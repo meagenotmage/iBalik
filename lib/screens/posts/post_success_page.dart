@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../utils/app_theme.dart';
+import '../../utils/loading_components.dart';
+import '../../utils/design_system.dart';
 
 class PostSuccessPage extends StatelessWidget {
   final Map<String, dynamic> itemData;
@@ -47,13 +50,9 @@ class PostSuccessPage extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 24),
-                          const Text(
+                          Text(
                             'Item Posted Successfully!',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
+                            style: AppTextStyles.successHeader,
                           ),
                           const SizedBox(height: 8),
                           const Text(
@@ -75,7 +74,7 @@ class PostSuccessPage extends StatelessWidget {
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(AppRadius.standard),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.08),

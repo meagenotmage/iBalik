@@ -262,11 +262,7 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
           children: [
             Text(
               'Confirm Return',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
+              style: AppTextStyles.h1,
             ),
             Text(
               'Mark this item as successfully returned',
@@ -374,7 +370,7 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(AppRadius.standard),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.05),

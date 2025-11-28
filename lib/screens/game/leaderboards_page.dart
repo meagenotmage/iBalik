@@ -100,7 +100,7 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
                         ),
                         decoration: BoxDecoration(
                           color: isSelected ? AppColors.primary : AppColors.darkCard,
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(AppRadius.standard),
                           border: Border.all(
                             color: isSelected ? AppColors.primary : AppColors.darkBorder,
                           ),
