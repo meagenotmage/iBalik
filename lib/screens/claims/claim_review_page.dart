@@ -606,12 +606,15 @@ class ClaimReviewPage extends StatelessWidget {
                     Navigator.pop(context);
                   }
                   
-                  // Show success message
+                  // Navigate back to Claims Page
                   if (context.mounted) {
+                    Navigator.pop(context);
+                    
+                    // Show success message after navigation
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Claim rejected successfully'),
-                        backgroundColor: Colors.red,
+                        backgroundColor: Colors.orange,
                         duration: Duration(seconds: 2),
                       ),
                     );
@@ -628,20 +631,17 @@ class ClaimReviewPage extends StatelessWidget {
                       SnackBar(
                         content: Text('Failed to reject claim: $e'),
                         backgroundColor: Colors.red,
+                        duration: Duration(seconds: 3),
                       ),
                     );
                   }
+                  return; // Don't navigate on error
                 }
               } else {
                 // Close loading dialog if it was shown
                 if (context.mounted) {
                   Navigator.pop(context);
                 }
-              }
-              
-              // Go back to claims page (StreamBuilder will automatically update)
-              if (context.mounted) {
-                Navigator.pop(context);
               }
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
@@ -779,8 +779,11 @@ class ClaimReviewPage extends StatelessWidget {
                     Navigator.pop(context);
                   }
                   
-                  // Show success message
+                  // Navigate back to Claims Page
                   if (context.mounted) {
+                    Navigator.pop(context);
+                    
+                    // Show success message after navigation
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Claim approved successfully'),
@@ -801,20 +804,17 @@ class ClaimReviewPage extends StatelessWidget {
                       SnackBar(
                         content: Text('Failed to approve claim: $e'),
                         backgroundColor: Colors.red,
+                        duration: Duration(seconds: 3),
                       ),
                     );
                   }
+                  return; // Don't navigate on error
                 }
               } else {
                 // Close loading dialog if it was shown
                 if (context.mounted) {
                   Navigator.pop(context);
                 }
-              }
-
-              // Go back to claims page (StreamBuilder will automatically update in real-time)
-              if (context.mounted) {
-                Navigator.pop(context);
               }
             },
             style: TextButton.styleFrom(

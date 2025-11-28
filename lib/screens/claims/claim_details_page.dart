@@ -273,10 +273,56 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
     final claimId = _data['docId'] as String?;
     final itemId = _data['itemId'];
     final claimerId = _data['claimerId'] as String?;
+    final founderId = _data['founderId'] ?? _data['posterId'];
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final currentUserId = currentUser?.uid;
 
+    // Validate authentication
+    if (currentUser == null || currentUserId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You must be logged in to confirm return'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    // Validate claim ID
     if (claimId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Cannot locate claim document')));
+        const SnackBar(
+          content: Text('Cannot locate claim document'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Validate user authorization (must be founder to confirm return)
+    final isFounder = founderId != null && currentUserId == founderId.toString();
+    if (!isFounder) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Only the item finder can confirm the return'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    // Validate claim status (must be approved to confirm return)
+    final currentStatus = (_data['status'] ?? '').toString().toLowerCase();
+    if (currentStatus != 'approved') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Cannot confirm return. Claim status is: $currentStatus'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 3),
+        ),
+      );
       return;
     }
 
@@ -285,14 +331,17 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
       builder: (context) => AlertDialog(
         title: const Text('Confirm Successful Return'),
         content: const Text(
-            'Mark this claim as successfully returned? This will complete the claim.'),
+            'Mark this claim as successfully returned? This will complete the claim and cannot be undone.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
               child: const Text('Cancel')),
           TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Confirm')),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF4CAF50),
+              ),
+              child: const Text('Confirm Return')),
         ],
       ),
     );
@@ -306,10 +355,10 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
 
     final fs = FirebaseFirestore.instance;
     try {
-      // Update claim
+      // Update claim status to completed
       await fs.collection('claims').doc(claimId).update({
         'status': 'completed',
-        'completedBy': FirebaseAuth.instance.currentUser?.uid,
+        'completedBy': currentUserId,
         'completedAt': FieldValue.serverTimestamp(),
       });
 
@@ -386,26 +435,104 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
         _processing = false;
       });
 
-          await showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('Claim Approved'),
-              content: const Text('The claim was successfully approved and marked as completed.'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('OK'),
-                ),
+      // Navigate back to Claims Page
+      Navigator.of(context).pop();
+      
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Return confirmed successfully! Claim completed.'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } on FirebaseException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _processing = false;
+      });
+
+      String errorMessage = 'Failed to confirm return';
+      
+      // Handle specific error codes
+      if (e.code == 'permission-denied') {
+        errorMessage = 'Permission denied. You may not have access to complete this claim.';
+        
+        // Show dialog with retry option
+        await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.red),
+                SizedBox(width: 8),
+                Text('Permission Denied'),
               ],
             ),
-          );
+            content: const Text(
+              'You do not have permission to complete this claim. Please ensure you are the item finder and the claim is in "Approved" status.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  // Reload claim data
+                  _resolveLostItemIfNeeded();
+                  _loadFounderIfNeeded();
+                },
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF2196F3),
+                ),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        );
+      } else if (e.code == 'not-found') {
+        errorMessage = 'Claim not found. It may have been deleted.';
+      } else if (e.code == 'unavailable') {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      } else {
+        errorMessage = 'Failed to confirm return: ${e.message ?? e.code}';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+          action: e.code != 'permission-denied' ? SnackBarAction(
+            label: 'Retry',
+            textColor: Colors.white,
+            onPressed: () {
+              _markSuccessfulClaim();
+            },
+          ) : null,
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _processing = false;
       });
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Failed: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Unexpected error: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+          action: SnackBarAction(
+            label: 'Retry',
+            textColor: Colors.white,
+            onPressed: () {
+              _markSuccessfulClaim();
+            },
+          ),
+        ),
+      );
     }
   }
 

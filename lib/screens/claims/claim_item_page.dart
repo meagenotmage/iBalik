@@ -982,7 +982,8 @@ class _SuccessDialog extends StatelessWidget {
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.pop(context); // Close success dialog
-                  Navigator.pop(context); // Go back to item details
+                  // Navigate to Home Page (clear stack back to home)
+                  Navigator.of(context).popUntil((route) => route.isFirst);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF4CAF50),
