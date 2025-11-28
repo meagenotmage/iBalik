@@ -45,51 +45,35 @@ class AppSpacing {
   static const double xxxl = 32.0;
 }
 
-/// Border Radius System
+/// Border Radius System - 20px Global Standard
 class AppRadius {
+  static const double standard = 10.0;  // Global 20px radius for all components
+  static const double full = 999.0;     // Only for circular elements
+  
+  // Legacy aliases for gradual migration (all map to 8px)
   static const double sm = 8.0;
-  static const double md = 12.0;
-  static const double lg = 16.0;
-  static const double xl = 20.0;
-  static const double full = 999.0;
+  static const double md = 8.0;
+  static const double lg = 8.0;
+  static const double xl = 8.0;
 }
 
-/// Shadow System
+/// Shadow System - Single Token
 class AppShadows {
-  static List<BoxShadow> get soft => [
+  // Primary shadow token for all cards, modals, and elevated elements
+  static List<BoxShadow> get standard => [
         BoxShadow(
           color: Colors.black.withOpacity(0.08),
-          blurRadius: 20,
+          blurRadius: 16,
           spreadRadius: 0,
-          offset: const Offset(0, 4),
+          offset: const Offset(0, 2),
         ),
       ];
-
-  static List<BoxShadow> get medium => [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.12),
-          blurRadius: 24,
-          spreadRadius: 0,
-          offset: const Offset(0, 6),
-        ),
-      ];
-
-  static List<BoxShadow> get strong => [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.16),
-          blurRadius: 32,
-          spreadRadius: 0,
-          offset: const Offset(0, 8),
-        ),
-      ];
-
-  static List<BoxShadow> get nav => [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.05),
-          blurRadius: 10,
-          offset: const Offset(0, -2),
-        ),
-      ];
+  
+  // Legacy aliases for gradual migration (all use standard shadow)
+  static List<BoxShadow> get soft => standard;
+  static List<BoxShadow> get medium => standard;
+  static List<BoxShadow> get strong => standard;
+  static List<BoxShadow> get nav => standard;
 }
 
 /// Icon Sizes
@@ -101,29 +85,125 @@ class AppIconSize {
   static const double xxl = 40.0;
 }
 
+/// Button Style System
+class AppButtonStyles {
+  // Primary button style
+  static ButtonStyle get primary => ElevatedButton.styleFrom(
+    backgroundColor: AppColors.primary,
+    foregroundColor: AppColors.white,
+    elevation: 0,
+    shadowColor: Colors.transparent,
+    padding: const EdgeInsets.symmetric(
+      horizontal: AppSpacing.xl,
+      vertical: AppSpacing.lg,
+    ),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppRadius.standard),
+    ),
+    textStyle: const TextStyle(
+      fontSize: 16,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0,
+    ),
+  );
+  
+  // Secondary button style (outlined)
+  static ButtonStyle get secondary => OutlinedButton.styleFrom(
+    foregroundColor: AppColors.primary,
+    backgroundColor: Colors.transparent,
+    elevation: 0,
+    shadowColor: Colors.transparent,
+    padding: const EdgeInsets.symmetric(
+      horizontal: AppSpacing.xl,
+      vertical: AppSpacing.lg,
+    ),
+    side: const BorderSide(color: AppColors.primary, width: 1.5),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppRadius.standard),
+    ),
+    textStyle: const TextStyle(
+      fontSize: 16,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0,
+    ),
+  );
+  
+  // Disabled button style
+  static ButtonStyle get disabled => ElevatedButton.styleFrom(
+    backgroundColor: AppColors.lightGray,
+    foregroundColor: AppColors.mediumGray,
+    elevation: 0,
+    shadowColor: Colors.transparent,
+    padding: const EdgeInsets.symmetric(
+      horizontal: AppSpacing.xl,
+      vertical: AppSpacing.lg,
+    ),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppRadius.standard),
+    ),
+    textStyle: const TextStyle(
+      fontSize: 16,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0,
+    ),
+  );
+  
+  // Ghost/Text button style
+  static ButtonStyle get ghost => TextButton.styleFrom(
+    foregroundColor: AppColors.primary,
+    backgroundColor: Colors.transparent,
+    elevation: 0,
+    shadowColor: Colors.transparent,
+    padding: const EdgeInsets.symmetric(
+      horizontal: AppSpacing.lg,
+      vertical: AppSpacing.md,
+    ),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppRadius.standard),
+    ),
+    textStyle: const TextStyle(
+      fontSize: 14,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0,
+    ),
+  );
+}
+
 /// Typography System
 class AppTextStyles {
-  // Display / Headline
-  static const TextStyle displayLarge = TextStyle(
-    fontSize: 32,
-    fontWeight: FontWeight.bold,
-    color: AppColors.textPrimary,
-    height: 1.2,
-  );
-
-  static const TextStyle displayMedium = TextStyle(
+  // Display / Headline - H1/H2/H3 Hierarchy
+  static const TextStyle h1 = TextStyle(
     fontSize: 28,
     fontWeight: FontWeight.bold,
     color: AppColors.textPrimary,
     height: 1.2,
+    letterSpacing: -0.5,
   );
 
-  static const TextStyle displaySmall = TextStyle(
+  static const TextStyle h2 = TextStyle(
     fontSize: 24,
     fontWeight: FontWeight.bold,
     color: AppColors.textPrimary,
-    height: 1.3,
+    height: 1.25,
+    letterSpacing: -0.25,
   );
+
+  static const TextStyle h3 = TextStyle(
+    fontSize: 20,
+    fontWeight: FontWeight.w600,
+    color: AppColors.textPrimary,
+    height: 1.3,
+    letterSpacing: 0,
+  );
+  
+  // Success/Process headers with accent
+  static TextStyle get successHeader => h2.copyWith(color: AppColors.primary);
+  static TextStyle get processHeader => h3.copyWith(color: AppColors.primary);
+  
+  // Legacy aliases
+  static const TextStyle displayLarge = h1;
+  static const TextStyle displayMedium = h2;
+  static const TextStyle displaySmall = h3;
 
   // Title / Subtitle
   static const TextStyle titleLarge = TextStyle(
@@ -229,59 +309,24 @@ class AppTheme {
         color: AppColors.white,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderRadius: BorderRadius.circular(AppRadius.standard),
         ),
-        shadowColor: Colors.black.withOpacity(0.08),
+        shadowColor: Colors.transparent,
       ),
       
       // Elevated Button
       elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: AppColors.white,
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.xl,
-            vertical: AppSpacing.lg,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-          ),
-          textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        style: AppButtonStyles.primary,
       ),
       
       // Outlined Button
       outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.textPrimary,
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.xl,
-            vertical: AppSpacing.lg,
-          ),
-          side: BorderSide(color: AppColors.lightGray, width: 1.5),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-          ),
-          textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        style: AppButtonStyles.secondary,
       ),
       
       // Text Button
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: AppColors.primary,
-          textStyle: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        style: AppButtonStyles.ghost,
       ),
       
       // Input Decoration
@@ -293,20 +338,20 @@ class AppTheme {
           vertical: AppSpacing.lg,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: BorderSide(color: AppColors.lightGray, width: 1.5),
+          borderRadius: BorderRadius.circular(AppRadius.standard),
+          borderSide: const BorderSide(color: AppColors.lightGray, width: 1),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: BorderSide(color: AppColors.lightGray, width: 1.5),
+          borderRadius: BorderRadius.circular(AppRadius.standard),
+          borderSide: const BorderSide(color: AppColors.lightGray, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderRadius: BorderRadius.circular(AppRadius.standard),
           borderSide: const BorderSide(color: AppColors.primary, width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: const BorderSide(color: AppColors.error, width: 1.5),
+          borderRadius: BorderRadius.circular(AppRadius.standard),
+          borderSide: const BorderSide(color: AppColors.error, width: 1),
         ),
         labelStyle: AppTextStyles.bodyMedium,
         hintStyle: AppTextStyles.bodyMedium.copyWith(color: AppColors.textTertiary),
@@ -327,9 +372,9 @@ class AppTheme {
       
       // Text Theme
       textTheme: const TextTheme(
-        displayLarge: AppTextStyles.displayLarge,
-        displayMedium: AppTextStyles.displayMedium,
-        displaySmall: AppTextStyles.displaySmall,
+        displayLarge: AppTextStyles.h1,
+        displayMedium: AppTextStyles.h2,
+        displaySmall: AppTextStyles.h3,
         titleLarge: AppTextStyles.titleLarge,
         titleMedium: AppTextStyles.titleMedium,
         titleSmall: AppTextStyles.titleSmall,

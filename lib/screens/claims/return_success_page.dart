@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../utils/page_transitions.dart';
 import '../home/home_page.dart';
+import '../../utils/app_theme.dart';
 
 class ReturnSuccessPage extends StatelessWidget {
   const ReturnSuccessPage({super.key});
@@ -45,13 +46,9 @@ class ReturnSuccessPage extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    const Text(
+                    Text(
                       'Amazing Work!',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
+                      style: AppTextStyles.successHeader,
                     ),
                     const SizedBox(height: 8),
                     const Text(

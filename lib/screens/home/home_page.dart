@@ -329,23 +329,14 @@ class _HomePageState extends State<HomePage> {
                                   },
                                   icon: const Icon(Icons.add, size: 20),
                                   label: const Text('Report Find'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.primary,
-                                    foregroundColor: AppColors.white,
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    textStyle: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                                  style: AppButtonStyles.primary.copyWith(
+                                    padding: WidgetStateProperty.all(EdgeInsets.symmetric(vertical: 24)),
                                   ),
                                 ),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: OutlinedButton.icon(
+                                child: ElevatedButton.icon(
                                   onPressed: () {
                                     Navigator.push(
                                       context,
@@ -354,12 +345,12 @@ class _HomePageState extends State<HomePage> {
                                   },
                                   icon: const Icon(Icons.search_outlined, size: 20),
                                   label: const Text('Browse Posts'),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: AppColors.textPrimary,
-                                    side: const BorderSide(color: AppColors.lightGray),
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.black,
+                                    foregroundColor: AppColors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 24),
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
+                                      borderRadius: BorderRadius.circular(AppRadius.standard),
                                     ),
                                     textStyle: const TextStyle(
                                       fontSize: 16,
@@ -601,18 +592,12 @@ class _HomePageState extends State<HomePage> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.standard),
         border: Border.all(
-          color: isTappable ? AppColors.primary.withOpacity(0.3) : AppColors.lightGray.withOpacity(0.3),
-          width: isTappable ? 1.5 : 1,
+          color: isTappable ? AppColors.primary : AppColors.lightGray,
+          width: isTappable ? 2 : 1,
         ),
-        boxShadow: isTappable ? [
-          BoxShadow(
-            color: AppColors.primary.withOpacity(0.1),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ] : AppShadows.soft,
+        boxShadow: AppShadows.standard,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -627,11 +612,7 @@ class _HomePageState extends State<HomePage> {
           ],
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ).copyWith(color: effectiveTextColor),
+            style: AppTextStyles.h3.copyWith(color: effectiveTextColor),
           ),
           const SizedBox(height: 4),
           Row(

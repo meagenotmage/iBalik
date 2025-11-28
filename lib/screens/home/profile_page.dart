@@ -11,7 +11,6 @@ import '../../utils/shimmer_widgets.dart';
 import '../../services/activity_service.dart';
 import '../../services/game_service.dart';
 import '../../services/game_data_service.dart';
-import '../../models/game_models.dart';
 import '../posts/posts_page.dart';
 import '../game/game_hub_page.dart';
 import '../game/leaderboards_page.dart';
@@ -1098,12 +1097,6 @@ Future<void> _updateProfile(
             fontWeight: FontWeight.w600,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit, color: Colors.black87),
-            onPressed: _showEditProfileDialog,
-          ),
-        ],
       ),
       body: SafeArea(
         child: RefreshIndicator(
@@ -1258,7 +1251,7 @@ Future<void> _updateProfile(
                                 color: Colors.transparent,
                                 child: InkWell(
                                   onTap: _showEditProfileDialog,
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(AppRadius.standard),
                                   child: const Padding(
                                     padding: EdgeInsets.all(12),
                                     child: Icon(
@@ -1492,18 +1485,12 @@ Future<void> _updateProfile(
       padding: EdgeInsets.all(isPrimary ? AppSpacing.md : AppSpacing.sm),
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
+        borderRadius: BorderRadius.circular(AppRadius.standard),
         border: Border.all(
-          color: isTappable ? color.withOpacity(0.4) : color.withOpacity(0.2),
-          width: isTappable ? 2.5 : 2,
+          color: isTappable ? color : color.withOpacity(0.2),
+          width: isTappable ? 2 : 1,
         ),
-        boxShadow: isTappable ? [
-          BoxShadow(
-            color: color.withOpacity(0.15),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ] : AppShadows.soft,
+        boxShadow: AppShadows.standard,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,

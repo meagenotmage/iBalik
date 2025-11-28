@@ -137,7 +137,7 @@ class RewardTokenPage extends StatelessWidget {
               margin: EdgeInsets.symmetric(vertical: AppSpacing.md),
               decoration: BoxDecoration(
                 color: reward['color'] ?? AppColors.primary,
-                borderRadius: BorderRadius.circular(AppRadius.xl),
+                borderRadius: BorderRadius.circular(AppRadius.standard),
                 boxShadow: [
                   BoxShadow(
                     color: (reward['color'] ?? AppColors.primary).withOpacity(0.3),

@@ -586,7 +586,7 @@ Future<String> _resolveFounderNameFromItem(dynamic itemId) async {
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               color: AppColors.lightGray.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(AppRadius.md),
+              borderRadius: BorderRadius.circular(AppRadius.standard),
               border: Border.all(
                 color: AppColors.lightGray.withValues(alpha: 0.3),
                 width: 1,

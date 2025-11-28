@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/page_transitions.dart';
+import '../../utils/loading_components.dart';
 import '../../services/game_service.dart';
 import 'reward_token_page.dart';
 
@@ -276,8 +277,8 @@ class _PointsStorePageState extends State<PointsStorePage> {
             padding: EdgeInsets.all(AppSpacing.lg),
             decoration: BoxDecoration(
               color: AppColors.primary,
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              boxShadow: AppShadows.soft,
+              borderRadius: BorderRadius.circular(AppRadius.standard),
+              boxShadow: AppShadows.standard,
             ),
             child: Row(
               children: [
@@ -338,14 +339,14 @@ class _PointsStorePageState extends State<PointsStorePage> {
                   margin: EdgeInsets.only(bottom: AppSpacing.md),
                   decoration: BoxDecoration(
                     color: AppColors.white,
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    borderRadius: BorderRadius.circular(AppRadius.standard),
                     border: Border.all(
                       color: canAfford 
-                          ? reward['color'].withOpacity(0.3)
+                          ? reward['color'] ?? AppColors.primary
                           : AppColors.lightGray,
-                      width: 1,
+                      width: canAfford ? 2 : 1,
                     ),
-                    boxShadow: AppShadows.soft,
+                    boxShadow: AppShadows.standard,
                   ),
                   child: Padding(
                     padding: EdgeInsets.all(AppSpacing.lg),
@@ -423,17 +424,13 @@ class _PointsStorePageState extends State<PointsStorePage> {
                             onPressed: canAfford && !_isLoading
                                 ? () => _redeemReward(reward)
                                 : null,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: canAfford 
-                                  ? AppColors.primary 
-                                  : AppColors.lightGray,
-                              foregroundColor: Colors.white,
-                              elevation: canAfford ? 2 : 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              padding: EdgeInsets.symmetric(vertical: 12),
-                            ),
+                            style: canAfford 
+                                ? AppButtonStyles.primary.copyWith(
+                                    padding: WidgetStateProperty.all(EdgeInsets.symmetric(vertical: 12)),
+                                  )
+                                : AppButtonStyles.disabled.copyWith(
+                                    padding: WidgetStateProperty.all(EdgeInsets.symmetric(vertical: 12)),
+                                  ),
                             child: _isLoading
                                 ? SizedBox(
                                     height: 16,
@@ -465,10 +462,11 @@ class _PointsStorePageState extends State<PointsStorePage> {
             padding: EdgeInsets.all(AppSpacing.lg),
             margin: EdgeInsets.all(AppSpacing.lg),
             decoration: BoxDecoration(
-              color: Colors.lightBlue.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(AppRadius.md),
+              color: AppColors.primary.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(AppRadius.standard),
               border: Border.all(
-                color: Colors.lightBlue.withOpacity(0.3),
+                color: AppColors.primary.withOpacity(0.2),
+                width: 1,
               ),
             ),
             child: Row(
