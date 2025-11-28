@@ -9,6 +9,43 @@ class SupabaseStorageService {
   final SupabaseClient _supabase = Supabase.instance.client;
   static const String bucketName = 'lost-item';
   
+  /// Ensure bucket exists before uploading
+  Future<void> ensureBucketExists() async {
+    try {
+      // Check if bucket exists
+      debugPrint('Checking if bucket "$bucketName" exists...');
+      final buckets = await _supabase.storage.listBuckets();
+      debugPrint('Available buckets: ${buckets.map((b) => b.name).toList()}');
+      final bucketExists = buckets.any((bucket) => bucket.name == bucketName);
+      
+      if (!bucketExists) {
+        debugPrint('Bucket "$bucketName" not found. Attempting to create...');
+        try {
+          await _supabase.storage.createBucket(
+            bucketName,
+            const BucketOptions(
+              public: true,
+              fileSizeLimit: '10485760', // 10MB per file
+              allowedMimeTypes: ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'],
+            ),
+          );
+          debugPrint('Bucket "$bucketName" created successfully!');
+        } catch (createError) {
+          debugPrint('Failed to create bucket (may need manual creation): $createError');
+          // If bucket creation fails, check if it's a permission issue
+          // The bucket might need to be created manually in Supabase dashboard
+        }
+      } else {
+        debugPrint('Bucket "$bucketName" exists.');
+      }
+    } catch (e) {
+      debugPrint('Error checking bucket: $e');
+      // If we can't list buckets (permission issue), try to continue anyway
+      // The bucket might exist but anon key can't list buckets
+      debugPrint('Continuing anyway - bucket might exist but listing is restricted');
+    }
+  }
+  
   /// Compress image bytes before upload (works on all platforms)
   Future<Uint8List> _compressImageBytes(Uint8List imageBytes, String fileName) async {
     try {
@@ -66,6 +103,9 @@ class SupabaseStorageService {
     required String type, // 'posts' or 'claims'
   }) async {
     try {
+      // Ensure bucket exists first
+      await ensureBucketExists();
+      
       // Get current user
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
@@ -80,6 +120,7 @@ class SupabaseStorageService {
       final compressedBytes = await _compressImageBytes(imageBytes, fileName);
 
       // Upload to Supabase
+      debugPrint('Uploading to path: $filePath (${compressedBytes.length} bytes)');
       await _supabase.storage
           .from(bucketName)
           .uploadBinary(
@@ -87,7 +128,7 @@ class SupabaseStorageService {
             compressedBytes,
             fileOptions: const FileOptions(
               contentType: 'image/jpeg',
-              upsert: false,
+              upsert: true, // Allow overwriting if file exists
             ),
           );
 
@@ -100,6 +141,10 @@ class SupabaseStorageService {
       return publicUrl;
     } catch (e) {
       debugPrint('Error uploading image: $e');
+      debugPrint('Error type: ${e.runtimeType}');
+      if (e is StorageException) {
+        debugPrint('StorageException - statusCode: ${e.statusCode}, message: ${e.message}');
+      }
       rethrow;
     }
   }
@@ -117,6 +162,9 @@ class SupabaseStorageService {
     }
     
     try {
+      // Ensure bucket exists first
+      await ensureBucketExists();
+      
       // Get current user
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
@@ -131,6 +179,7 @@ class SupabaseStorageService {
       final compressedBytes = await _compressImage(imageFile);
 
       // Upload to Supabase
+      debugPrint('Uploading file to path: $filePath (${compressedBytes.length} bytes)');
       await _supabase.storage
           .from(bucketName)
           .uploadBinary(
@@ -138,7 +187,7 @@ class SupabaseStorageService {
             compressedBytes,
             fileOptions: const FileOptions(
               contentType: 'image/jpeg',
-              upsert: false,
+              upsert: true, // Allow overwriting if file exists
             ),
           );
 
@@ -147,10 +196,14 @@ class SupabaseStorageService {
           .from(bucketName)
           .getPublicUrl(filePath);
 
-      debugPrint('Image uploaded successfully: $publicUrl');
+      debugPrint('File uploaded successfully: $publicUrl');
       return publicUrl;
     } catch (e) {
-      debugPrint('Error uploading image: $e');
+      debugPrint('Error uploading image file: $e');
+      debugPrint('Error type: ${e.runtimeType}');
+      if (e is StorageException) {
+        debugPrint('StorageException - statusCode: ${e.statusCode}, message: ${e.message}');
+      }
       rethrow;
     }
   }
