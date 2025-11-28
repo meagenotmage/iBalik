@@ -111,6 +111,21 @@ class _GameHubPageState extends State<GameHubPage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    final isLargeScreen = screenWidth >= 600;
+    
+    // Responsive values
+    final horizontalPadding = isSmallScreen ? 12.0 : (isLargeScreen ? 24.0 : AppSpacing.lg);
+    final profileSize = isSmallScreen ? 40.0 : (isLargeScreen ? 60.0 : 50.0);
+    final profileIconSize = isSmallScreen ? 24.0 : (isLargeScreen ? 36.0 : 30.0);
+    final levelFontSize = isSmallScreen ? 18.0 : (isLargeScreen ? 26.0 : 22.0);
+    final subtitleFontSize = isSmallScreen ? 12.0 : (isLargeScreen ? 16.0 : 14.0);
+    final smallFontSize = isSmallScreen ? 10.0 : (isLargeScreen ? 14.0 : 12.0);
+    final sectionTitleFontSize = isSmallScreen ? 16.0 : (isLargeScreen ? 24.0 : 20.0);
+    final cardSpacing = isSmallScreen ? 10.0 : 16.0;
+    final sectionSpacing = isSmallScreen ? 16.0 : 24.0;
+    
     return Scaffold(
       backgroundColor: AppColors.darkBackground,
       appBar: AppBar(
@@ -120,10 +135,10 @@ class _GameHubPageState extends State<GameHubPage> {
           icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Game Hub',
           style: TextStyle(
-            fontSize: 20,
+            fontSize: isSmallScreen ? 18 : 20,
             fontWeight: FontWeight.w600,
             color: AppColors.textPrimary,
           ),
@@ -152,66 +167,72 @@ class _GameHubPageState extends State<GameHubPage> {
                   listenable: _gameService,
                   builder: (context, child) {
                     return Padding(
-                      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.xl),
+                      padding: EdgeInsets.fromLTRB(horizontalPadding, AppSpacing.md, horizontalPadding, AppSpacing.xl),
                       child: Column(
                         children: [
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Row(
-                                children: [
-                                  // Profile Picture Placeholder
-                                  Container(
-                                    width: 50,
-                                    height: 50,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: AppColors.background,
-                                    ),
-                                    child: Icon(
-                                      Icons.person,
-                                      color: AppColors.textSecondary,
-                                      size: 30,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Level ${_gameService.currentLevel}',
-                                        style: const TextStyle(
-                                          fontSize: 22,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppColors.textPrimary,
-                                        ),
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    // Profile Picture Placeholder
+                                    Container(
+                                      width: profileSize,
+                                      height: profileSize,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: AppColors.background,
                                       ),
-                                      Text(
-                                        _getLevelTitle(_gameService.currentLevel),
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          color: AppColors.textSecondary,
-                                        ),
+                                      child: Icon(
+                                        Icons.person,
+                                        color: AppColors.textSecondary,
+                                        size: profileIconSize,
                                       ),
-                                    ],
-                                  ),
-                                ],
+                                    ),
+                                    SizedBox(width: isSmallScreen ? 10 : 16),
+                                    Flexible(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Level ${_gameService.currentLevel}',
+                                            style: TextStyle(
+                                              fontSize: levelFontSize,
+                                              fontWeight: FontWeight.w600,
+                                              color: AppColors.textPrimary,
+                                            ),
+                                          ),
+                                          Text(
+                                            _getLevelTitle(_gameService.currentLevel),
+                                            style: TextStyle(
+                                              fontSize: subtitleFontSize,
+                                              color: AppColors.textSecondary,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
+                              SizedBox(width: isSmallScreen ? 8 : 12),
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
-                                  const Text(
+                                  Text(
                                     'Next Level',
                                     style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: smallFontSize,
                                       fontWeight: FontWeight.w500,
                                       color: AppColors.textSecondary,
                                     ),
                                   ),
                                   Text(
                                     '${_gameService.maxXP - _gameService.currentXP} XP to go',
-                                    style: const TextStyle(
-                                      fontSize: 14,
+                                    style: TextStyle(
+                                      fontSize: subtitleFontSize,
                                       fontWeight: FontWeight.w600,
                                       color: AppColors.textPrimary,
                                     ),
@@ -220,7 +241,7 @@ class _GameHubPageState extends State<GameHubPage> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 24),
+                          SizedBox(height: sectionSpacing),
                           Column(
                             children: [
                               ClipRRect(
@@ -229,7 +250,7 @@ class _GameHubPageState extends State<GameHubPage> {
                                   value: _gameService.maxXP > 0 
                                       ? _gameService.currentXP / _gameService.maxXP 
                                       : 0,
-                                  minHeight: 12,
+                                  minHeight: isSmallScreen ? 8 : 12,
                                   backgroundColor: AppColors.lightGray,
                                   valueColor: const AlwaysStoppedAnimation<Color>(
                                     AppColors.primary,
@@ -242,16 +263,16 @@ class _GameHubPageState extends State<GameHubPage> {
                                 children: [
                                   Text(
                                     '${_gameService.currentXP} XP',
-                                    style: const TextStyle(
-                                      fontSize: 12,
+                                    style: TextStyle(
+                                      fontSize: smallFontSize,
                                       fontWeight: FontWeight.w500,
                                       color: AppColors.textSecondary,
                                     ),
                                   ),
                                   Text(
                                     '${_gameService.maxXP} XP',
-                                    style: const TextStyle(
-                                      fontSize: 12,
+                                    style: TextStyle(
+                                      fontSize: smallFontSize,
                                       fontWeight: FontWeight.w500,
                                       color: AppColors.textSecondary,
                                     ),
@@ -269,11 +290,11 @@ class _GameHubPageState extends State<GameHubPage> {
               
               // Dark Content Below
               Padding(
-                padding: const EdgeInsets.all(AppSpacing.lg),
+                padding: EdgeInsets.all(horizontalPadding),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 24),
+                    SizedBox(height: sectionSpacing),
                     
                     // Quick Actions Row
                     Row(
@@ -290,9 +311,10 @@ class _GameHubPageState extends State<GameHubPage> {
                                 SmoothPageRoute(page: const ChallengesPage()),
                               );
                             },
+                            isSmallScreen: isSmallScreen,
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        SizedBox(width: cardSpacing),
                         Expanded(
                           child: _buildQuickActionButton(
                             'Leaderboard',
@@ -305,12 +327,13 @@ class _GameHubPageState extends State<GameHubPage> {
                                 SmoothPageRoute(page: const LeaderboardsPage()),
                               );
                             },
+                            isSmallScreen: isSmallScreen,
                           ),
                         ),
                       ],
                     ),
                     
-                    const SizedBox(height: 24),
+                    SizedBox(height: sectionSpacing),
                     
                     // Karma and Points Cards
                     ListenableBuilder(
@@ -325,9 +348,10 @@ class _GameHubPageState extends State<GameHubPage> {
                                 'Currency',
                                 Icons.bolt,
                                 AppColors.primary,
+                                isSmallScreen: isSmallScreen,
                               ),
                             ),
-                            const SizedBox(width: 16),
+                            SizedBox(width: cardSpacing),
                             Expanded(
                               child: _buildStatCard(
                                 _gameService.karma.toString(),
@@ -335,6 +359,7 @@ class _GameHubPageState extends State<GameHubPage> {
                                 'Public Rep',
                                 Icons.star,
                                 AppColors.secondary,
+                                isSmallScreen: isSmallScreen,
                               ),
                             ),
                           ],
@@ -342,7 +367,7 @@ class _GameHubPageState extends State<GameHubPage> {
                       },
                     ),
                     
-                    const SizedBox(height: 24),
+                    SizedBox(height: sectionSpacing),
                     
                     // Badges Section
                     ListenableBuilder(
@@ -356,23 +381,28 @@ class _GameHubPageState extends State<GameHubPage> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.workspace_premium,
-                                      size: 24,
-                                      color: AppColors.lightText,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Badges (${earnedBadges.length}/${totalBadges})',
-                                      style: const TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w600,
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.workspace_premium,
+                                        size: isSmallScreen ? 20 : 24,
                                         color: AppColors.lightText,
                                       ),
-                                    ),
-                                  ],
+                                      SizedBox(width: isSmallScreen ? 6 : 8),
+                                      Flexible(
+                                        child: Text(
+                                          'Badges (${earnedBadges.length}/${totalBadges})',
+                                          style: TextStyle(
+                                            fontSize: sectionTitleFontSize,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.lightText,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                                 TextButton(
                                   onPressed: () {
@@ -381,10 +411,13 @@ class _GameHubPageState extends State<GameHubPage> {
                                       SmoothPageRoute(page: const BadgesPage()),
                                     );
                                   },
-                                  child: const Text(
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 8 : 16),
+                                  ),
+                                  child: Text(
                                     'View All',
                                     style: TextStyle(
-                                      fontSize: 14,
+                                      fontSize: subtitleFontSize,
                                       fontWeight: FontWeight.w600,
                                       color: AppColors.primary,
                                     ),
@@ -392,40 +425,40 @@ class _GameHubPageState extends State<GameHubPage> {
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 16),
+                            SizedBox(height: cardSpacing),
                             
                             // Badges Grid
-                            _buildBadgesGrid(earnedBadges),
+                            _buildBadgesGrid(earnedBadges, isSmallScreen: isSmallScreen),
                           ],
                         );
                       },
                     ),
                     
-                    const SizedBox(height: 24),
+                    SizedBox(height: sectionSpacing),
                     
                     // Recent Achievements Section
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.emoji_events,
-                          size: 22,
+                          size: isSmallScreen ? 18 : 22,
                           color: AppColors.lightText,
                         ),
-                        const SizedBox(width: 8),
-                        const Text(
+                        SizedBox(width: isSmallScreen ? 6 : 8),
+                        Text(
                           'Recent Achievements',
                           style: TextStyle(
-                            fontSize: 20,
+                            fontSize: sectionTitleFontSize,
                             fontWeight: FontWeight.w600,
                             color: AppColors.lightText,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    _buildRecentAchievements(),
+                    SizedBox(height: cardSpacing),
+                    _buildRecentAchievements(isSmallScreen: isSmallScreen),
                     
-                    const SizedBox(height: 24),
+                    SizedBox(height: sectionSpacing),
                     
                     // Active Challenges Section
                     ListenableBuilder(
@@ -438,23 +471,28 @@ class _GameHubPageState extends State<GameHubPage> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.flash_on,
-                                      size: 22,
-                                      color: AppColors.lightText,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Active Challenges (${activeChallenges.length})',
-                                      style: const TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w600,
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.flash_on,
+                                        size: isSmallScreen ? 18 : 22,
                                         color: AppColors.lightText,
                                       ),
-                                    ),
-                                  ],
+                                      SizedBox(width: isSmallScreen ? 6 : 8),
+                                      Flexible(
+                                        child: Text(
+                                          'Active Challenges (${activeChallenges.length})',
+                                          style: TextStyle(
+                                            fontSize: sectionTitleFontSize,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.lightText,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                                 TextButton(
                                   onPressed: () {
@@ -463,10 +501,13 @@ class _GameHubPageState extends State<GameHubPage> {
                                       SmoothPageRoute(page: const ChallengesPage()),
                                     );
                                   },
-                                  child: const Text(
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 8 : 16),
+                                  ),
+                                  child: Text(
                                     'View All',
                                     style: TextStyle(
-                                      fontSize: 14,
+                                      fontSize: subtitleFontSize,
                                       fontWeight: FontWeight.w600,
                                       color: AppColors.primary,
                                     ),
@@ -474,17 +515,18 @@ class _GameHubPageState extends State<GameHubPage> {
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 16),
+                            SizedBox(height: cardSpacing),
                             
                             // Challenge Cards
                             if (activeChallenges.isEmpty)
                               _buildEmptyState(
                                 'No active challenges',
                                 'Check back later for new challenges!',
+                                isSmallScreen: isSmallScreen,
                               )
                             else
                               ...activeChallenges.take(3).map((challenge) => 
-                                _buildChallengeCard(challenge)
+                                _buildChallengeCard(challenge, isSmallScreen: isSmallScreen)
                               ),
                           ],
                         );
@@ -499,13 +541,21 @@ class _GameHubPageState extends State<GameHubPage> {
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
+      bottomNavigationBar: _buildBottomNavigationBar(isSmallScreen: isSmallScreen),
     );
   }
 
-  Widget _buildStatCard(String value, String label, String subtitle, IconData icon, Color color) {
+  Widget _buildStatCard(String value, String label, String subtitle, IconData icon, Color color, {bool isSmallScreen = false}) {
+    final cardPadding = isSmallScreen ? AppSpacing.md : AppSpacing.lg;
+    final iconSize = isSmallScreen ? 18.0 : 22.0;
+    final iconContainerPadding = isSmallScreen ? AppSpacing.xs : AppSpacing.sm;
+    final valueFontSize = isSmallScreen ? 18.0 : 22.0;
+    final labelFontSize = isSmallScreen ? 12.0 : 14.0;
+    final subtitleFontSize = isSmallScreen ? 10.0 : 12.0;
+    final spacing = isSmallScreen ? 8.0 : 12.0;
+    
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: EdgeInsets.all(cardPadding),
       decoration: BoxDecoration(
         color: AppColors.darkCard,
         borderRadius: BorderRadius.circular(AppRadius.md),
@@ -517,7 +567,7 @@ class _GameHubPageState extends State<GameHubPage> {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(AppSpacing.sm),
+            padding: EdgeInsets.all(iconContainerPadding),
             decoration: BoxDecoration(
               color: color,
               shape: BoxShape.circle,
@@ -525,10 +575,10 @@ class _GameHubPageState extends State<GameHubPage> {
             child: Icon(
               icon,
               color: color == AppColors.secondary ? AppColors.black : AppColors.white,
-              size: 22,
+              size: iconSize,
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: spacing),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -536,21 +586,24 @@ class _GameHubPageState extends State<GameHubPage> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      value,
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.lightText,
+                    Flexible(
+                      child: Text(
+                        value,
+                        style: TextStyle(
+                          fontSize: valueFontSize,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.lightText,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const SizedBox(width: 6),
+                    SizedBox(width: isSmallScreen ? 4 : 6),
                     Padding(
                       padding: const EdgeInsets.only(bottom: 2),
                       child: Text(
                         label,
-                        style: const TextStyle(
-                          fontSize: 14,
+                        style: TextStyle(
+                          fontSize: labelFontSize,
                           fontWeight: FontWeight.w600,
                           color: AppColors.lightText,
                         ),
@@ -560,8 +613,8 @@ class _GameHubPageState extends State<GameHubPage> {
                 ),
                 Text(
                   subtitle,
-                  style: const TextStyle(
-                    fontSize: 12,
+                  style: TextStyle(
+                    fontSize: subtitleFontSize,
                     fontWeight: FontWeight.w500,
                     color: AppColors.lightTextSecondary,
                   ),
@@ -574,10 +627,18 @@ class _GameHubPageState extends State<GameHubPage> {
     );
   }
 
-  Widget _buildBadgesGrid(List<UserBadge> badges) {
+  Widget _buildBadgesGrid(List<UserBadge> badges, {bool isSmallScreen = false}) {
+    final badgeSize = isSmallScreen ? 65.0 : 80.0;
+    final iconContainerSize = isSmallScreen ? 36.0 : 45.0;
+    final iconFontSize = isSmallScreen ? 18.0 : 24.0;
+    final nameFontSize = isSmallScreen ? 9.0 : 10.0;
+    final listHeight = isSmallScreen ? 85.0 : 100.0;
+    final itemPadding = isSmallScreen ? 8.0 : 12.0;
+    final itemSpacing = isSmallScreen ? 8.0 : 12.0;
+    
     if (badges.isEmpty) {
       return Container(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(isSmallScreen ? 14 : 20),
         decoration: BoxDecoration(
           color: AppColors.darkCard,
           borderRadius: BorderRadius.circular(AppRadius.md),
@@ -588,6 +649,7 @@ class _GameHubPageState extends State<GameHubPage> {
             textAlign: TextAlign.center,
             style: TextStyle(
               color: AppColors.lightTextSecondary,
+              fontSize: isSmallScreen ? 12 : 14,
             ),
           ),
         ),
@@ -595,7 +657,7 @@ class _GameHubPageState extends State<GameHubPage> {
     }
 
     return SizedBox(
-      height: 100,
+      height: listHeight,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: badges.length > 4 ? 4 : badges.length,
@@ -611,9 +673,9 @@ class _GameHubPageState extends State<GameHubPage> {
               );
             },
             child: Container(
-              width: 80,
-              margin: const EdgeInsets.only(right: 12),
-              padding: const EdgeInsets.all(12),
+              width: badgeSize,
+              margin: EdgeInsets.only(right: itemSpacing),
+              padding: EdgeInsets.all(itemPadding),
               decoration: BoxDecoration(
                 color: AppColors.darkCard,
                 borderRadius: BorderRadius.circular(AppRadius.md),
@@ -626,8 +688,8 @@ class _GameHubPageState extends State<GameHubPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    width: 45,
-                    height: 45,
+                    width: iconContainerSize,
+                    height: iconContainerSize,
                     decoration: BoxDecoration(
                       color: rarityColor.withOpacity(0.2),
                       shape: BoxShape.circle,
@@ -635,18 +697,18 @@ class _GameHubPageState extends State<GameHubPage> {
                     child: Center(
                       child: Text(
                         badge.icon,
-                        style: const TextStyle(fontSize: 24),
+                        style: TextStyle(fontSize: iconFontSize),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: isSmallScreen ? 4 : 8),
                   Text(
                     badge.name,
                     textAlign: TextAlign.center,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 10,
+                    style: TextStyle(
+                      fontSize: nameFontSize,
                       fontWeight: FontWeight.w500,
                       color: AppColors.lightText,
                     ),
@@ -673,10 +735,17 @@ class _GameHubPageState extends State<GameHubPage> {
     }
   }
 
-  Widget _buildRecentAchievements() {
+  Widget _buildRecentAchievements({bool isSmallScreen = false}) {
+    final cardPadding = isSmallScreen ? 12.0 : 16.0;
+    final iconContainerSize = isSmallScreen ? 38.0 : 45.0;
+    final iconFontSize = isSmallScreen ? 18.0 : 22.0;
+    final titleFontSize = isSmallScreen ? 12.0 : 14.0;
+    final subtitleFontSize = isSmallScreen ? 10.0 : 12.0;
+    final itemSpacing = isSmallScreen ? 10.0 : 16.0;
+    
     if (_isLoading) {
       return Container(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(isSmallScreen ? 14 : 20),
         child: const Center(
           child: CircularProgressIndicator(color: AppColors.primary),
         ),
@@ -687,6 +756,7 @@ class _GameHubPageState extends State<GameHubPage> {
       return _buildEmptyState(
         'No achievements yet',
         'Complete challenges and earn badges to see them here!',
+        isSmallScreen: isSmallScreen,
       );
     }
 
@@ -696,8 +766,8 @@ class _GameHubPageState extends State<GameHubPage> {
         final date = achievement['date'] as DateTime;
         
         return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
+          margin: EdgeInsets.only(bottom: isSmallScreen ? 8 : 12),
+          padding: EdgeInsets.all(cardPadding),
           decoration: BoxDecoration(
             color: AppColors.darkCard,
             borderRadius: BorderRadius.circular(AppRadius.md),
@@ -708,38 +778,39 @@ class _GameHubPageState extends State<GameHubPage> {
           child: Row(
             children: [
               Container(
-                width: 45,
-                height: 45,
+                width: iconContainerSize,
+                height: iconContainerSize,
                 decoration: BoxDecoration(
                   color: isBadge 
                       ? AppColors.secondary.withOpacity(0.2)
                       : AppColors.primary.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 12),
                 ),
                 child: Center(
                   child: Text(
                     achievement['icon'] ?? '🎯',
-                    style: const TextStyle(fontSize: 22),
+                    style: TextStyle(fontSize: iconFontSize),
                   ),
                 ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: itemSpacing),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       achievement['name'] ?? '',
-                      style: const TextStyle(
-                        fontSize: 14,
+                      style: TextStyle(
+                        fontSize: titleFontSize,
                         fontWeight: FontWeight.w600,
                         color: AppColors.lightText,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                     Text(
                       isBadge ? 'Badge earned' : 'Challenge completed',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: subtitleFontSize,
                         color: AppColors.lightTextSecondary,
                       ),
                     ),
@@ -749,7 +820,7 @@ class _GameHubPageState extends State<GameHubPage> {
               Text(
                 _formatDate(date),
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: subtitleFontSize,
                   color: AppColors.lightTextSecondary,
                 ),
               ),
@@ -770,10 +841,18 @@ class _GameHubPageState extends State<GameHubPage> {
     return '${date.day}/${date.month}';
   }
 
-  Widget _buildChallengeCard(UserChallenge challenge) {
+  Widget _buildChallengeCard(UserChallenge challenge, {bool isSmallScreen = false}) {
+    final cardPadding = isSmallScreen ? 12.0 : 16.0;
+    final iconContainerSize = isSmallScreen ? 34.0 : 40.0;
+    final iconFontSize = isSmallScreen ? 18.0 : 22.0;
+    final titleFontSize = isSmallScreen ? 12.0 : 14.0;
+    final subtitleFontSize = isSmallScreen ? 10.0 : 12.0;
+    final badgeFontSize = isSmallScreen ? 9.0 : 11.0;
+    final itemSpacing = isSmallScreen ? 10.0 : 12.0;
+    
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.only(bottom: isSmallScreen ? 12 : 16),
+      padding: EdgeInsets.all(cardPadding),
       decoration: BoxDecoration(
         color: AppColors.darkCard,
         borderRadius: BorderRadius.circular(AppRadius.md),
@@ -788,46 +867,51 @@ class _GameHubPageState extends State<GameHubPage> {
           Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: iconContainerSize,
+                height: iconContainerSize,
                 decoration: BoxDecoration(
                   color: AppColors.darkSurface,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 10),
                 ),
                 child: Center(
                   child: Text(
                     challenge.icon,
-                    style: const TextStyle(fontSize: 22),
+                    style: TextStyle(fontSize: iconFontSize),
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: itemSpacing),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       challenge.challengeName,
-                      style: const TextStyle(
-                        fontSize: 14,
+                      style: TextStyle(
+                        fontSize: titleFontSize,
                         fontWeight: FontWeight.w600,
                         color: AppColors.lightText,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                     Text(
                       challenge.description,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: subtitleFontSize,
                         color: AppColors.lightTextSecondary,
                       ),
                     ),
                   ],
                 ),
               ),
+              SizedBox(width: isSmallScreen ? 4 : 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 6 : 10, 
+                  vertical: isSmallScreen ? 3 : 4,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.secondary.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(12),
@@ -835,7 +919,7 @@ class _GameHubPageState extends State<GameHubPage> {
                 child: Text(
                   '+${challenge.rewardKarma} karma',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: badgeFontSize,
                     color: AppColors.secondary,
                     fontWeight: FontWeight.bold,
                   ),
@@ -843,7 +927,7 @@ class _GameHubPageState extends State<GameHubPage> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: isSmallScreen ? 10 : 12),
           Row(
             children: [
               Expanded(
@@ -851,7 +935,7 @@ class _GameHubPageState extends State<GameHubPage> {
                   borderRadius: BorderRadius.circular(6),
                   child: LinearProgressIndicator(
                     value: challenge.progressPercent,
-                    minHeight: 6,
+                    minHeight: isSmallScreen ? 5 : 6,
                     backgroundColor: AppColors.darkBorder,
                     valueColor: const AlwaysStoppedAnimation<Color>(
                       AppColors.primary,
@@ -859,30 +943,30 @@ class _GameHubPageState extends State<GameHubPage> {
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: itemSpacing),
               Text(
                 '${challenge.currentProgress}/${challenge.targetCount}',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: subtitleFontSize,
                   color: AppColors.lightTextSecondary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: isSmallScreen ? 6 : 8),
           Row(
             children: [
               Icon(
                 Icons.access_time,
-                size: 14,
+                size: isSmallScreen ? 12 : 14,
                 color: AppColors.lightTextSecondary,
               ),
-              const SizedBox(width: 4),
+              SizedBox(width: isSmallScreen ? 3 : 4),
               Text(
                 challenge.timeLeftString,
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: badgeFontSize,
                   color: AppColors.lightTextSecondary,
                 ),
               ),
@@ -893,9 +977,9 @@ class _GameHubPageState extends State<GameHubPage> {
     );
   }
 
-  Widget _buildEmptyState(String title, String subtitle) {
+  Widget _buildEmptyState(String title, String subtitle, {bool isSmallScreen = false}) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(isSmallScreen ? 16 : 24),
       decoration: BoxDecoration(
         color: AppColors.darkCard,
         borderRadius: BorderRadius.circular(AppRadius.md),
@@ -904,24 +988,24 @@ class _GameHubPageState extends State<GameHubPage> {
         children: [
           Icon(
             Icons.emoji_events_outlined,
-            size: 40,
+            size: isSmallScreen ? 32 : 40,
             color: AppColors.lightTextSecondary.withOpacity(0.5),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: isSmallScreen ? 8 : 12),
           Text(
             title,
             style: TextStyle(
-              fontSize: 14,
+              fontSize: isSmallScreen ? 12 : 14,
               fontWeight: FontWeight.w600,
               color: AppColors.lightText,
             ),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: isSmallScreen ? 2 : 4),
           Text(
             subtitle,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: isSmallScreen ? 10 : 12,
               color: AppColors.lightTextSecondary,
             ),
           ),
@@ -935,12 +1019,13 @@ class _GameHubPageState extends State<GameHubPage> {
     IconData icon, 
     Color bgColor, 
     Color iconColor, 
-    VoidCallback onTap,
-  ) {
+    VoidCallback onTap, {
+    bool isSmallScreen = false,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+        padding: EdgeInsets.symmetric(vertical: isSmallScreen ? AppSpacing.sm : AppSpacing.md),
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(AppRadius.md),
@@ -948,12 +1033,12 @@ class _GameHubPageState extends State<GameHubPage> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: iconColor, size: 20),
-            const SizedBox(width: 8),
+            Icon(icon, color: iconColor, size: isSmallScreen ? 16 : 20),
+            SizedBox(width: isSmallScreen ? 6 : 8),
             Text(
               label,
               style: TextStyle(
-                fontSize: 14,
+                fontSize: isSmallScreen ? 12 : 14,
                 fontWeight: FontWeight.w600,
                 color: iconColor,
               ),
@@ -964,7 +1049,7 @@ class _GameHubPageState extends State<GameHubPage> {
     );
   }
 
-  Widget _buildBottomNavigationBar() {
+  Widget _buildBottomNavigationBar({bool isSmallScreen = false}) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.black,
@@ -972,15 +1057,18 @@ class _GameHubPageState extends State<GameHubPage> {
       ),
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+          padding: EdgeInsets.symmetric(
+            horizontal: isSmallScreen ? AppSpacing.md : AppSpacing.lg, 
+            vertical: isSmallScreen ? 4 : AppSpacing.sm,
+          ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(Icons.home_outlined, 'Home', 0),
-              _buildNavItem(Icons.article_outlined, 'Posts', 1),
-              _buildNavItem(Icons.emoji_events_outlined, 'Game Hub', 2),
-              _buildNavItem(Icons.description_outlined, 'Claims', 3),
-              _buildNavItem(Icons.person_outline, 'Profile', 4),
+              _buildNavItem(Icons.home_outlined, 'Home', 0, isSmallScreen: isSmallScreen),
+              _buildNavItem(Icons.article_outlined, 'Posts', 1, isSmallScreen: isSmallScreen),
+              _buildNavItem(Icons.emoji_events_outlined, 'Game Hub', 2, isSmallScreen: isSmallScreen),
+              _buildNavItem(Icons.description_outlined, 'Claims', 3, isSmallScreen: isSmallScreen),
+              _buildNavItem(Icons.person_outline, 'Profile', 4, isSmallScreen: isSmallScreen),
             ],
           ),
         ),
@@ -988,7 +1076,7 @@ class _GameHubPageState extends State<GameHubPage> {
     );
   }
 
-  Widget _buildNavItem(IconData icon, String label, int index) {
+  Widget _buildNavItem(IconData icon, String label, int index, {bool isSmallScreen = false}) {
     final isSelected = _selectedIndex == index;
     return InkWell(
       onTap: () => _onNavItemTapped(index),
@@ -998,13 +1086,13 @@ class _GameHubPageState extends State<GameHubPage> {
           Icon(
             icon,
             color: isSelected ? AppColors.primary : AppColors.white.withOpacity(0.6),
-            size: 26,
+            size: isSmallScreen ? 22 : 26,
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: isSmallScreen ? 2 : 4),
           Text(
             label,
             style: TextStyle(
-              fontSize: 11,
+              fontSize: isSmallScreen ? 9 : 11,
               color: isSelected ? AppColors.primary : AppColors.white.withOpacity(0.6),
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
             ),

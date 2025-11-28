@@ -56,8 +56,11 @@ class GameDataService extends ChangeNotifier {
     // Start listening to user stats
     _listenToUserStats(userId);
 
-    // Ensure user has active challenges
+    // Ensure user has active challenges (at least 3)
     await _ensureActiveChallenges(userId);
+    
+    // Check if user qualifies for any badges based on current stats
+    await _checkBadgeUnlocks(userId, null);
   }
 
   /// Clean up subscriptions
@@ -849,6 +852,37 @@ class GameDataService extends ChangeNotifier {
   /// Seed default badge definitions (call once to initialize)
   Future<void> seedDefaultBadges() async {
     final defaults = [
+      // Welcome badge (instant)
+      BadgeDefinition(
+        id: 'welcome',
+        name: 'Welcome!',
+        description: 'Joined the iBalik community',
+        icon: '👋',
+        rarity: BadgeRarity.common,
+        unlockCondition: 'Join iBalik',
+        criteria: {'level': 1}, // Everyone starts at level 1
+      ),
+      
+      // Starter badges (very easy)
+      BadgeDefinition(
+        id: 'karma_10',
+        name: 'Getting Started',
+        description: 'Earned your first 10 karma',
+        icon: '🌱',
+        rarity: BadgeRarity.common,
+        unlockCondition: 'Earn 10 karma',
+        criteria: {'karma': 10},
+      ),
+      BadgeDefinition(
+        id: 'karma_50',
+        name: 'Good Neighbor',
+        description: 'Reached 50 karma points',
+        icon: '🏠',
+        rarity: BadgeRarity.common,
+        unlockCondition: 'Earn 50 karma',
+        criteria: {'karma': 50},
+      ),
+      
       // Posting badges
       BadgeDefinition(
         id: 'first_post',
@@ -858,6 +892,15 @@ class GameDataService extends ChangeNotifier {
         rarity: BadgeRarity.common,
         unlockCondition: 'Post 1 found item',
         criteria: {'itemsPosted': 1},
+      ),
+      BadgeDefinition(
+        id: 'post_5',
+        name: 'Active Scout',
+        description: 'Posted 5 found items',
+        icon: '🔦',
+        rarity: BadgeRarity.common,
+        unlockCondition: 'Post 5 found items',
+        criteria: {'itemsPosted': 5},
       ),
       BadgeDefinition(
         id: 'post_10',
@@ -922,16 +965,25 @@ class GameDataService extends ChangeNotifier {
         name: 'Good Vibes',
         description: 'Reached 100 karma points',
         icon: '✨',
-        rarity: BadgeRarity.common,
+        rarity: BadgeRarity.rare,
         unlockCondition: 'Earn 100 karma',
         criteria: {'karma': 100},
+      ),
+      BadgeDefinition(
+        id: 'karma_250',
+        name: 'Karma Rising',
+        description: 'Reached 250 karma points',
+        icon: '🌈',
+        rarity: BadgeRarity.rare,
+        unlockCondition: 'Earn 250 karma',
+        criteria: {'karma': 250},
       ),
       BadgeDefinition(
         id: 'karma_500',
         name: 'Karma Champion',
         description: 'Reached 500 karma points',
         icon: '🌟',
-        rarity: BadgeRarity.rare,
+        rarity: BadgeRarity.epic,
         unlockCondition: 'Earn 500 karma',
         criteria: {'karma': 500},
       ),
@@ -940,7 +992,7 @@ class GameDataService extends ChangeNotifier {
         name: 'Karma Master',
         description: 'Reached 1000 karma points',
         icon: '💫',
-        rarity: BadgeRarity.epic,
+        rarity: BadgeRarity.legendary,
         unlockCondition: 'Earn 1000 karma',
         criteria: {'karma': 1000},
       ),
@@ -1037,28 +1089,14 @@ class GameDataService extends ChangeNotifier {
     await _loadBadgeDefinitions();
   }
 
-  /// Initialize default data if not exists
+  /// Initialize default data - always re-seeds to ensure new content is added
   Future<void> initializeDefaultData() async {
     try {
-      // Check if challenge definitions exist
-      final challengeDefs = await _firestore
-          .collection('challenge_definitions')
-          .limit(1)
-          .get();
-
-      if (challengeDefs.docs.isEmpty) {
-        await _seedDefaultChallenges();
-      }
-
-      // Check if badge definitions exist
-      final badgeDefs = await _firestore
-          .collection('badge_definitions')
-          .limit(1)
-          .get();
-
-      if (badgeDefs.docs.isEmpty) {
-        await seedDefaultBadges();
-      }
+      // Always seed challenge definitions (merge: true will update existing)
+      await _seedDefaultChallenges();
+      
+      // Always seed badge definitions (merge: true will update existing)
+      await seedDefaultBadges();
     } catch (e) {
       debugPrint('Error initializing default data: $e');
     }
