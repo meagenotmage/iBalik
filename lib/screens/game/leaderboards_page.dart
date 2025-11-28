@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/game_models.dart';
 import '../../services/game_service.dart';
 import '../../services/game_data_service.dart';
@@ -331,11 +332,17 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
             ],
           ),
           child: ClipOval(
-            child: entry.user.profileImageUrl != null
-                ? Image.network(
-                    entry.user.profileImageUrl!,
+            child: entry.user.profileImageUrl != null && entry.user.profileImageUrl!.isNotEmpty
+                ? CachedNetworkImage(
+                    imageUrl: entry.user.profileImageUrl!,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _buildInitialsAvatar(entry.user, color),
+                    placeholder: (context, url) => Container(
+                      color: AppColors.darkSurface,
+                      child: const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => _buildInitialsAvatar(entry.user, color),
                   )
                 : _buildInitialsAvatar(entry.user, color),
           ),
@@ -466,11 +473,17 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
               ),
             ),
             child: ClipOval(
-              child: entry.user.profileImageUrl != null
-                  ? Image.network(
-                      entry.user.profileImageUrl!,
+              child: entry.user.profileImageUrl != null && entry.user.profileImageUrl!.isNotEmpty
+                  ? CachedNetworkImage(
+                      imageUrl: entry.user.profileImageUrl!,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _buildSmallInitialsAvatar(entry.user),
+                      placeholder: (context, url) => Container(
+                        color: AppColors.darkSurface,
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                      errorWidget: (context, url, error) => _buildSmallInitialsAvatar(entry.user),
                     )
                   : _buildSmallInitialsAvatar(entry.user),
             ),

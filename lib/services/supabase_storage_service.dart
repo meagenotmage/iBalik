@@ -8,35 +8,42 @@ import 'package:firebase_auth/firebase_auth.dart';
 class SupabaseStorageService {
   final SupabaseClient _supabase = Supabase.instance.client;
   static const String bucketName = 'lost-items';
+  static const String profileBucketName = 'profile-images';
   
   /// Ensure bucket exists before uploading
   Future<void> ensureBucketExists() async {
+    await _ensureSpecificBucket(bucketName);
+    await _ensureSpecificBucket(profileBucketName);
+  }
+  
+  /// Ensure a specific bucket exists
+  Future<void> _ensureSpecificBucket(String bucket) async {
     try {
       // Check if bucket exists
-      debugPrint('Checking if bucket "$bucketName" exists...');
+      debugPrint('Checking if bucket "$bucket" exists...');
       final buckets = await _supabase.storage.listBuckets();
       debugPrint('Available buckets: ${buckets.map((b) => b.name).toList()}');
-      final bucketExists = buckets.any((bucket) => bucket.name == bucketName);
+      final bucketExists = buckets.any((b) => b.name == bucket);
       
       if (!bucketExists) {
-        debugPrint('Bucket "$bucketName" not found. Attempting to create...');
+        debugPrint('Bucket "$bucket" not found. Attempting to create...');
         try {
           await _supabase.storage.createBucket(
-            bucketName,
+            bucket,
             const BucketOptions(
               public: true,
               fileSizeLimit: '10485760', // 10MB per file
               allowedMimeTypes: ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'],
             ),
           );
-          debugPrint('Bucket "$bucketName" created successfully!');
+          debugPrint('Bucket "$bucket" created successfully!');
         } catch (createError) {
           debugPrint('Failed to create bucket (may need manual creation): $createError');
           // If bucket creation fails, check if it's a permission issue
           // The bucket might need to be created manually in Supabase dashboard
         }
       } else {
-        debugPrint('Bucket "$bucketName" exists.');
+        debugPrint('Bucket "$bucket" exists.');
       }
     } catch (e) {
       debugPrint('Error checking bucket: $e');
@@ -327,6 +334,50 @@ class SupabaseStorageService {
     return _supabase.storage
         .from(bucketName)
         .getPublicUrl(filePath);
+  }
+
+  /// Upload profile image from bytes
+  /// Returns the public URL of the uploaded image
+  Future<String> uploadProfileImageBytes({
+    required Uint8List imageBytes,
+    required String fileName,
+    required String userId,
+  }) async {
+    try {
+      // Ensure profile bucket exists first
+      await _ensureSpecificBucket(profileBucketName);
+
+      // Compress image
+      final compressedBytes = await _compressImageBytes(imageBytes, fileName);
+
+      // Upload to Supabase
+      debugPrint('Uploading profile image: $fileName (${compressedBytes.length} bytes)');
+      await _supabase.storage
+          .from(profileBucketName)
+          .uploadBinary(
+            fileName,
+            compressedBytes,
+            fileOptions: const FileOptions(
+              contentType: 'image/jpeg',
+              upsert: true, // Allow overwriting if file exists
+            ),
+          );
+
+      // Get public URL
+      final publicUrl = _supabase.storage
+          .from(profileBucketName)
+          .getPublicUrl(fileName);
+
+      debugPrint('Profile image uploaded successfully: $publicUrl');
+      return publicUrl;
+    } catch (e) {
+      debugPrint('Error uploading profile image: $e');
+      debugPrint('Error type: ${e.runtimeType}');
+      if (e is StorageException) {
+        debugPrint('StorageException - statusCode: ${e.statusCode}, message: ${e.message}');
+      }
+      rethrow;
+    }
   }
 
   /// Check if bucket exists and is accessible

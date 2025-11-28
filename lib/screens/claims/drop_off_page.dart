@@ -103,10 +103,39 @@ class _DropOffPageState extends State<DropOffPage> {
                           color: Colors.grey[300],
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(
-                          Icons.phone_iphone,
-                          size: 36,
-                          color: Colors.white,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: widget.itemData['imageUrl'] != null && widget.itemData['imageUrl'].toString().isNotEmpty
+                              ? Image.network(
+                                  widget.itemData['imageUrl'],
+                                  width: 70,
+                                  height: 70,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Icon(
+                                      Icons.image_outlined,
+                                      size: 36,
+                                      color: Colors.grey[400],
+                                    );
+                                  },
+                                  loadingBuilder: (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return Center(
+                                      child: CircularProgressIndicator(
+                                        value: loadingProgress.expectedTotalBytes != null
+                                            ? loadingProgress.cumulativeBytesLoaded /
+                                                loadingProgress.expectedTotalBytes!
+                                            : null,
+                                        strokeWidth: 2,
+                                      ),
+                                    );
+                                  },
+                                )
+                              : Icon(
+                                  Icons.image_outlined,
+                                  size: 36,
+                                  color: Colors.grey[400],
+                                ),
                         ),
                       ),
                       const SizedBox(width: 16),

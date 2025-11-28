@@ -2,15 +2,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:image_picker/image_picker.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'dart:io';
 import '../../utils/page_transitions.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/shimmer_widgets.dart';
 import '../../services/activity_service.dart';
 import '../../services/game_service.dart';
 import '../../services/game_data_service.dart';
+import '../../services/supabase_storage_service.dart';
 import '../posts/posts_page.dart';
 import '../game/game_hub_page.dart';
 import '../game/leaderboards_page.dart';
@@ -288,7 +287,7 @@ class _ProfilePageState extends State<ProfilePage> {
       );
 
       if (image != null) {
-        await _uploadImageToSupabase(File(image.path));
+        await _uploadImageToSupabase(image);
       }
     } catch (e) {
       debugPrint('Error picking image: $e');
@@ -296,44 +295,27 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  Future<void> _uploadImageToSupabase(File imageFile) async {
+  Future<void> _uploadImageToSupabase(XFile imageFile) async {
     try {
       final user = firebase_auth.FirebaseAuth.instance.currentUser;
-      if (user == null) return;
-
-      // Check if Supabase is initialized
-      try {
-        final supabase = Supabase.instance.client;
-        supabase.auth.currentSession;
-      } catch (e) {
-        debugPrint('Supabase not initialized: $e');
-        _showSnackBar('Storage service not available');
+      if (user == null) {
+        _showSnackBar('Please sign in to upload profile image');
         return;
       }
 
       _showSnackBar('Uploading image...');
 
-      // Read file as bytes for Supabase upload
+      // Read file as bytes (works on all platforms including web)
       final fileBytes = await imageFile.readAsBytes();
       final fileName = '${user.uid}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final supabase = Supabase.instance.client;
       
-      // Upload to Supabase Storage using bytes
-      await supabase.storage
-          .from('profile-images')
-          .uploadBinary(
-            fileName,
-            fileBytes,
-            fileOptions: FileOptions(
-              upsert: true,
-              contentType: 'image/jpeg',
-            ),
-          );
-
-      // Get public URL
-      final imageUrl = supabase.storage
-          .from('profile-images')
-          .getPublicUrl(fileName);
+      // Use SupabaseStorageService to upload
+      final storageService = SupabaseStorageService();
+      final imageUrl = await storageService.uploadProfileImageBytes(
+        imageBytes: fileBytes,
+        fileName: fileName,
+        userId: user.uid,
+      );
 
       // Update Firestore with the new image URL
       await FirebaseFirestore.instance
@@ -350,7 +332,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
       _showSnackBar('Profile image updated successfully!');
     } catch (e) {
-      debugPrint('Error uploading image to Supabase: $e');
+      debugPrint('Error uploading profile image: $e');
       _showSnackBar('Error uploading image: ${e.toString()}');
     }
   }

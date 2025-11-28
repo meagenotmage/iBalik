@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/game_models.dart';
 import '../../utils/page_transitions.dart';
 import '../../utils/app_theme.dart';
@@ -26,7 +29,7 @@ class _GameHubPageState extends State<GameHubPage> {
   final GameService _gameService = GameService();
   late GameDataService _gameDataService;
   
-
+  String? _profileImageUrl;
   bool _isLoading = true;
   bool _isInitialized = false;
 
@@ -45,6 +48,7 @@ class _GameHubPageState extends State<GameHubPage> {
       await _gameDataService.initialize();
       await _gameDataService.refreshChallenges();
       await _loadRecentAchievements();
+      await _loadProfileImage();
       setState(() {
         _isInitialized = true;
         _isLoading = false;
@@ -55,6 +59,25 @@ class _GameHubPageState extends State<GameHubPage> {
         _isLoading = false;
         _isInitialized = true;
       });
+    }
+  }
+
+  Future<void> _loadProfileImage() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+        if (userDoc.exists && mounted) {
+          setState(() {
+            _profileImageUrl = userDoc.data()?['profileImageUrl'] as String?;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading profile image: $e');
     }
   }
 
@@ -177,18 +200,44 @@ class _GameHubPageState extends State<GameHubPage> {
                               Expanded(
                                 child: Row(
                                   children: [
-                                    // Profile Picture Placeholder
+                                    // Profile Picture
                                     Container(
                                       width: profileSize,
                                       height: profileSize,
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
                                         color: AppColors.background,
+                                        border: Border.all(
+                                          color: AppColors.primary.withOpacity(0.3),
+                                          width: 2,
+                                        ),
                                       ),
-                                      child: Icon(
-                                        Icons.person,
-                                        color: AppColors.textSecondary,
-                                        size: profileIconSize,
+                                      child: ClipOval(
+                                        child: _profileImageUrl != null && _profileImageUrl!.isNotEmpty
+                                            ? CachedNetworkImage(
+                                                imageUrl: _profileImageUrl!,
+                                                width: profileSize,
+                                                height: profileSize,
+                                                fit: BoxFit.cover,
+                                                placeholder: (context, url) => Center(
+                                                  child: CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                                      AppColors.primary,
+                                                    ),
+                                                  ),
+                                                ),
+                                                errorWidget: (context, url, error) => Icon(
+                                                  Icons.person,
+                                                  color: AppColors.textSecondary,
+                                                  size: profileIconSize,
+                                                ),
+                                              )
+                                            : Icon(
+                                                Icons.person,
+                                                color: AppColors.textSecondary,
+                                                size: profileIconSize,
+                                              ),
                                       ),
                                     ),
                                     SizedBox(width: isSmallScreen ? 10 : 16),
