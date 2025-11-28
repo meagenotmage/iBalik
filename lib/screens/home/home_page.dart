@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../services/lost_item_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../utils/page_transitions.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/shimmer_widgets.dart';
@@ -430,7 +431,10 @@ class _HomePageState extends State<HomePage> {
                             final time = _formatTimeAgo(timeSource);
                             final location = data['location'] ?? '';
                             final status = (data['status'] ?? 'available').toString().toLowerCase() == 'available' ? 'Available' : (data['status'] ?? '');
-                            // Simple icon selection
+                            // Get image URL from images array
+                            final images = data['images'] as List<dynamic>? ?? [];
+                            final imageUrl = images.isNotEmpty ? images[0] as String? : null;
+                            // Simple icon selection for fallback
                             final category = (data['category'] ?? '').toString().toLowerCase();
                             IconData icon = Icons.image;
                             if (category.contains('elect')) {
@@ -450,6 +454,7 @@ class _HomePageState extends State<HomePage> {
                               location,
                               status,
                               icon,
+                              imageUrl: imageUrl,
                             );
                           }).toList(),
                         );
@@ -647,8 +652,9 @@ class _HomePageState extends State<HomePage> {
     String time,
     String location,
     String status,
-    IconData icon,
-  ) {
+    IconData icon, {
+    String? imageUrl,
+  }) {
     // Merge Firestore data with UI overrides so ItemDetailsPage sees the real founder/user fields
     final item = <String, dynamic>{
       ...data,
@@ -682,7 +688,7 @@ class _HomePageState extends State<HomePage> {
         ),
         child: Row(
           children: [
-            // Item Image Placeholder
+            // Item Image from Supabase or fallback to icon
             Container(
               width: 60,
               height: 60,
@@ -690,7 +696,23 @@ class _HomePageState extends State<HomePage> {
                 color: const Color(0xFFF5F5F5),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(icon, color: AppColors.mediumGray, size: 28),
+              child: imageUrl != null && imageUrl.isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        width: 60,
+                        height: 60,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => ShimmerWidgets.imagePlaceholder(
+                          width: 60,
+                          height: 60,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        errorWidget: (context, url, error) => Icon(icon, color: AppColors.mediumGray, size: 28),
+                      ),
+                    )
+                  : Icon(icon, color: AppColors.mediumGray, size: 28),
             ),
             const SizedBox(width: 16),
             // Item Details
