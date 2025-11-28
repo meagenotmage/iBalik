@@ -3,14 +3,17 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_ibalik/models/game_models.dart';
 import 'package:flutter_ibalik/services/activity_service.dart';
 import 'package:flutter_ibalik/services/notification_service.dart';
+import 'package:flutter_ibalik/services/game_data_service.dart';
 
 class GameService with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final ActivityService _activityService = ActivityService();
   final NotificationService _notificationService = NotificationService();
+  final GameDataService _gameDataService = GameDataService();
 
   StreamSubscription<DocumentSnapshot>? _userSubscription;
 
@@ -19,6 +22,9 @@ class GameService with ChangeNotifier {
   int _currentXP = 0;
   int _maxXP = 100;
   int _currentLevel = 1;
+  int _itemsPosted = 0;
+  int _itemsReturned = 0;
+  int _currentStreak = 0;
 
   // Getters
   int get points => _points;
@@ -26,11 +32,24 @@ class GameService with ChangeNotifier {
   int get currentXP => _currentXP;
   int get maxXP => _maxXP;
   int get currentLevel => _currentLevel;
+  int get itemsPosted => _itemsPosted;
+  int get itemsReturned => _itemsReturned;
+  int get currentStreak => _currentStreak;
+  
+  // Game Data Service getters (for challenges, badges, leaderboards)
+  GameDataService get gameData => _gameDataService;
 
   String? get _userId => _auth.currentUser?.uid;
 
   GameService() {
     _initUserListener();
+    _initGameDataService();
+  }
+  
+  Future<void> _initGameDataService() async {
+    // Initialize game data service (challenges, badges, leaderboards)
+    await _gameDataService.initializeDefaultData();
+    await _gameDataService.initialize();
   }
 
   void _initUserListener() {
@@ -49,6 +68,9 @@ class GameService with ChangeNotifier {
             _currentXP = (data['currentXP'] ?? 0).toInt();
             _maxXP = (data['maxXP'] ?? 100).toInt();
             _currentLevel = (data['level'] ?? 1).toInt();
+            _itemsPosted = (data['itemsPosted'] ?? 0).toInt();
+            _itemsReturned = (data['itemsReturned'] ?? data['returned'] ?? 0).toInt();
+            _currentStreak = (data['currentStreak'] ?? data['streak'] ?? 0).toInt();
             notifyListeners();
           } else {
             // Initialize user stats if document doesn't exist or fields are missing
@@ -61,6 +83,9 @@ class GameService with ChangeNotifier {
         _currentXP = 0;
         _maxXP = 100;
         _currentLevel = 1;
+        _itemsPosted = 0;
+        _itemsReturned = 0;
+        _currentStreak = 0;
         notifyListeners();
       }
     });
@@ -73,6 +98,15 @@ class GameService with ChangeNotifier {
       'currentXP': 0,
       'maxXP': 100,
       'level': 1,
+      'itemsPosted': 0,
+      'itemsReturned': 0,
+      'currentStreak': 0,
+      'longestStreak': 0,
+      'badgesEarned': 0,
+      'challengesCompleted': 0,
+      'claimsMade': 0,
+      'claimsApproved': 0,
+      'lastActiveAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
 
@@ -85,7 +119,7 @@ class GameService with ChangeNotifier {
   // ============ REWARD METHODS ============
 
   /// Reward for posting an item: +5 Pts, +10 Karma
-  Future<void> rewardItemPost(String itemName) async {
+  Future<void> rewardItemPost(String itemName, {String? category}) async {
     await _addRewards(
       points: 5,
       karma: 10,
@@ -93,11 +127,14 @@ class GameService with ChangeNotifier {
       action: 'Item Posted',
       description: 'Posted "$itemName"',
       activityType: ActivityType.itemPosted,
+      gameAction: GameAction.itemPosted,
+      category: category,
+      incrementField: 'itemsPosted',
     );
   }
 
   /// Reward for dropping off at hub: +8 Pts, +6 Karma
-  Future<void> rewardDropOffAtHub(String itemName) async {
+  Future<void> rewardDropOffAtHub(String itemName, {String? category}) async {
     await _addRewards(
       points: 8,
       karma: 6,
@@ -105,11 +142,13 @@ class GameService with ChangeNotifier {
       action: 'Hub Drop-off',
       description: 'Dropped off "$itemName" at hub',
       activityType: ActivityType.returnCompleted, // Or a more specific type if available
+      gameAction: GameAction.hubDropOff,
+      category: category,
     );
   }
 
   /// Reward for successful hub handover: +15 Pts, +12 Karma
-  Future<void> rewardHubHandoverSuccess(String itemName) async {
+  Future<void> rewardHubHandoverSuccess(String itemName, {String? category}) async {
     await _addRewards(
       points: 15,
       karma: 12,
@@ -117,11 +156,14 @@ class GameService with ChangeNotifier {
       action: 'Hub Handover Success',
       description: 'Successfully handed over "$itemName" at hub',
       activityType: ActivityType.returnCompleted,
+      gameAction: GameAction.itemReturned,
+      category: category,
+      incrementField: 'itemsReturned',
     );
   }
 
   /// Reward for successful return (direct): +12 Pts, +15 Karma
-  Future<void> rewardSuccessfulReturn(String itemName) async {
+  Future<void> rewardSuccessfulReturn(String itemName, {String? category}) async {
     await _addRewards(
       points: 12,
       karma: 15,
@@ -129,11 +171,14 @@ class GameService with ChangeNotifier {
       action: 'Successful Return',
       description: 'Returned "$itemName" to owner',
       activityType: ActivityType.returnCompleted,
+      gameAction: GameAction.itemReturned,
+      category: category,
+      incrementField: 'itemsReturned',
     );
   }
 
   /// Reward for verified claim fulfillment: +25 Pts, +20 Karma
-  Future<void> rewardVerifiedClaimFulfillment(String itemName) async {
+  Future<void> rewardVerifiedClaimFulfillment(String itemName, {String? category}) async {
     await _addRewards(
       points: 25,
       karma: 20,
@@ -141,6 +186,24 @@ class GameService with ChangeNotifier {
       action: 'Verified Claim Fulfillment',
       description: 'Fulfilled verified claim for "$itemName"',
       activityType: ActivityType.returnCompleted,
+      gameAction: GameAction.claimApproved,
+      category: category,
+      incrementField: 'claimsApproved',
+    );
+  }
+  
+  /// Reward for submitting a claim
+  Future<void> rewardClaimSubmitted(String itemName, {String? category}) async {
+    await _addRewards(
+      points: 2,
+      karma: 3,
+      xp: 5,
+      action: 'Claim Submitted',
+      description: 'Submitted claim for "$itemName"',
+      activityType: ActivityType.claimSubmitted,
+      gameAction: GameAction.claimSubmitted,
+      category: category,
+      incrementField: 'claimsMade',
     );
   }
 
@@ -167,11 +230,15 @@ class GameService with ChangeNotifier {
     required String action,
     required String description,
     required ActivityType activityType,
+    GameAction? gameAction,
+    String? category,
+    String? incrementField,
   }) async {
     if (_userId == null) return;
 
     try {
       final userRef = _firestore.collection('users').doc(_userId);
+      int previousLevel = _currentLevel;
 
       await _firestore.runTransaction((transaction) async {
         final snapshot = await transaction.get(userRef);
@@ -193,33 +260,30 @@ class GameService with ChangeNotifier {
         int newXP = currentXP + xp;
         
         // Check for level up
-        bool leveledUp = false;
         int newLevel = currentLevel;
         int newMaxXP = maxXP;
 
         while (newXP >= newMaxXP) {
-          leveledUp = true;
           newXP -= newMaxXP;
           newLevel++;
           newMaxXP = (newMaxXP * 1.2).round(); // Increase XP requirement by 20%
         }
 
-        transaction.update(userRef, {
+        final updates = <String, dynamic>{
           'points': newPoints,
           'karma': newKarma,
           'currentXP': newXP,
           'level': newLevel,
           'maxXP': newMaxXP,
-        });
-
-        // Post-transaction actions (Notifications & Activity Logs)
-        // We do this AFTER the transaction to ensure data consistency, 
-        // but since we can't await inside transaction easily for external services,
-        // we'll do it here. Ideally, use Cloud Functions for this.
-        // For now, we'll just trigger them.
+          'lastActiveAt': FieldValue.serverTimestamp(),
+        };
         
-        // Note: In a real app, you might want to queue these or handle them outside the transaction block
-        // to avoid slowing down the transaction.
+        // Increment specific stat field if provided
+        if (incrementField != null) {
+          updates[incrementField] = FieldValue.increment(1);
+        }
+
+        transaction.update(userRef, updates);
       });
 
       // Log Activity
@@ -232,7 +296,6 @@ class GameService with ChangeNotifier {
       );
 
       // Send Notification for Reward
-      // Only notify for significant rewards or level ups to avoid spam
       if (points >= 5 || karma >= 5) {
          await _notificationService.createNotification(
           type: NotificationType.pointsEarned,
@@ -241,22 +304,19 @@ class GameService with ChangeNotifier {
         );
       }
 
-      // Check if level up happened (we need to re-calculate or check the updated state)
-      // Since we can't easily get the "leveledUp" bool out of the transaction without a return value,
-      // we can check the local state after the listener updates, OR just calculate it again here roughly.
-      // A better way is to check if the new level > old level.
-      // But since `_currentLevel` is updated via stream, it might have a slight delay.
-      // Let's just calculate it based on the values we passed.
-      
-      // Actually, let's just fetch the latest doc to see if level changed, or trust the logic.
-      // For simplicity, I'll just check if the *local* state updates to a higher level in the stream listener
-      // and trigger a notification there? No, that might be too disconnected.
-      
-      // Let's just do a quick check:
+      // Track action for challenges and badges
+      if (gameAction != null) {
+        await _gameDataService.trackAction(ActionMetadata(
+          action: gameAction,
+          category: category,
+        ));
+      }
+
+      // Check for level up
       final updatedDoc = await userRef.get();
       final updatedLevel = (updatedDoc.data()?['level'] ?? 1).toInt();
       
-      if (updatedLevel > _currentLevel) {
+      if (updatedLevel > previousLevel) {
         await _notificationService.notifyLevelUp(
           newLevel: updatedLevel,
           levelTitle: _getLevelTitle(updatedLevel),
@@ -268,7 +328,7 @@ class GameService with ChangeNotifier {
       }
 
     } catch (e) {
-      print('Error adding rewards: $e');
+      debugPrint('Error adding rewards: $e');
     }
   }
 
@@ -281,6 +341,7 @@ class GameService with ChangeNotifier {
     required String description,
     required ActivityType activityType,
     bool sendNotification = true,
+    String? incrementField,
   }) async {
     try {
       final userRef = _firestore.collection('users').doc(userId);
@@ -316,13 +377,20 @@ class GameService with ChangeNotifier {
           newMaxXP = (newMaxXP * 1.2).round();
         }
 
-        transaction.update(userRef, {
+        final updates = <String, dynamic>{
           'points': newPoints,
           'karma': newKarma,
           'currentXP': newXP,
           'level': newLevel,
           'maxXP': newMaxXP,
-        });
+          'lastActiveAt': FieldValue.serverTimestamp(),
+        };
+        
+        if (incrementField != null) {
+          updates[incrementField] = FieldValue.increment(1);
+        }
+
+        transaction.update(userRef, updates);
       });
 
       // Log Activity for that user
@@ -346,7 +414,7 @@ class GameService with ChangeNotifier {
       }
 
     } catch (e) {
-      print('Error adding rewards for user $userId: $e');
+      debugPrint('Error adding rewards for user $userId: $e');
     }
   }
 
@@ -357,5 +425,65 @@ class GameService with ChangeNotifier {
     if (level < 30) return 'Guardian';
     if (level < 50) return 'Hero';
     return 'Legend';
+  }
+  
+  /// Get level title for display
+  String getLevelTitle() => _getLevelTitle(_currentLevel);
+  
+  /// Update streak on daily login
+  Future<void> updateDailyStreak() async {
+    if (_userId == null) return;
+    
+    try {
+      final userRef = _firestore.collection('users').doc(_userId);
+      final doc = await userRef.get();
+      
+      if (!doc.exists) return;
+      
+      final data = doc.data()!;
+      final lastActive = (data['lastActiveAt'] as Timestamp?)?.toDate();
+      final currentStreak = (data['currentStreak'] ?? data['streak'] ?? 0).toInt();
+      final longestStreak = (data['longestStreak'] ?? 0).toInt();
+      
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      
+      int newStreak = currentStreak;
+      
+      if (lastActive != null) {
+        final lastActiveDate = DateTime(lastActive.year, lastActive.month, lastActive.day);
+        final daysDiff = today.difference(lastActiveDate).inDays;
+        
+        if (daysDiff == 0) {
+          // Already logged in today, don't update streak
+          return;
+        } else if (daysDiff == 1) {
+          // Consecutive day - increment streak
+          newStreak = currentStreak + 1;
+        } else {
+          // Streak broken - reset to 1
+          newStreak = 1;
+        }
+      } else {
+        // First login
+        newStreak = 1;
+      }
+      
+      // Update streak and longest streak
+      await userRef.update({
+        'currentStreak': newStreak,
+        'streak': newStreak, // For backward compatibility
+        'longestStreak': newStreak > longestStreak ? newStreak : longestStreak,
+        'lastActiveAt': FieldValue.serverTimestamp(),
+      });
+      
+      // Track daily login for challenges
+      await _gameDataService.trackAction(ActionMetadata(
+        action: GameAction.dailyLogin,
+      ));
+      
+    } catch (e) {
+      debugPrint('Error updating daily streak: $e');
+    }
   }
 }
