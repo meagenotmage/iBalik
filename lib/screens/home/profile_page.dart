@@ -215,6 +215,9 @@ class _ProfilePageState extends State<ProfilePage> {
           // Calculate user rank asynchronously
           _calculateUserRank();
 
+          // Create sample activities for new users
+          _createSampleActivities();
+
           // Load settings
           final settings = data['settings'] as Map<String, dynamic>?;
           final notifications = settings?['notifications'] as Map<String, dynamic>?;
@@ -592,11 +595,21 @@ Future<void> _recordUserActivity({
         .collection('users')
         .doc(user.uid)
         .collection('activities')
-        .orderBy('timestamp', descending: true)
         .get();
 
     if (activitiesSnapshot.docs.length > 50) {
-      final activitiesToDelete = activitiesSnapshot.docs.sublist(50);
+      // Sort by timestamp and delete oldest
+      final activities = activitiesSnapshot.docs;
+      activities.sort((a, b) {
+        final aTime = a.data()['timestamp'] as Timestamp?;
+        final bTime = b.data()['timestamp'] as Timestamp?;
+        if (aTime == null && bTime == null) return 0;
+        if (aTime == null) return 1;
+        if (bTime == null) return -1;
+        return bTime.compareTo(aTime);
+      });
+      
+      final activitiesToDelete = activities.sublist(50);
       final batch = FirebaseFirestore.instance.batch();
       for (final doc in activitiesToDelete) {
         batch.delete(doc.reference);
@@ -605,6 +618,83 @@ Future<void> _recordUserActivity({
     }
   } catch (e) {
     debugPrint('Error recording activity: $e');
+  }
+}
+
+/// Create a test activity to verify the system is working
+Future<void> _createTestActivity() async {
+  try {
+    final user = firebase_auth.FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('activities')
+        .add({
+      'type': 'profileUpdated',
+      'title': 'Activity Test',
+      'description': 'Testing activity log functionality - ${DateTime.now().toString()}',
+      'metadata': {'test': true},
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+
+    debugPrint('Test activity created successfully');
+  } catch (e) {
+    debugPrint('Error creating test activity: $e');
+  }
+}
+
+/// Create some sample activities for new users to showcase the feature
+Future<void> _createSampleActivities() async {
+  try {
+    final user = firebase_auth.FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    // Check if user already has activities
+    final existingActivities = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('activities')
+        .limit(1)
+        .get();
+
+    if (existingActivities.docs.isNotEmpty) {
+      return; // User already has activities, don't create samples
+    }
+
+    // Create sample activities with different timestamps
+    final now = DateTime.now();
+    final activities = [
+      {
+        'type': 'accountCreated',
+        'title': 'Welcome to iBalik!',
+        'description': 'Your account has been created successfully',
+        'metadata': {'userName': userName},
+        'timestamp': Timestamp.fromDate(now.subtract(const Duration(days: 1))),
+      },
+      {
+        'type': 'profileUpdated',
+        'title': 'Profile Completed',
+        'description': 'Added profile information and bio',
+        'metadata': {},
+        'timestamp': Timestamp.fromDate(now.subtract(const Duration(hours: 12))),
+      },
+    ];
+
+    final batch = FirebaseFirestore.instance.batch();
+    for (final activity in activities) {
+      final docRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('activities')
+          .doc();
+      batch.set(docRef, activity);
+    }
+
+    await batch.commit();
+  } catch (e) {
+    debugPrint('Error creating sample activities: $e');
   }
 }
 
@@ -638,12 +728,9 @@ Future<void> _updateProfile(
       bio = newBio;
     });
 
-    // Record activity
-    await _recordUserActivity(
-      type: 'profile_updated',
-      title: 'Profile Updated',
-      description: 'Updated your profile information',
-    );
+    // Record activity using ActivityService for consistency
+    final activityService = ActivityService();
+    await activityService.recordProfileUpdated();
 
     _showSnackBar('Profile updated successfully!');
   } catch (e) {
@@ -1339,9 +1426,8 @@ Future<void> _updateProfile(
                   child: Row(
                     children: [
                       Expanded(child: _buildTab('Overview', 0)),
-                      Expanded(child: _buildTab('Badges', 1)),
-                      Expanded(child: _buildTab('Activity', 2)),
-                      Expanded(child: _buildTab('Settings', 3)),
+                      Expanded(child: _buildTab('Activity', 1)),
+                      Expanded(child: _buildTab('Settings', 2)),
                     ],
                   ),
                 ),
@@ -1451,10 +1537,15 @@ Future<void> _updateProfile(
   Widget _buildTab(String label, int index) {
     final isSelected = _selectedTabIndex == index;
     return GestureDetector(
-      onTap: () {
+      onTap: () async {
         setState(() {
           _selectedTabIndex = index;
         });
+        
+        // If Activity tab is selected, create a test activity
+        if (index == 2) {
+          await _createTestActivity();
+        }
       },
       child: Container(
         margin: const EdgeInsets.all(2),
@@ -1486,8 +1577,6 @@ Future<void> _updateProfile(
     if (_selectedTabIndex == 0) {
       return _buildOverviewTab();
     } else if (_selectedTabIndex == 1) {
-      return _buildBadgesTab();
-    } else if (_selectedTabIndex == 2) {
       return _buildActivityTab();
     } else {
       return _buildSettingsTab();
@@ -1615,317 +1704,15 @@ Future<void> _updateProfile(
     );
   }
 
-  Widget _buildBadgesTab() {
-    return ListenableBuilder(
-      listenable: _gameDataService,
-      builder: (context, _) {
-        final earnedBadges = _gameDataService.earnedBadges;
-        final availableBadges = _gameDataService.getAvailableBadgesWithProgress();
 
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 16),
 
-              // Earned Badges Section
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.emoji_events,
-                        color: Color(0xFF10B981),
-                        size: 24,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Earned (${earnedBadges.length})',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ],
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      // Navigate to full badges page
-                      Navigator.push(
-                        context,
-                        SmoothPageRoute(page: const GameHubPage()),
-                      );
-                    },
-                    child: const Text(
-                      'View All',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Color(0xFF3B82F6),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
 
-              // Earned Badges Grid
-              earnedBadges.isEmpty
-                  ? _buildEmptyBadgesState()
-                  : GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                        childAspectRatio: 0.75,
-                      ),
-                      itemCount: earnedBadges.length,
-                      itemBuilder: (context, index) {
-                        final badge = earnedBadges[index];
-                        return _buildEarnedBadgeCard(badge);
-                      },
-                    ),
-              const SizedBox(height: 32),
 
-              // Available Badges Section (Locked)
-              Text(
-                'Available (${availableBadges.length})',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 16),
 
-              // Available Badges Grid with Progress
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 0.75,
-                ),
-                itemCount: availableBadges.length > 6 ? 6 : availableBadges.length,
-                itemBuilder: (context, index) {
-                  final badgeData = availableBadges[index];
-                  final def = badgeData['definition'] as BadgeDefinition;
-                  final progress = badgeData['progress'] as double;
-                  return _buildLockedBadgeCard(def, progress);
-                },
-              ),
-              const SizedBox(height: 24),
-            ],
-          ),
-        );
-      },
-    );
-  }
 
-  Widget _buildEmptyBadgesState() {
-    return Container(
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
-      child: Column(
-        children: [
-          Icon(Icons.emoji_events_outlined, size: 48, color: Colors.grey[400]),
-          const SizedBox(height: 12),
-          Text(
-            'No badges earned yet',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[600],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Complete challenges and activities to earn badges!',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildEarnedBadgeCard(UserBadge badge) {
-    final rarityColor = _getRarityColor(badge.rarity);
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: rarityColor.withOpacity(0.3), width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: rarityColor.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: rarityColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Center(
-              child: Text(
-                badge.icon,
-                style: const TextStyle(fontSize: 28),
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            badge.name,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 3),
-          Text(
-            badge.description,
-            style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: rarityColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              badge.rarity.name.toUpperCase(),
-              style: TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.bold,
-                color: rarityColor,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildLockedBadgeCard(BadgeDefinition def, double progress) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey[300]!, width: 1),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Center(
-                  child: Text(
-                    def.icon,
-                    style: TextStyle(
-                      fontSize: 28,
-                      color: Colors.grey[400],
-                    ),
-                  ),
-                ),
-              ),
-              if (progress > 0)
-                SizedBox(
-                  width: 56,
-                  height: 56,
-                  child: CircularProgressIndicator(
-                    value: progress,
-                    strokeWidth: 3,
-                    backgroundColor: Colors.grey[200],
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      _getRarityColor(def.rarity).withOpacity(0.7),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            def.name,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[500],
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 3),
-          Text(
-            def.unlockCondition,
-            style: TextStyle(fontSize: 10, color: Colors.grey[500]),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '${(progress * 100).toInt()}% complete',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[500],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  Color _getRarityColor(BadgeRarity rarity) {
-    switch (rarity) {
-      case BadgeRarity.common:
-        return Colors.grey[600]!;
-      case BadgeRarity.rare:
-        return const Color(0xFF3B82F6);
-      case BadgeRarity.epic:
-        return const Color(0xFF8B5CF6);
-      case BadgeRarity.legendary:
-        return const Color(0xFFF59E0B);
-    }
-  }
 
   Widget _buildBadgeCard({
     required IconData icon,
@@ -1986,15 +1773,21 @@ Future<void> _updateProfile(
 
   /// Activity Tab - Shows user's recent actions (limited to 50 items or 3 months)
   Widget _buildActivityTab() {
-    final threeMonthsAgo = DateTime.now().subtract(const Duration(days: 90));
+    final userId = firebase_auth.FirebaseAuth.instance.currentUser?.uid;
+    
+    if (userId == null) {
+      return _buildActivityEmptyState(
+        icon: Icons.person_off,
+        title: 'Not signed in',
+        subtitle: 'Please sign in to view your activity',
+      );
+    }
     
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('users')
-          .doc(firebase_auth.FirebaseAuth.instance.currentUser?.uid)
+          .doc(userId)
           .collection('activities')
-          .where('timestamp', isGreaterThan: Timestamp.fromDate(threeMonthsAgo))
-          .orderBy('timestamp', descending: true)
           .limit(50)
           .snapshots(),
       builder: (context, snapshot) {
@@ -2018,14 +1811,44 @@ Future<void> _updateProfile(
           );
         }
 
-        final activities = snapshot.data!.docs;
+        // Get activities and sort them client-side
+        final allActivities = snapshot.data!.docs.map((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          data['id'] = doc.id;
+          return data;
+        }).toList();
+
+        // Sort by timestamp (newest first) and filter by date
+        final threeMonthsAgo = DateTime.now().subtract(const Duration(days: 90));
+        final recentActivities = allActivities.where((activity) {
+          final timestamp = activity['timestamp'] as Timestamp?;
+          if (timestamp == null) return false;
+          return timestamp.toDate().isAfter(threeMonthsAgo);
+        }).toList();
+        
+        recentActivities.sort((a, b) {
+          final aTime = a['timestamp'] as Timestamp?;
+          final bTime = b['timestamp'] as Timestamp?;
+          if (aTime == null && bTime == null) return 0;
+          if (aTime == null) return 1;
+          if (bTime == null) return -1;
+          return bTime.compareTo(aTime);
+        });
+
+        if (recentActivities.isEmpty) {
+          return _buildActivityEmptyState(
+            icon: Icons.history,
+            title: 'No recent activity',
+            subtitle: 'Your actions from the last 3 months will appear here',
+          );
+        }
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header with count
+              // Header with count and refresh button
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -2037,30 +1860,78 @@ Future<void> _updateProfile(
                       color: AppColors.textPrimary,
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '${activities.length} items',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primary,
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${recentActivities.length} items',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      InkWell(
+                        onTap: () => setState(() {}), // Trigger rebuild
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.lightGray.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.refresh,
+                            size: 16,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
               const SizedBox(height: 4),
-              Text(
-                'Last 3 months',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textTertiary,
-                ),
+              Row(
+                children: [
+                  Text(
+                    'Last 3 months',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      'Connected',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.green[700],
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    'Total: ${allActivities.length}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               
@@ -2068,9 +1939,9 @@ Future<void> _updateProfile(
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: activities.length,
+                itemCount: recentActivities.length,
                 itemBuilder: (context, index) {
-                  final activity = activities[index].data() as Map<String, dynamic>;
+                  final activity = recentActivities[index];
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: _buildActivityCard(activity: activity),

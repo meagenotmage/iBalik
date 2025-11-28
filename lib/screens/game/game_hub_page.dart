@@ -25,7 +25,7 @@ class _GameHubPageState extends State<GameHubPage> {
   final GameService _gameService = GameService();
   late GameDataService _gameDataService;
   
-  List<Map<String, dynamic>> _recentAchievements = [];
+
   bool _isLoading = true;
   bool _isInitialized = false;
 
@@ -61,7 +61,7 @@ class _GameHubPageState extends State<GameHubPage> {
     try {
       final achievements = await _gameDataService.getRecentAchievements(limit: 5);
       setState(() {
-        _recentAchievements = achievements;
+
       });
     } catch (e) {
       debugPrint('Error loading achievements: $e');
@@ -436,17 +436,17 @@ class _GameHubPageState extends State<GameHubPage> {
                     
                     SizedBox(height: sectionSpacing),
                     
-                    // Recent Achievements Section
+                    // Not Yet Completed Badges Section
                     Row(
                       children: [
                         Icon(
-                          Icons.emoji_events,
+                          Icons.radio_button_unchecked,
                           size: isSmallScreen ? 18 : 22,
                           color: AppColors.lightText,
                         ),
                         SizedBox(width: isSmallScreen ? 6 : 8),
                         Text(
-                          'Recent Achievements',
+                          'Not Yet Completed',
                           style: TextStyle(
                             fontSize: sectionTitleFontSize,
                             fontWeight: FontWeight.w600,
@@ -456,7 +456,7 @@ class _GameHubPageState extends State<GameHubPage> {
                       ],
                     ),
                     SizedBox(height: cardSpacing),
-                    _buildRecentAchievements(isSmallScreen: isSmallScreen),
+                    _buildIncompleteBadges(isSmallScreen: isSmallScreen),
                     
                     SizedBox(height: sectionSpacing),
                     
@@ -735,111 +735,133 @@ class _GameHubPageState extends State<GameHubPage> {
     }
   }
 
-  Widget _buildRecentAchievements({bool isSmallScreen = false}) {
-    final cardPadding = isSmallScreen ? 12.0 : 16.0;
-    final iconContainerSize = isSmallScreen ? 38.0 : 45.0;
-    final iconFontSize = isSmallScreen ? 18.0 : 22.0;
-    final titleFontSize = isSmallScreen ? 12.0 : 14.0;
-    final subtitleFontSize = isSmallScreen ? 10.0 : 12.0;
-    final itemSpacing = isSmallScreen ? 10.0 : 16.0;
-    
-    if (_isLoading) {
-      return Container(
-        padding: EdgeInsets.all(isSmallScreen ? 14 : 20),
-        child: const Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
-        ),
-      );
-    }
-
-    if (_recentAchievements.isEmpty) {
-      return _buildEmptyState(
-        'No achievements yet',
-        'Complete challenges and earn badges to see them here!',
-        isSmallScreen: isSmallScreen,
-      );
-    }
-
-    return Column(
-      children: _recentAchievements.take(3).map((achievement) {
-        final isBadge = achievement['type'] == 'badge';
-        final date = achievement['date'] as DateTime;
+  Widget _buildIncompleteBadges({bool isSmallScreen = false}) {
+    return ListenableBuilder(
+      listenable: _gameDataService,
+      builder: (context, _) {
+        final availableBadges = _gameDataService.getAvailableBadgesWithProgress();
+        final cardPadding = isSmallScreen ? 12.0 : 16.0;
+        final iconContainerSize = isSmallScreen ? 38.0 : 45.0;
+        final iconFontSize = isSmallScreen ? 18.0 : 22.0;
+        final titleFontSize = isSmallScreen ? 12.0 : 14.0;
+        final subtitleFontSize = isSmallScreen ? 10.0 : 12.0;
+        final itemSpacing = isSmallScreen ? 10.0 : 16.0;
         
-        return Container(
-          margin: EdgeInsets.only(bottom: isSmallScreen ? 8 : 12),
-          padding: EdgeInsets.all(cardPadding),
-          decoration: BoxDecoration(
-            color: AppColors.darkCard,
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border.all(
-              color: AppColors.darkBorder.withOpacity(0.5),
+        if (_isLoading) {
+          return Container(
+            padding: EdgeInsets.all(isSmallScreen ? 14 : 20),
+            child: const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
             ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: iconContainerSize,
-                height: iconContainerSize,
-                decoration: BoxDecoration(
-                  color: isBadge 
-                      ? AppColors.secondary.withOpacity(0.2)
-                      : AppColors.primary.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 12),
+          );
+        }
+
+        if (availableBadges.isEmpty) {
+          return _buildEmptyState(
+            'All badges completed!',
+            'Congratulations! You have earned all available badges.',
+            isSmallScreen: isSmallScreen,
+          );
+        }
+
+        // Show only first 3 incomplete badges
+        final badgesToShow = availableBadges.take(3).toList();
+        
+        return Column(
+          children: badgesToShow.map((badgeData) {
+            final def = badgeData['definition'] as BadgeDefinition;
+            final progress = badgeData['progress'] as double;
+            final rarityColor = _getRarityColor(def.rarity);
+            
+            return Container(
+              margin: EdgeInsets.only(bottom: isSmallScreen ? 8 : 12),
+              padding: EdgeInsets.all(cardPadding),
+              decoration: BoxDecoration(
+                color: AppColors.darkCard,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(
+                  color: rarityColor.withOpacity(0.3),
                 ),
-                child: Center(
-                  child: Text(
-                    achievement['icon'] ?? '🎯',
-                    style: TextStyle(fontSize: iconFontSize),
+              ),
+              child: Row(
+                children: [
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(
+                        width: iconContainerSize,
+                        height: iconContainerSize,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 12),
+                        ),
+                        child: Center(
+                          child: Text(
+                            def.icon,
+                            style: TextStyle(
+                              fontSize: iconFontSize,
+                              color: Colors.grey[400],
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (progress > 0)
+                        SizedBox(
+                          width: iconContainerSize,
+                          height: iconContainerSize,
+                          child: CircularProgressIndicator(
+                            value: progress,
+                            strokeWidth: 2,
+                            backgroundColor: Colors.grey[700],
+                            valueColor: AlwaysStoppedAnimation<Color>(rarityColor),
+                          ),
+                        ),
+                    ],
                   ),
-                ),
-              ),
-              SizedBox(width: itemSpacing),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      achievement['name'] ?? '',
-                      style: TextStyle(
-                        fontSize: titleFontSize,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.lightText,
-                      ),
-                      overflow: TextOverflow.ellipsis,
+                  SizedBox(width: itemSpacing),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          def.name,
+                          style: TextStyle(
+                            fontSize: titleFontSize,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.lightText,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          def.unlockCondition,
+                          style: TextStyle(
+                            fontSize: subtitleFontSize,
+                            color: AppColors.lightTextSecondary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
-                    Text(
-                      isBadge ? 'Badge earned' : 'Challenge completed',
-                      style: TextStyle(
-                        fontSize: subtitleFontSize,
-                        color: AppColors.lightTextSecondary,
-                      ),
+                  ),
+                  Text(
+                    '${(progress * 100).toInt()}%',
+                    style: TextStyle(
+                      fontSize: subtitleFontSize,
+                      color: rarityColor,
+                      fontWeight: FontWeight.w600,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              Text(
-                _formatDate(date),
-                style: TextStyle(
-                  fontSize: subtitleFontSize,
-                  color: AppColors.lightTextSecondary,
-                ),
-              ),
-            ],
-          ),
+            );
+          }).toList(),
         );
-      }).toList(),
+      },
     );
   }
 
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final diff = now.difference(date);
-    
-    if (diff.inDays == 0) return 'Today';
-    if (diff.inDays == 1) return 'Yesterday';
-    if (diff.inDays < 7) return '${diff.inDays}d ago';
-    return '${date.day}/${date.month}';
-  }
+
 
   Widget _buildChallengeCard(UserChallenge challenge, {bool isSmallScreen = false}) {
     final cardPadding = isSmallScreen ? 12.0 : 16.0;

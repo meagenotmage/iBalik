@@ -1023,24 +1023,9 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (isApproved && viewerIsClaimer)
-                    ClaimsButton(
-                      label: 'Item Claimed',
-                      icon: Icons.check_circle,
-                      type: ClaimsButtonType.primary,
-                      isLoading: _processing,
-                      onPressed: () async {
-                        final confirm = await _showConfirmationDialog(
-                          'Confirm Claim Item',
-                          'Are you sure you want to mark this claim as completed and claim the item? This action cannot be undone.',
-                        );
-                        if (!confirm) return;
-                        await _markSuccessfulClaim();
-
-                        // Award karma/points to founder - handled in _markSuccessfulClaim via GameService
-                      },
-                    )
-                  else
+                  // Removed Item Claimed button - claimers just see status
+                  // Show status container for all states
+                  if (true) // Always show status
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 16),
