@@ -1097,12 +1097,6 @@ Future<void> _updateProfile(
             fontWeight: FontWeight.w600,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit, color: Colors.black87),
-            onPressed: _showEditProfileDialog,
-          ),
-        ],
       ),
       body: SafeArea(
         child: RefreshIndicator(

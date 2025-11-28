@@ -47,9 +47,9 @@ class AppSpacing {
 
 /// Border Radius System - 20px Global Standard
 class AppRadius {
-  static const double standard = 8.0;  // Global 20px radius for all components
+  static const double standard = 10.0;  // Global 20px radius for all components
   static const double full = 999.0;     // Only for circular elements
-  
+  S
   // Legacy aliases for gradual migration (all map to 8px)
   static const double sm = 8.0;
   static const double md = 8.0;

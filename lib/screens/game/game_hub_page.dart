@@ -624,12 +624,10 @@ class _GameHubPageState extends State<GameHubPage> {
   }
 
   Widget _buildBadgesGrid(List<UserBadge> badges, {bool isSmallScreen = false}) {
-    final badgeSize = isSmallScreen ? 65.0 : 80.0;
-    final iconContainerSize = isSmallScreen ? 36.0 : 45.0;
-    final iconFontSize = isSmallScreen ? 18.0 : 24.0;
+    final iconContainerSize = isSmallScreen ? 32.0 : 40.0;
+    final iconFontSize = isSmallScreen ? 16.0 : 20.0;
     final nameFontSize = isSmallScreen ? 9.0 : 10.0;
-    final listHeight = isSmallScreen ? 85.0 : 100.0;
-    final itemPadding = isSmallScreen ? 8.0 : 12.0;
+    final itemPadding = isSmallScreen ? 6.0 : 10.0;
     final itemSpacing = isSmallScreen ? 8.0 : 12.0;
     
     if (badges.isEmpty) {
@@ -652,16 +650,16 @@ class _GameHubPageState extends State<GameHubPage> {
       );
     }
 
-    return SizedBox(
-      height: listHeight,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: badges.length > 4 ? 4 : badges.length,
-        itemBuilder: (context, index) {
-          final badge = badges[index];
-          final rarityColor = _getRarityColor(badge.rarity);
-          
-          return GestureDetector(
+    // Show max 4 badges in a row that fills the width
+    final badgesToShow = badges.take(4).toList();
+    
+    return Row(
+      children: List.generate(badgesToShow.length, (index) {
+        final badge = badgesToShow[index];
+        final rarityColor = _getRarityColor(badge.rarity);
+        
+        return Expanded(
+          child: GestureDetector(
             onTap: () {
               Navigator.push(
                 context,
@@ -669,8 +667,7 @@ class _GameHubPageState extends State<GameHubPage> {
               );
             },
             child: Container(
-              width: badgeSize,
-              margin: EdgeInsets.only(right: itemSpacing),
+              margin: EdgeInsets.only(right: index < badgesToShow.length - 1 ? itemSpacing : 0),
               padding: EdgeInsets.all(itemPadding),
               decoration: BoxDecoration(
                 color: AppColors.darkCard,
@@ -681,7 +678,7 @@ class _GameHubPageState extends State<GameHubPage> {
                 ),
               ),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
                     width: iconContainerSize,
@@ -697,7 +694,7 @@ class _GameHubPageState extends State<GameHubPage> {
                       ),
                     ),
                   ),
-                  SizedBox(height: isSmallScreen ? 4 : 8),
+                  SizedBox(height: isSmallScreen ? 4 : 6),
                   Text(
                     badge.name,
                     textAlign: TextAlign.center,
@@ -712,9 +709,9 @@ class _GameHubPageState extends State<GameHubPage> {
                 ],
               ),
             ),
-          );
-        },
-      ),
+          ),
+        );
+      }),
     );
   }
 
