@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../utils/app_theme.dart';
@@ -136,7 +137,7 @@ class ClaimReviewPage extends StatelessWidget {
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(
-                                '${claimData['claimerName'] ?? 'J. Smith'}\nEmail: ${claimData['claimerEmail'] ?? 'jane.smith@wvsu.edu.ph'}\nContact: ${claimData['claimerProvidedContactValue'] ?? claimData['claimerPhone'] ?? 'No contact provided'}',
+                                '${claimData['claimerName'] ?? 'J. Smith'}\nEmail: ${claimData['claimerEmail'] ?? 'jane.smith@wvsu.edu.ph'}\n${claimData['claimerContactMethod'] ?? 'Contact'}: ${claimData['claimerContactValue'] ?? 'No contact provided'}',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.grey[600],
@@ -275,7 +276,7 @@ class ClaimReviewPage extends StatelessWidget {
               const SizedBox(height: 20),
             ],
             
-            // Seeker (founder) Contact Information Card
+            // Claimer Contact Information Card
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -297,20 +298,78 @@ class ClaimReviewPage extends StatelessWidget {
                     style: ClaimsTypography.subtitle,
                   ),
                   SizedBox(height: ClaimsSpacing.md),
-                  ClaimsWidgets.infoRow(
+                  
+                  // Name Card
+                  _buildCompactInfoCard(
+                    context,
                     icon: Icons.person,
-                    text: claimData['claimerName'] ?? 'Unknown Claimer',
+                    iconColor: ClaimsColors.info,
+                    label: 'Claimer Name',
+                    value: claimData['claimerName'] ?? 'Unknown Claimer',
                   ),
+                  
                   SizedBox(height: ClaimsSpacing.sm),
-                  ClaimsWidgets.infoRow(
-                    icon: Icons.phone,
-                    text: claimData['claimerProvidedContactValue'] ?? claimData['claimerPhone'] ?? 'No contact provided',
-                  ),
-                  SizedBox(height: ClaimsSpacing.sm),
-                  ClaimsWidgets.infoRow(
-                    icon: Icons.email,
-                    text: claimData['claimerEmail'] ?? 'No email provided',
-                  ),
+                  
+                  // Render only the selected contact method
+                  ...() {
+                    final contactMethod = claimData['claimerContactMethod'];
+                    final contactValue = claimData['claimerContactValue'];
+                    
+                    if (contactMethod == null || contactValue == null || contactValue.toString().isEmpty) {
+                      return [
+                        _buildCompactInfoCard(
+                          context,
+                          icon: Icons.contact_phone,
+                          iconColor: Colors.grey,
+                          label: 'Contact Information',
+                          value: 'Not provided',
+                          onTap: null,
+                        ),
+                      ];
+                    }
+                    
+                    // Determine icon, color, and label based on contact method
+                    IconData icon;
+                    Color iconColor;
+                    String label;
+                    String? subtitle;
+                    
+                    if (contactMethod == 'Phone Call') {
+                      icon = Icons.phone;
+                      iconColor = const Color(0xFF4CAF50);
+                      label = 'Phone Number';
+                      subtitle = 'Tap to copy';
+                    } else if (contactMethod == 'Facebook Messenger') {
+                      icon = Icons.messenger;
+                      iconColor = const Color(0xFF0084FF);
+                      label = 'Facebook Messenger';
+                      subtitle = 'Tap to copy profile link';
+                    } else if (contactMethod == 'Email') {
+                      icon = Icons.email;
+                      iconColor = const Color(0xFFFF9800);
+                      label = 'Email Address';
+                      subtitle = 'Tap to copy';
+                    } else {
+                      icon = Icons.contact_phone;
+                      iconColor = Colors.grey;
+                      label = contactMethod.toString();
+                      subtitle = 'Tap to copy';
+                    }
+                    
+                    return [
+                      _buildCompactInfoCard(
+                        context,
+                        icon: icon,
+                        iconColor: iconColor,
+                        label: label,
+                        value: contactValue.toString(),
+                        subtitle: subtitle,
+                        onTap: () {
+                          _copyToClipboard(context, contactValue.toString());
+                        },
+                      ),
+                    ];
+                  }(),
                 ],
               ),
             ),
@@ -767,6 +826,120 @@ class ClaimReviewPage extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _copyToClipboard(BuildContext context, String text) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Copied to clipboard'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  Widget _buildCompactInfoCard(
+    BuildContext context, {
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String value,
+    String? subtitle,
+    VoidCallback? onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: EdgeInsets.all(ClaimsSpacing.md),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: iconColor.withValues(alpha: 0.2),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  icon,
+                  size: 20,
+                  color: iconColor,
+                ),
+              ),
+              SizedBox(width: ClaimsSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: ClaimsTypography.caption.copyWith(
+                        fontSize: 11,
+                      ),
+                    ),
+                    SizedBox(height: ClaimsSpacing.xxs),
+                    Text(
+                      value,
+                      style: ClaimsTypography.bodyBold.copyWith(
+                        fontSize: 15,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (subtitle != null && subtitle.isNotEmpty) ...[
+                      SizedBox(height: ClaimsSpacing.xxs),
+                      Text(
+                        subtitle,
+                        style: ClaimsTypography.caption.copyWith(
+                          fontSize: 11,
+                          fontStyle: FontStyle.italic,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (onTap != null) ...[
+                SizedBox(width: ClaimsSpacing.xs),
+                Container(
+                  padding: EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: iconColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.content_copy,
+                    size: 16,
+                    color: iconColor,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

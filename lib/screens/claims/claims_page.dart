@@ -1422,12 +1422,8 @@ Widget _buildClaimerAdditionalInfo(Map<String, dynamic> claim) {
   Widget _buildMyClaimsCTA(Map<String, dynamic> claim, String status, Color statusColor) {
     switch (status) {
       case 'pending':
-        return _buildSingleCTA(
-          label: 'Track Status',
-          icon: Icons.visibility_outlined,
-          color: statusColor,
-          onTap: () => _navigateToDetails(claim),
-        );
+        // No detail view for pending claims
+        return const SizedBox.shrink();
       
       case 'approved':
         return _buildSingleCTA(
@@ -1438,34 +1434,22 @@ Widget _buildClaimerAdditionalInfo(Map<String, dynamic> claim) {
         );
       
       case 'rejected':
-        return _buildSingleCTA(
-          label: 'View Reason',
-          icon: Icons.info_outline,
-          color: statusColor,
-          onTap: () => _navigateToDetails(claim),
-        );
+        // No detail view for rejected claims
+        return const SizedBox.shrink();
       
       case 'completed':
-        return _buildSingleCTA(
-          label: 'View Details',
-          icon: Icons.receipt_long_outlined,
-          color: statusColor,
-          onTap: () => _navigateToDetails(claim),
-        );
+        // No detail view for completed claims
+        return const SizedBox.shrink();
       
       default:
-        return _buildSingleCTA(
-          label: 'View Details',
-          icon: Icons.arrow_forward,
-          color: statusColor,
-          onTap: () => _navigateToDetails(claim),
-        );
+        return const SizedBox.shrink();
     }
   }
 
   Widget _buildFoundClaimsCTA(Map<String, dynamic> claim, String status, Color statusColor) {
     switch (status) {
       case 'pending':
+        // Needs Review - show review button
         return _buildSingleCTA(
           label: 'Review Claim',
           icon: Icons.rate_review_outlined,
@@ -1474,6 +1458,7 @@ Widget _buildClaimerAdditionalInfo(Map<String, dynamic> claim) {
         );
       
       case 'approved':
+        // Awaiting Return - show both Confirm Return and View Details
         return SizedBox(
           height: 42,
           child: Row(
@@ -1502,28 +1487,15 @@ Widget _buildClaimerAdditionalInfo(Map<String, dynamic> claim) {
         );
       
       case 'rejected':
-        return _buildSingleCTA(
-          label: 'View Details',
-          icon: Icons.info_outline,
-          color: statusColor,
-          onTap: () => _navigateToDetails(claim),
-        );
+        // No detail view for rejected claim requests
+        return const SizedBox.shrink();
       
       case 'completed':
-        return _buildSingleCTA(
-          label: 'View Details',
-          icon: Icons.receipt_long_outlined,
-          color: statusColor,
-          onTap: () => _navigateToDetails(claim),
-        );
+        // No detail view for completed claim requests
+        return const SizedBox.shrink();
       
       default:
-        return _buildSingleCTA(
-          label: 'View Details',
-          icon: Icons.arrow_forward,
-          color: statusColor,
-          onTap: () => _navigateToDetails(claim),
-        );
+        return const SizedBox.shrink();
     }
   }
 

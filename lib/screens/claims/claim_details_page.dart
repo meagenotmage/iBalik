@@ -35,6 +35,7 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
             'rejectedBy': FirebaseAuth.instance.currentUser?.uid,
             'rejectedAt': FieldValue.serverTimestamp(),
           });
+          if (!mounted) return;
           setState(() {
             _data['status'] = 'rejected';
             _processing = false;
@@ -53,6 +54,7 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
               ),
             );
         } catch (e) {
+          if (!mounted) return;
           setState(() {
             _processing = false;
           });
@@ -136,6 +138,7 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
 
       if (itemDoc != null && itemDoc.exists) {
         final d = itemDoc.data() ?? {};
+        if (!mounted) return;
         setState(() {
           // copy fields if missing
           _data['itemTitle'] = _data['itemTitle'] ??
@@ -160,13 +163,8 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
           _data['founderName'] = _data['founderName'] ??
               d['founderName'] ??
               d['founderDisplayName'];
-          _data['founderPhone'] =
-              _data['founderPhone'] ?? d['founderPhone'] ?? d['finderPhone'];
-          _data['founderEmail'] =
-              _data['founderEmail'] ?? d['founderEmail'] ?? d['finderEmail'];
-          _data['founderMessenger'] = _data['founderMessenger'] ??
-              d['founderMessenger'] ??
-              d['finderMessenger'];
+          _data['founderContactMethod'] = _data['founderContactMethod'] ?? d['founderContactMethod'];
+          _data['founderContactValue'] = _data['founderContactValue'] ?? d['founderContactValue'];
         });
       }
     } catch (_) {}
@@ -248,13 +246,17 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
             .get();
         if (doc.exists) {
           final d = doc.data();
+          if (!mounted) return;
           setState(() {
             _data['founderName'] = _data['founderName'] ??
                 (d?['displayName'] ?? d?['name'] ?? d?['userName']);
-            _data['founderPhone'] = _data['founderPhone'] ?? d?['phone'];
-            _data['founderEmail'] = _data['founderEmail'] ?? d?['email'];
             _data['founderAffiliation'] =
                 _data['founderAffiliation'] ?? d?['affiliation'];
+            // Only load contact if not already set from claim data
+            if (_data['founderContactMethod'] == null && d?['phone'] != null) {
+              _data['founderContactMethod'] = 'Phone Call';
+              _data['founderContactValue'] = d?['phone'];
+            }
           });
         }
       }
@@ -297,6 +299,7 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
 
     if (confirm != true) return;
 
+    if (!mounted) return;
     setState(() {
       _processing = true;
     });
@@ -377,6 +380,7 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
         await gameService.rewardUserVerifiedClaimFulfillment(founderId, itemTitle);
       }
 
+      if (!mounted) return;
       setState(() {
         _data['status'] = 'completed';
         _processing = false;
@@ -396,6 +400,7 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
             ),
           );
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _processing = false;
       });
@@ -437,7 +442,7 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
                 ? 'With ${_data['founderName']}'
                 : 'Location unknown');
         final pickupInstr = _data['pickupInstructions'] ??
-            'Pick up from $pickupLoc. Contact ${_data['founderName'] ?? 'the finder'} at ${_data['founderPhone'] ?? _data['founderEmail'] ?? ''} to arrange time. Bring a valid ID for verification.';
+            'Pick up from $pickupLoc. Contact ${_data['founderName'] ?? 'the finder'} via ${_data['founderContactMethod'] ?? 'their contact method'} to arrange time. Bring a valid ID for verification.';
 
         return Scaffold(
           backgroundColor: Colors.grey[50],
@@ -477,11 +482,7 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
                           Container(
                             width: double.infinity,
                             decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [ClaimsColors.approved, const Color(0xFF388E3C)],
-                              ),
+                              color: ClaimsColors.approved,
                             ),
                             padding: EdgeInsets.symmetric(
                                 vertical: ClaimsSpacing.xl, horizontal: ClaimsSpacing.xl),
@@ -553,80 +554,19 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
                         // Item Details Card
                         Container(
                           margin: EdgeInsets.symmetric(horizontal: ClaimsSpacing.xl),
-                          padding: EdgeInsets.all(ClaimsSpacing.md),
-                          decoration: ClaimsCardStyles.card(),
-                          child: Row(
-                            children: [
-                              // Item Image
-                              ClaimsWidgets.thumbnail(
-                                size: 56,
-                              ),
-                              SizedBox(width: ClaimsSpacing.md),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      (_data['itemTitle'] ??
-                                              _data['title'] ??
-                                              _data['itemName'] ??
-                                              _data['name']) ??
-                                          'Black iPhone 13',
-                                      style: ClaimsTypography.title,
-                                    ),
-                                    SizedBox(height: ClaimsSpacing.xxs),
-                                    Text(
-                                      (_data['itemDescription'] ??
-                                              _data['claimDescription'] ??
-                                              _data['description'] ??
-                                              _data['details']) ??
-                                          'Found in the library, has a cracked screen protector',
-                                      style: ClaimsTypography.body,
-                                    ),
-                                    SizedBox(height: ClaimsSpacing.xs),
-                                    // Found timestamp
-                                    if ((_data['foundAt'] ??
-                                            _data['foundWhen'] ??
-                                            _data['createdAt']) !=
-                                        null)
-                                      ClaimsWidgets.infoRow(
-                                        icon: Icons.calendar_today,
-                                        text: _formatTimestamp(_data['foundAt'] ??
-                                            _data['foundWhen'] ??
-                                            _data['createdAt']),
-                                      ),
-                                    SizedBox(height: ClaimsSpacing.xs),
-                                    ClaimsWidgets.infoRow(
-                                      icon: Icons.location_on,
-                                      text: (_data['location'] ??
-                                              _data['pickupLocation'] ??
-                                              _data['foundAt']) ??
-                                          'Found at Library',
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Contact Card: show the other party's profile depending on who is viewing
-                        Container(
-                          margin: EdgeInsets.symmetric(horizontal: ClaimsSpacing.xl),
                           padding: EdgeInsets.all(ClaimsSpacing.lg),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: ClaimsColors.info.withValues(alpha: 0.2),
+                              color: Colors.grey[300]!,
                               width: 1,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.04),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
+                                color: Colors.black.withValues(alpha: 0.03),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
                               ),
                             ],
                           ),
@@ -636,137 +576,219 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
                               Row(
                                 children: [
                                   Container(
-                                    padding: EdgeInsets.all(ClaimsSpacing.sm),
+                                    padding: EdgeInsets.all(8),
                                     decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          ClaimsColors.info,
-                                          ClaimsColors.info.withValues(alpha: 0.8),
-                                        ],
-                                      ),
-                                      shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: ClaimsColors.info.withValues(alpha: 0.3),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ],
+                                      color: AppColors.primary.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(8),
                                     ),
-                                    child: const Icon(
-                                      Icons.person,
-                                      color: Colors.white,
-                                      size: 24,
+                                    child: Icon(
+                                      Icons.info_outline,
+                                      color: AppColors.primary,
+                                      size: 20,
                                     ),
                                   ),
                                   SizedBox(width: ClaimsSpacing.sm),
+                                  Text(
+                                    'Item Posted',
+                                    style: ClaimsTypography.subtitle.copyWith(
+                                      color: Colors.black87,
+                                      fontSize: 17,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: ClaimsSpacing.md),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Item Image
+                                  Container(
+                                    width: 64,
+                                    height: 64,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[100],
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: Colors.grey[300]!,
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(11),
+                                      child: Icon(
+                                        Icons.image,
+                                        color: Colors.grey[400],
+                                        size: 32,
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(width: ClaimsSpacing.md),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          // If the viewer is the founder, show claimer info; otherwise show founder info
-                                          viewerIsFounder
-                                              ? (_data['claimerName'] ??
-                                                  'Claimer')
-                                              : (_data['founderName'] ??
-                                                  'Item Finder'),
-                                          style: ClaimsTypography.title.copyWith(
-                                            color: ClaimsColors.info,
+                                          (_data['itemTitle'] ??
+                                                  _data['title'] ??
+                                                  _data['itemName'] ??
+                                                  _data['name']) ??
+                                              'Black iPhone 13',
+                                          style: ClaimsTypography.subtitle.copyWith(
+                                            fontSize: 16,
                                           ),
                                         ),
                                         SizedBox(height: ClaimsSpacing.xxs),
                                         Text(
-                                          viewerIsFounder
-                                              ? 'Claimer — contact them to verify ownership'
-                                              : 'Contact them to arrange pickup',
-                                          style: ClaimsTypography.caption,
+                                          (_data['itemDescription'] ??
+                                                  _data['claimDescription'] ??
+                                                  _data['description'] ??
+                                                  _data['details']) ??
+                                              'Found in the library, has a cracked screen protector',
+                                          style: ClaimsTypography.body,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
                                       ],
                                     ),
                                   ),
                                 ],
                               ),
-                              SizedBox(height: ClaimsSpacing.lg),
-                              // Details: show claimer contact when founder views, otherwise show founder contact
-                              if (viewerIsFounder)
-                                _buildContactRow(
-                                  icon: Icons.person_outline,
-                                  title: _data['claimerName'] ?? 'Claimer',
-                                  subtitle: '',
-                                  isVerified: false,
-                                )
-                              else
-                                _buildContactRow(
-                                  icon: Icons.person_outline,
-                                  title: _data['founderName'] ?? 'Finder',
-                                  subtitle: _data['founderAffiliation'] ?? '',
-                                  isVerified: true,
-                                ),
                               SizedBox(height: ClaimsSpacing.sm),
-                              if (viewerIsFounder)
-                                _buildContactRow(
-                                  icon: Icons.phone_outlined,
-                                  title: _data['claimerProvidedContactValue'] ??
-                                      _data['claimerPhone'] ??
-                                      '',
-                                  subtitle:
-                                      _data['claimerProvidedContactMethod'] ??
-                                          'Contact method',
-                                  onCopy: () => _copyToClipboard(
-                                      context,
-                                      _data['claimerProvidedContactValue'] ??
-                                          _data['claimerPhone'] ??
-                                          ''),
-                                )
-                              else
-                                _buildContactRow(
-                                  icon: Icons.phone_outlined,
-                                  title: _data['founderPhone'] ?? '',
-                                  subtitle: 'Mobile number',
-                                  onCopy: () => _copyToClipboard(
-                                      context, _data['founderPhone'] ?? ''),
+                              Container(
+                                padding: EdgeInsets.all(ClaimsSpacing.sm),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: Colors.grey[200]!,
+                                    width: 1,
+                                  ),
                                 ),
+                                child: Column(
+                                  children: [
+                                    // Found timestamp
+                                    if ((_data['foundAt'] ??
+                                            _data['foundWhen'] ??
+                                            _data['createdAt']) !=
+                                        null) ...[
+                                      ClaimsWidgets.infoRow(
+                                        icon: Icons.calendar_today,
+                                        text: _formatTimestamp(_data['foundAt'] ??
+                                            _data['foundWhen'] ??
+                                            _data['createdAt']),
+                                        iconColor: AppColors.primary,
+                                      ),
+                                      SizedBox(height: ClaimsSpacing.xs),
+                                    ],
+                                    ClaimsWidgets.infoRow(
+                                      icon: Icons.location_on,
+                                      text: (_data['location'] ??
+                                              _data['pickupLocation'] ??
+                                              _data['foundAt']) ??
+                                          'Found at Library',
+                                      iconColor: AppColors.primary,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: ClaimsSpacing.xl),
+
+                        // Contact Card: show the other party's profile depending on who is viewing
+                        Container(
+                          margin: EdgeInsets.symmetric(horizontal: ClaimsSpacing.xl),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Title
+                              Padding(
+                                padding: EdgeInsets.only(bottom: ClaimsSpacing.sm),
+                                child: Text(
+                                  'Contact Information',
+                                  style: ClaimsTypography.title.copyWith(
+                                    fontSize: 20,
+                                  ),
+                                ),
+                              ),
+                              
+                              // Name Card with Verified Badge
+                              _buildCompactInfoCard(
+                                icon: Icons.person,
+                                iconColor: ClaimsColors.info,
+                                label: viewerIsFounder ? 'Claimer' : 'Item Finder',
+                                value: viewerIsFounder
+                                    ? (_data['claimerName'] ?? 'Unknown')
+                                    : (_data['founderName'] ?? 'Unknown'),
+                                isVerified: !viewerIsFounder,
+                                affiliation: viewerIsFounder ? null : (_data['founderAffiliation'] ?? ''),
+                              ),
+                              
                               SizedBox(height: ClaimsSpacing.sm),
-                              if (viewerIsFounder)
-                                _buildContactRow(
-                                  icon: Icons.email_outlined,
-                                  title: _data['claimerEmail'] ?? '',
-                                  subtitle: 'Email',
-                                  onCopy: () => _copyToClipboard(
-                                      context, _data['claimerEmail'] ?? ''),
-                                )
-                              else
-                                _buildContactRow(
-                                  icon: Icons.email_outlined,
-                                  title: _data['founderEmail'] ?? '',
-                                  subtitle: 'Email',
-                                  onCopy: () => _copyToClipboard(
-                                      context, _data['founderEmail'] ?? ''),
-                                ),
-                              if ((!viewerIsFounder &&
-                                      (_data['founderMessenger'] ?? '')
-                                          .toString()
-                                          .isNotEmpty) ||
-                                  (viewerIsFounder &&
-                                      (_data['claimerMessenger'] ?? '')
-                                          .toString()
-                                          .isNotEmpty)) ...[
-                                SizedBox(height: ClaimsSpacing.sm),
-                                _buildContactRow(
-                                  icon: Icons.message_outlined,
-                                  title: viewerIsFounder
-                                      ? (_data['claimerMessenger'] ?? '')
-                                      : (_data['founderMessenger'] ?? ''),
-                                  subtitle: 'Messenger',
-                                  onCopy: () => _copyToClipboard(
-                                      context,
-                                      viewerIsFounder
-                                          ? (_data['claimerMessenger'] ?? '')
-                                          : (_data['founderMessenger'] ?? '')),
-                                ),
-                              ],
+                              
+                              // Render only the selected contact method
+                              ...() {
+                                final contactMethod = viewerIsFounder
+                                    ? _data['claimerContactMethod']
+                                    : _data['founderContactMethod'];
+                                final contactValue = viewerIsFounder
+                                    ? _data['claimerContactValue']
+                                    : _data['founderContactValue'];
+                                
+                                if (contactMethod == null || contactValue == null || contactValue.toString().isEmpty) {
+                                  return [
+                                    _buildCompactInfoCard(
+                                      icon: Icons.contact_phone,
+                                      iconColor: Colors.grey,
+                                      label: 'Contact Information',
+                                      value: 'Not provided',
+                                      onTap: null,
+                                    ),
+                                  ];
+                                }
+                                
+                                // Determine icon, color, and label based on contact method
+                                IconData icon;
+                                Color iconColor;
+                                String label;
+                                String? subtitle;
+                                
+                                if (contactMethod == 'Phone Call') {
+                                  icon = Icons.phone;
+                                  iconColor = const Color(0xFF4CAF50);
+                                  label = 'Phone Number';
+                                  subtitle = 'Tap to copy';
+                                } else if (contactMethod == 'Facebook Messenger') {
+                                  icon = Icons.messenger;
+                                  iconColor = const Color(0xFF0084FF);
+                                  label = 'Facebook Messenger';
+                                  subtitle = 'Tap to copy profile link';
+                                } else if (contactMethod == 'Email') {
+                                  icon = Icons.email;
+                                  iconColor = const Color(0xFFFF9800);
+                                  label = 'Email Address';
+                                  subtitle = 'Tap to copy';
+                                } else {
+                                  icon = Icons.contact_phone;
+                                  iconColor = Colors.grey;
+                                  label = contactMethod.toString();
+                                  subtitle = 'Tap to copy';
+                                }
+                                
+                                return [
+                                  _buildCompactInfoCard(
+                                    icon: icon,
+                                    iconColor: iconColor,
+                                    label: label,
+                                    value: contactValue.toString(),
+                                    subtitle: subtitle,
+                                    onTap: () {
+                                      _copyToClipboard(context, contactValue.toString());
+                                    },
+                                  ),
+                                ];
+                              }(),
                             ],
                           ),
                         ),
@@ -777,19 +799,19 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
                           margin: EdgeInsets.symmetric(horizontal: ClaimsSpacing.xl),
                           padding: EdgeInsets.all(ClaimsSpacing.lg),
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                ClaimsColors.approvedLight,
-                                Colors.white,
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
+                            color: Colors.white,
                             borderRadius: BorderRadius.circular(AppRadius.lg),
                             border: Border.all(
-                              color: ClaimsColors.approved.withValues(alpha: 0.3),
-                              width: 1.5,
+                              color: Colors.grey[300]!,
+                              width: 1,
                             ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.03),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -799,12 +821,12 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
                                   Container(
                                     padding: EdgeInsets.all(10),
                                     decoration: BoxDecoration(
-                                      color: ClaimsColors.approved,
+                                      color: ClaimsColors.approved.withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(AppRadius.md),
                                     ),
-                                    child: const Icon(
+                                    child: Icon(
                                       Icons.location_on,
-                                      color: Colors.white,
+                                      color: ClaimsColors.approved,
                                       size: 24,
                                     ),
                                   ),
@@ -1107,6 +1129,158 @@ color: ClaimsColors.info,
 ),
 );
 }
+
+Widget _buildCompactInfoCard({
+  required IconData icon,
+  required Color iconColor,
+  required String label,
+  required String value,
+  bool isVerified = false,
+  String? affiliation,
+  String? subtitle,
+  VoidCallback? onTap,
+}) {
+  return Material(
+    color: Colors.transparent,
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: EdgeInsets.all(ClaimsSpacing.md),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: iconColor.withValues(alpha: 0.2),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                icon,
+                size: 20,
+                color: iconColor,
+              ),
+            ),
+            SizedBox(width: ClaimsSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: ClaimsTypography.caption.copyWith(
+                      fontSize: 11,
+                    ),
+                  ),
+                  SizedBox(height: ClaimsSpacing.xxs),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          value,
+                          style: ClaimsTypography.bodyBold.copyWith(
+                            fontSize: 15,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (isVerified)
+                        Container(
+                          margin: EdgeInsets.only(left: ClaimsSpacing.xs),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: ClaimsColors.approved.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.verified,
+                                size: 12,
+                                color: ClaimsColors.approved,
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                'Verified',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: ClaimsColors.approved,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                  if (affiliation != null && affiliation.isNotEmpty) ...[
+                    SizedBox(height: ClaimsSpacing.xxs),
+                    Text(
+                      affiliation,
+                      style: ClaimsTypography.caption.copyWith(
+                        fontSize: 12,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                  if (subtitle != null && subtitle.isNotEmpty) ...[
+                    SizedBox(height: ClaimsSpacing.xxs),
+                    Text(
+                      subtitle,
+                      style: ClaimsTypography.caption.copyWith(
+                        fontSize: 11,
+                        fontStyle: FontStyle.italic,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (onTap != null) ...[
+              SizedBox(width: ClaimsSpacing.xs),
+              Container(
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.content_copy,
+                  size: 16,
+                  color: iconColor,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 Widget _buildGuideline(String text) {
 return Row(
 crossAxisAlignment: CrossAxisAlignment.start,
