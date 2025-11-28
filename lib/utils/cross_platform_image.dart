@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'image_picker_data.dart';
 
@@ -66,53 +65,22 @@ class CrossPlatformImage extends StatelessWidget {
         },
       );
     } else if (imageData != null) {
-      // Display picked image (before upload)
-      if (kIsWeb) {
-        // Web: Use Image.memory with Uint8List
-        imageWidget = Image.memory(
-          imageData!.bytes,
-          width: width,
-          height: height,
-          fit: fit,
-          errorBuilder: (context, error, stackTrace) {
-            return errorWidget ??
-                Container(
-                  width: width,
-                  height: height,
-                  color: Colors.grey[300],
-                  child: const Icon(Icons.broken_image, color: Colors.grey),
-                );
-          },
-        );
-      } else {
-        // Mobile/Desktop: Use Image.file
-        final file = imageData!.file;
-        if (file != null) {
-          imageWidget = Image.file(
-            file,
-            width: width,
-            height: height,
-            fit: fit,
-            errorBuilder: (context, error, stackTrace) {
-              return errorWidget ??
-                  Container(
-                    width: width,
-                    height: height,
-                    color: Colors.grey[300],
-                    child: const Icon(Icons.broken_image, color: Colors.grey),
-                  );
-            },
-          );
-        } else {
-          // Fallback to memory if file is not available
-          imageWidget = Image.memory(
-            imageData!.bytes,
-            width: width,
-            height: height,
-            fit: fit,
-          );
-        }
-      }
+      // Display picked image using bytes (works on all platforms)
+      imageWidget = Image.memory(
+        imageData!.bytes,
+        width: width,
+        height: height,
+        fit: fit,
+        errorBuilder: (context, error, stackTrace) {
+          return errorWidget ??
+              Container(
+                width: width,
+                height: height,
+                color: Colors.grey[300],
+                child: const Icon(Icons.broken_image, color: Colors.grey),
+              );
+        },
+      );
     } else {
       // Should not reach here due to assertion
       imageWidget = Container(

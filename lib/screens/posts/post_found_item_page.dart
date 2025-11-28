@@ -1,9 +1,9 @@
+import 'dart:async';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'dart:io';
-import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/page_transitions.dart';
 import '../../utils/image_picker_data.dart';
@@ -27,7 +27,10 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
   final LostItemService _lostItemService = LostItemService();
   final ImagePicker _imagePicker = ImagePicker();
   
-  final List<ImagePickerData> _selectedImages = [];
+  // Use a private backing list and getter to ensure type safety on web
+  final List<ImagePickerData> _imagesList = <ImagePickerData>[];
+  List<ImagePickerData> get _selectedImages => _imagesList;
+  
   bool _isUploading = false;
   int _uploadedCount = 0;
   int _totalImages = 0;
@@ -908,7 +911,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                                     onTap: () {
                                       if (mounted) {
                                         setState(() {
-                                          _selectedImages.removeAt(index);
+                                          _imagesList.removeAt(index);
                                         });
                                       }
                                     },
@@ -1338,7 +1341,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
         }
       } else {
         // For gallery on Android 13+, use photos permission
-        if (Platform.isAndroid) {
+        if (!kIsWeb) {
           final androidInfo = await Permission.photos.status;
           if (androidInfo.isDenied) {
             final status = await Permission.photos.request();
@@ -1392,27 +1395,37 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
       if (source == ImageSource.gallery) {
         // Try to pick multiple images from gallery
         try {
-          final List<XFile> images = await _imagePicker.pickMultiImage(
+          final List<XFile>? pickedImages = await _imagePicker.pickMultiImage(
             maxWidth: 1024,
             maxHeight: 1024,
             imageQuality: 70,
           );
           
-          if (images.isNotEmpty) {
+          if (pickedImages != null && pickedImages.isNotEmpty) {
             if (!mounted) return;
             
-            // Convert XFiles to ImagePickerData
-            final List<ImagePickerData> newImages = [];
-            for (int i = 0; i < images.length && i < remainingSlots; i++) {
-              final imageData = await ImagePickerData.fromXFile(images[i]);
-              newImages.add(imageData);
+            // Convert XFiles to ImagePickerData explicitly
+            final List<ImagePickerData> newImages = <ImagePickerData>[];
+            for (int i = 0; i < pickedImages.length && i < remainingSlots; i++) {
+              try {
+                final XFile xfile = pickedImages[i];
+                final ImagePickerData imageData = await ImagePickerData.fromXFile(xfile);
+                newImages.add(imageData);
+              } catch (e) {
+                debugPrint('Error converting image $i: $e');
+              }
             }
             
-            setState(() {
-              _selectedImages.addAll(newImages);
-            });
+            if (newImages.isNotEmpty) {
+              setState(() {
+                // Explicitly add each item to ensure type safety
+                for (final img in newImages) {
+                  _imagesList.add(img);
+                }
+              });
+            }
             
-            if (images.length > remainingSlots && mounted) {
+            if (pickedImages.length > remainingSlots && mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Only $remainingSlots more photo(s) can be added'),
@@ -1433,7 +1446,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
             if (!mounted) return;
             final imageData = await ImagePickerData.fromXFile(image);
             setState(() {
-              _selectedImages.add(imageData);
+              _imagesList.add(imageData);
             });
           }
         }
@@ -1449,7 +1462,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
           if (!mounted) return;
           final imageData = await ImagePickerData.fromXFile(image);
           setState(() {
-            _selectedImages.add(imageData);
+            _imagesList.add(imageData);
           });
         }
       }
@@ -1630,19 +1643,17 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
             },
           );
         } else {
-          // Mobile/Desktop: Use file upload
-          final files = _selectedImages
-              .map((img) => img.file)
-              .where((file) => file != null)
-              .cast<File>()
-              .toList();
+          // Use bytes for all platforms to avoid File type conflicts
+          final imagesBytes = _selectedImages.map((img) => img.bytes).toList().cast<Uint8List>();
+          final fileNames = _selectedImages.map((img) => img.name).toList();
           
           itemId = await _lostItemService.createLostItem(
             itemName: _titleController.text,
             description: _descriptionController.text,
             category: _selectedCategory,
             location: _selectedLocation,
-            images: files,
+            imagesBytes: imagesBytes,
+            imageFileNames: fileNames,
             dateFound: _selectedDate.toIso8601String(),
             onImageUploadProgress: (current, total) {
               if (mounted) {
@@ -1747,9 +1758,8 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
       }
       
       // Prepare images for drop-off page
-      final imagesForDropOff = kIsWeb 
-          ? _selectedImages  // Keep ImagePickerData for web
-          : _selectedImages.map((img) => img.file).where((f) => f != null).toList();  // Extract File for mobile
+      // Don't pass images directly, pass the ImagePickerData
+      // drop_off_success_page will handle extraction
       
       final itemData = {
         'title': _titleController.text,
@@ -1759,8 +1769,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
         'date': _selectedDate,
         'dropOffLocation': dropOffLocation,
         'availability': _selectedAvailability,
-        'images': imagesForDropOff,
-        'imagePickerData': _selectedImages,  // Keep original ImagePickerData
+        'imagePickerData': _selectedImages,  // Pass ImagePickerData for cross-platform
       };
       
       Navigator.push(

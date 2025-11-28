@@ -1,10 +1,9 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import '../../services/lost_item_service.dart';
 import '../../services/activity_service.dart';
 import '../../services/game_service.dart'; // Import GameService
 import '../../utils/image_picker_data.dart';
-import 'dart:io';
 
 class DropOffSuccessPage extends StatefulWidget {
   final Map<String, dynamic> itemData;
@@ -49,61 +48,32 @@ class _DropOffSuccessPageState extends State<DropOffSuccessPage> {
       final date = widget.itemData['date'];
       final String dateFound = date is DateTime ? date.toIso8601String() : (date?.toString() ?? DateTime.now().toIso8601String());
 
-      // Extract ImagePickerData if available (preferred), otherwise fallback to File list
+      // Extract ImagePickerData (should always be available now)
       final imagePickerDataList = widget.itemData['imagePickerData'] as List<dynamic>?;
-      final imagesList = widget.itemData['images'] as List<dynamic>?;
       
-      final String createdId;
-      
-      if (kIsWeb) {
-        // Web: Use ImagePickerData to get bytes
-        final pickerData = imagePickerDataList?.cast<ImagePickerData>() ?? [];
-        final bytes = pickerData.map((img) => img.bytes).toList();
-        final names = pickerData.map((img) => img.name).toList();
-        
-        createdId = await _lostItemService.createLostItem(
-          itemName: widget.itemData['title'] ?? widget.itemData['itemName'] ?? 'Untitled',
-          description: widget.itemData['description'] ?? '',
-          category: widget.itemData['category'] ?? 'Uncategorized',
-          location: widget.itemData['location'] ?? 'Unknown',
-          imagesBytes: bytes,
-          imageFileNames: names,
-          dateFound: dateFound,
-          additionalDetails: {
-            'availability': widget.itemData['availability'],
-            'dropOffLocation': widget.itemData['dropOffLocation'],
-          },
-        );
-      } else {
-        // Mobile/Desktop: Use File objects
-        List<File> files = [];
-        
-        if (imagePickerDataList != null) {
-          // Extract File from ImagePickerData
-          final pickerData = imagePickerDataList.cast<ImagePickerData>();
-          files = pickerData
-              .map((img) => img.file)
-              .where((f) => f != null)
-              .cast<File>()
-              .toList();
-        } else if (imagesList != null) {
-          // Fallback to direct File list
-          files = imagesList.cast<File>();
-        }
-        
-        createdId = await _lostItemService.createLostItem(
-          itemName: widget.itemData['title'] ?? widget.itemData['itemName'] ?? 'Untitled',
-          description: widget.itemData['description'] ?? '',
-          category: widget.itemData['category'] ?? 'Uncategorized',
-          location: widget.itemData['location'] ?? 'Unknown',
-          images: files,
-          dateFound: dateFound,
-          additionalDetails: {
-            'availability': widget.itemData['availability'],
-            'dropOffLocation': widget.itemData['dropOffLocation'],
-          },
-        );
+      if (imagePickerDataList == null || imagePickerDataList.isEmpty) {
+        throw Exception('No images found in item data');
       }
+      
+      final pickerData = imagePickerDataList.cast<ImagePickerData>();
+      
+      // Use bytes for all platforms to avoid File type conflicts
+      final bytes = pickerData.map((img) => img.bytes).toList().cast<Uint8List>();
+      final names = pickerData.map((img) => img.name).toList();
+      
+      final String createdId = await _lostItemService.createLostItem(
+        itemName: widget.itemData['title'] ?? widget.itemData['itemName'] ?? 'Untitled',
+        description: widget.itemData['description'] ?? '',
+        category: widget.itemData['category'] ?? 'Uncategorized',
+        location: widget.itemData['location'] ?? 'Unknown',
+        imagesBytes: bytes,
+        imageFileNames: names,
+        dateFound: dateFound,
+        additionalDetails: {
+          'availability': widget.itemData['availability'],
+          'dropOffLocation': widget.itemData['dropOffLocation'],
+        },
+      );
 
       // Record activity for posting the item
       try {

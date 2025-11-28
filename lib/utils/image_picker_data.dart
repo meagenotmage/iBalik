@@ -1,9 +1,8 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
 
 /// Cross-platform wrapper for picked images
-/// Holds both File (for mobile) and Uint8List (for web) representations
+/// Holds XFile and Uint8List (bytes) for use across all platforms
 class ImagePickerData {
   final XFile xFile;
   final Uint8List bytes;
@@ -23,13 +22,6 @@ class ImagePickerData {
       bytes: bytes,
       name: xFile.name,
     );
-  }
-  
-  /// Get File representation (mobile/desktop only)
-  /// Returns null on web
-  File? get file {
-    if (kIsWeb) return null;
-    return File(xFile.path);
   }
   
   /// Get path (mobile/desktop only)
