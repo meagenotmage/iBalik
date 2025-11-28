@@ -1,10 +1,13 @@
+import 'dart:async';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'dart:io';
-import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/page_transitions.dart';
+import '../../utils/image_picker_data.dart';
+import '../../utils/cross_platform_image.dart';
 import '../claims/drop_off_page.dart';
 import 'post_success_page.dart';
 import '../../services/lost_item_service.dart';
@@ -24,8 +27,13 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
   final LostItemService _lostItemService = LostItemService();
   final ImagePicker _imagePicker = ImagePicker();
   
-  final List<File> _selectedImages = [];
+  // Use a private backing list and getter to ensure type safety on web
+  final List<ImagePickerData> _imagesList = <ImagePickerData>[];
+  List<ImagePickerData> get _selectedImages => _imagesList;
+  
   bool _isUploading = false;
+  int _uploadedCount = 0;
+  int _totalImages = 0;
   bool _isOnCooldown = false;
   Duration _remainingCooldown = Duration.zero;
   Timer? _cooldownTimer;
@@ -189,25 +197,27 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'Post Found Item',
-          style: TextStyle(
-            color: Colors.black87,
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
+    return Stack(
+      children: [
+        Scaffold(
+          backgroundColor: const Color(0xFFF5F5F5),
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.black87),
+              onPressed: _isUploading ? null : () => Navigator.pop(context),
+            ),
+            title: const Text(
+              'Post Found Item',
+              style: TextStyle(
+                color: Colors.black87,
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
-        ),
-      ),
-      body: SingleChildScrollView(
+          body: SingleChildScrollView(
         physics: const ClampingScrollPhysics(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -826,97 +836,102 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
                   else
                     Column(
                       children: [
-                        // Display selected images
-                        SizedBox(
-                          height: 120,
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: _selectedImages.length + (_selectedImages.length < 5 ? 1 : 0),
-                            itemBuilder: (context, index) {
-                              if (index == _selectedImages.length && _selectedImages.length < 5) {
-                                // Add more button
-                                return Padding(
-                                  padding: const EdgeInsets.only(right: 8),
-                                  child: InkWell(
-                                    onTap: _isOnCooldown ? null : _pickImages,
+                        // Display selected images in responsive grid
+                        GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            crossAxisSpacing: 8,
+                            mainAxisSpacing: 8,
+                            childAspectRatio: 1,
+                          ),
+                          itemCount: _selectedImages.length + (_selectedImages.length < 5 ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            if (index == _selectedImages.length && _selectedImages.length < 5) {
+                              // Add more button
+                              return InkWell(
+                                onTap: _isOnCooldown ? null : _pickImages,
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: _isOnCooldown ? Colors.grey[200] : const Color(0xFFF5F5F5),
                                     borderRadius: BorderRadius.circular(12),
-                                    child: Container(
-                                      width: 120,
-                                      decoration: BoxDecoration(
-                                        color: _isOnCooldown ? Colors.grey[200] : const Color(0xFFF5F5F5),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: Colors.grey[300]!,
-                                          width: 2,
+                                    border: Border.all(
+                                      color: Colors.grey[300]!,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.add_a_photo_outlined,
+                                        size: 28,
+                                        color: _isOnCooldown ? Colors.grey[400] : Colors.grey[400],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Add',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.grey[600],
+                                          fontWeight: FontWeight.w600,
                                         ),
                                       ),
-                                      child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Icon(
-                                            Icons.add_a_photo_outlined,
-                                            size: 32,
-                                            color: _isOnCooldown ? Colors.grey[400] : Colors.grey[400],
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            'Add more',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.grey[600],
-                                            ),
-                                          ),
-                                        ],
+                                      Text(
+                                        '${5 - _selectedImages.length} left',
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          color: Colors.grey[500],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }
+                            
+                            // Display image using CrossPlatformImage widget
+                            return Stack(
+                              children: [
+                                CrossPlatformImage(
+                                  imageData: _selectedImages[index],
+                                  width: double.infinity,
+                                  height: double.infinity,
+                                  fit: BoxFit.cover,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                // Remove button
+                                if (!_isOnCooldown)
+                                Positioned(
+                                  top: 4,
+                                  right: 4,
+                                  child: InkWell(
+                                    onTap: () {
+                                      if (mounted) {
+                                        setState(() {
+                                          _imagesList.removeAt(index);
+                                        });
+                                      }
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: const BoxDecoration(
+                                        color: Colors.red,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.close,
+                                        size: 14,
+                                        color: Colors.white,
                                       ),
                                     ),
                                   ),
-                                );
-                              }
-                              
-                              // Display image
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: Stack(
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: Image.file(
-                                        _selectedImages[index],
-                                        width: 120,
-                                        height: 120,
-                                        fit: BoxFit.cover,
-                                      ),
-                                    ),
-                                    // Remove button
-                                    if (!_isOnCooldown)
-                                    Positioned(
-                                      top: 4,
-                                      right: 4,
-                                      child: InkWell(
-                                        onTap: () {
-                                          setState(() {
-                                            _selectedImages.removeAt(index);
-                                          });
-                                        },
-                                        child: Container(
-                                          padding: const EdgeInsets.all(4),
-                                          decoration: const BoxDecoration(
-                                            color: Colors.red,
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: const Icon(
-                                            Icons.close,
-                                            size: 16,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
                                 ),
-                              );
-                            },
-                          ),
+                              ],
+                            );
+                          },
                         ),
                         const SizedBox(height: 12),
                         Row(
@@ -1001,6 +1016,81 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
           ],
         ),
       ),
+        ),
+        
+        // Upload Progress Overlay
+        if (_isUploading)
+          Container(
+            color: Colors.black.withOpacity(0.7),
+            child: Center(
+              child: Container(
+                margin: const EdgeInsets.all(40),
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Upload icon
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF4CAF50),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.cloud_upload,
+                        color: Colors.white,
+                        size: 40,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Uploading Images',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Uploading $_uploadedCount of $_totalImages photos...',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    // Progress bar
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: LinearProgressIndicator(
+                        value: _totalImages > 0 ? _uploadedCount / _totalImages : 0,
+                        minHeight: 8,
+                        backgroundColor: Colors.grey[200],
+                        valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${(_totalImages > 0 ? (_uploadedCount / _totalImages * 100) : 0).toStringAsFixed(0)}%',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF4CAF50),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -1251,7 +1341,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
         }
       } else {
         // For gallery on Android 13+, use photos permission
-        if (Platform.isAndroid) {
+        if (!kIsWeb) {
           final androidInfo = await Permission.photos.status;
           if (androidInfo.isDenied) {
             final status = await Permission.photos.request();
@@ -1305,22 +1395,37 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
       if (source == ImageSource.gallery) {
         // Try to pick multiple images from gallery
         try {
-          final List<XFile> images = await _imagePicker.pickMultiImage(
+          final List<XFile>? pickedImages = await _imagePicker.pickMultiImage(
             maxWidth: 1024,
             maxHeight: 1024,
             imageQuality: 70,
           );
           
-          if (images.isNotEmpty) {
+          if (pickedImages != null && pickedImages.isNotEmpty) {
             if (!mounted) return;
-            setState(() {
-              // Add new images but limit to 5 total
-              for (int i = 0; i < images.length && i < remainingSlots; i++) {
-                _selectedImages.add(File(images[i].path));
-              }
-            });
             
-            if (images.length > remainingSlots && mounted) {
+            // Convert XFiles to ImagePickerData explicitly
+            final List<ImagePickerData> newImages = <ImagePickerData>[];
+            for (int i = 0; i < pickedImages.length && i < remainingSlots; i++) {
+              try {
+                final XFile xfile = pickedImages[i];
+                final ImagePickerData imageData = await ImagePickerData.fromXFile(xfile);
+                newImages.add(imageData);
+              } catch (e) {
+                debugPrint('Error converting image $i: $e');
+              }
+            }
+            
+            if (newImages.isNotEmpty) {
+              setState(() {
+                // Explicitly add each item to ensure type safety
+                for (final img in newImages) {
+                  _imagesList.add(img);
+                }
+              });
+            }
+            
+            if (pickedImages.length > remainingSlots && mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Only $remainingSlots more photo(s) can be added'),
@@ -1339,8 +1444,9 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
           );
           if (image != null) {
             if (!mounted) return;
+            final imageData = await ImagePickerData.fromXFile(image);
             setState(() {
-              _selectedImages.add(File(image.path));
+              _imagesList.add(imageData);
             });
           }
         }
@@ -1353,17 +1459,37 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
           imageQuality: 70,
         );
         if (image != null) {
+          if (!mounted) return;
+          final imageData = await ImagePickerData.fromXFile(image);
           setState(() {
-            _selectedImages.add(File(image.path));
+            _imagesList.add(imageData);
           });
         }
       }
     } catch (e) {
       if (mounted) {
+        String errorMessage = 'Error selecting image';
+        
+        if (e.toString().contains('permission')) {
+          errorMessage = 'Permission denied. Please allow photo access';
+        } else if (e.toString().contains('file') || e.toString().contains('read')) {
+          errorMessage = 'Cannot read selected file. Please try another image';
+        } else if (kIsWeb && e.toString().contains('not supported')) {
+          errorMessage = 'File type not supported. Please select a JPEG or PNG image';
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: ${e.toString()}'),
+            content: Text(errorMessage),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'Try Again',
+              textColor: Colors.white,
+              onPressed: () {
+                _pickImages();
+              },
+            ),
           ),
         );
       }
@@ -1483,20 +1609,68 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
           contactValue = _emailController.text.trim();
         }
         
-        final String itemId = await _lostItemService.createLostItem(
-          itemName: _titleController.text,
-          description: _descriptionController.text,
-          category: _selectedCategory,
-          location: _selectedLocation,
-          images: _selectedImages,
-          dateFound: _selectedDate.toIso8601String(),
-          additionalDetails: {
-            'availability': _selectedAvailability,
-            'dropOffLocation': null,
-            'founderContactMethod': _selectedContactMethod,
-            'founderContactValue': contactValue,
-          },
-        );
+        // Set total images for progress tracking
+        setState(() {
+          _totalImages = _selectedImages.length;
+          _uploadedCount = 0;
+        });
+        
+        // Cross-platform upload handling
+        final String itemId;
+        if (kIsWeb) {
+          // Web: Use bytes upload
+          itemId = await _lostItemService.createLostItem(
+            itemName: _titleController.text,
+            description: _descriptionController.text,
+            category: _selectedCategory,
+            location: _selectedLocation,
+            imagesBytes: _selectedImages.map((img) => img.bytes).toList(),
+            imageFileNames: _selectedImages.map((img) => img.name).toList(),
+            dateFound: _selectedDate.toIso8601String(),
+            onImageUploadProgress: (current, total) {
+              if (mounted) {
+                setState(() {
+                  _uploadedCount = current;
+                  _totalImages = total;
+                });
+              }
+            },
+            additionalDetails: {
+              'availability': _selectedAvailability,
+              'dropOffLocation': null,
+              'founderContactMethod': _selectedContactMethod,
+              'founderContactValue': contactValue,
+            },
+          );
+        } else {
+          // Use bytes for all platforms to avoid File type conflicts
+          final imagesBytes = _selectedImages.map((img) => img.bytes).toList().cast<Uint8List>();
+          final fileNames = _selectedImages.map((img) => img.name).toList();
+          
+          itemId = await _lostItemService.createLostItem(
+            itemName: _titleController.text,
+            description: _descriptionController.text,
+            category: _selectedCategory,
+            location: _selectedLocation,
+            imagesBytes: imagesBytes,
+            imageFileNames: fileNames,
+            dateFound: _selectedDate.toIso8601String(),
+            onImageUploadProgress: (current, total) {
+              if (mounted) {
+                setState(() {
+                  _uploadedCount = current;
+                  _totalImages = total;
+                });
+              }
+            },
+            additionalDetails: {
+              'availability': _selectedAvailability,
+              'dropOffLocation': null,
+              'founderContactMethod': _selectedContactMethod,
+              'founderContactValue': contactValue,
+            },
+          );
+        }
         
         // Record activity for posting the item
         try {
@@ -1540,10 +1714,36 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
           _isUploading = false;
         });
         
+        // Enhanced error handling with retry option
+        String errorMessage = 'Error posting item';
+        bool showRetry = true;
+        
+        if (e.toString().contains('network') || 
+            e.toString().contains('connection') ||
+            e.toString().contains('timeout')) {
+          errorMessage = 'Network error. Please check your connection';
+        } else if (e.toString().contains('permission') ||
+                   e.toString().contains('unauthorized')) {
+          errorMessage = 'Permission denied. Please sign in again';
+          showRetry = false;
+        } else if (kIsWeb && e.toString().contains('CORS')) {
+          errorMessage = 'Upload error. Please try again';
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error posting item: $e'),
+            content: Text(errorMessage),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+            action: showRetry
+                ? SnackBarAction(
+                    label: 'Retry',
+                    textColor: Colors.white,
+                    onPressed: () {
+                      _postItem();
+                    },
+                  )
+                : null,
           ),
         );
       }
@@ -1557,6 +1757,10 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
         dropOffLocation = '';
       }
       
+      // Prepare images for drop-off page
+      // Don't pass images directly, pass the ImagePickerData
+      // drop_off_success_page will handle extraction
+      
       final itemData = {
         'title': _titleController.text,
         'description': _descriptionController.text,
@@ -1565,7 +1769,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
         'date': _selectedDate,
         'dropOffLocation': dropOffLocation,
         'availability': _selectedAvailability,
-        'images': _selectedImages,
+        'imagePickerData': _selectedImages,  // Pass ImagePickerData for cross-platform
       };
       
       Navigator.push(

@@ -1,8 +1,9 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../../services/lost_item_service.dart';
 import '../../services/activity_service.dart';
 import '../../services/game_service.dart'; // Import GameService
-import 'dart:io';
+import '../../utils/image_picker_data.dart';
 
 class DropOffSuccessPage extends StatefulWidget {
   final Map<String, dynamic> itemData;
@@ -43,17 +44,30 @@ class _DropOffSuccessPageState extends State<DropOffSuccessPage> {
     });
 
     try {
-      // Prepare data
-      final images = (widget.itemData['images'] as List<dynamic>?)?.cast<File>() ?? [];
+      // Prepare data - handle both ImagePickerData and File types
       final date = widget.itemData['date'];
       final String dateFound = date is DateTime ? date.toIso8601String() : (date?.toString() ?? DateTime.now().toIso8601String());
 
+      // Extract ImagePickerData (should always be available now)
+      final imagePickerDataList = widget.itemData['imagePickerData'] as List<dynamic>?;
+      
+      if (imagePickerDataList == null || imagePickerDataList.isEmpty) {
+        throw Exception('No images found in item data');
+      }
+      
+      final pickerData = imagePickerDataList.cast<ImagePickerData>();
+      
+      // Use bytes for all platforms to avoid File type conflicts
+      final bytes = pickerData.map((img) => img.bytes).toList().cast<Uint8List>();
+      final names = pickerData.map((img) => img.name).toList();
+      
       final String createdId = await _lostItemService.createLostItem(
         itemName: widget.itemData['title'] ?? widget.itemData['itemName'] ?? 'Untitled',
         description: widget.itemData['description'] ?? '',
         category: widget.itemData['category'] ?? 'Uncategorized',
         location: widget.itemData['location'] ?? 'Unknown',
-        images: images.cast<File>(),
+        imagesBytes: bytes,
+        imageFileNames: names,
         dateFound: dateFound,
         additionalDetails: {
           'availability': widget.itemData['availability'],

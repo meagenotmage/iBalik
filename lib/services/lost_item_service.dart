@@ -1,41 +1,98 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'cloudinary_service.dart';
+import 'package:flutter/foundation.dart';
+import 'supabase_storage_service.dart';
 import 'notification_service.dart';
 import 'activity_service.dart';
 
 class LostItemService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final CloudinaryService _cloudinary = CloudinaryService();
+  final SupabaseStorageService _storage = SupabaseStorageService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Collection reference
   CollectionReference get _lostItemsCollection =>
       _firestore.collection('lost_items');
 
-  /// Upload image to Cloudinary
+  /// Upload image to Supabase Storage (mobile/desktop only)
   Future<String> uploadItemImage(File imageFile, String itemId) async {
+    if (kIsWeb) {
+      throw UnsupportedError('Use uploadItemImageBytes for web');
+    }
     try {
-      return await _cloudinary.uploadImage(imageFile, itemId);
+      return await _storage.uploadImage(
+        imageFile: imageFile,
+        itemId: itemId,
+        type: 'posts',
+      );
     } catch (e) {
       throw Exception('Failed to upload image: $e');
     }
   }
 
-  /// Upload multiple images
-  Future<List<String>> uploadMultipleImages(List<File> imageFiles, String itemId) async {
-    return await _cloudinary.uploadMultipleImages(imageFiles, itemId);
+  /// Upload image bytes to Supabase Storage (works on all platforms)
+  Future<String> uploadItemImageBytes(
+    Uint8List imageBytes,
+    String fileName,
+    String itemId,
+  ) async {
+    try {
+      return await _storage.uploadImageBytes(
+        imageBytes: imageBytes,
+        fileName: fileName,
+        itemId: itemId,
+        type: 'posts',
+      );
+    } catch (e) {
+      throw Exception('Failed to upload image: $e');
+    }
   }
 
-  /// Create a new lost item post
+  /// Upload multiple images with progress callback (mobile/desktop only)
+  Future<List<String>> uploadMultipleImages(
+    List<File> imageFiles,
+    String itemId, {
+    Function(int current, int total)? onProgress,
+  }) async {
+    if (kIsWeb) {
+      throw UnsupportedError('Use uploadMultipleImagesBytes for web');
+    }
+    return await _storage.uploadMultipleImages(
+      imageFiles: imageFiles,
+      itemId: itemId,
+      type: 'posts',
+      onProgress: onProgress,
+    );
+  }
+
+  /// Upload multiple images bytes with progress callback (works on all platforms)
+  Future<List<String>> uploadMultipleImagesBytes(
+    List<Uint8List> imagesBytes,
+    List<String> fileNames,
+    String itemId, {
+    Function(int current, int total)? onProgress,
+  }) async {
+    return await _storage.uploadMultipleImagesBytes(
+      imagesBytes: imagesBytes,
+      fileNames: fileNames,
+      itemId: itemId,
+      type: 'posts',
+      onProgress: onProgress,
+    );
+  }
+
+  /// Create a new lost item post (accepts both File and bytes)
   Future<String> createLostItem({
     required String itemName,
     required String description,
     required String category,
     required String location,
-    required List<File> images,
+    List<File>? images,
+    List<Uint8List>? imagesBytes,
+    List<String>? imageFileNames,
     String? dateFound,
+    Function(int current, int total)? onImageUploadProgress,
     Map<String, dynamic>? additionalDetails,
   }) async {
     try {
@@ -44,12 +101,39 @@ class LostItemService {
         throw Exception('User not authenticated');
       }
 
+      // Validate image inputs
+      if ((images == null || images.isEmpty) && 
+          (imagesBytes == null || imagesBytes.isEmpty)) {
+        throw Exception('At least one image is required');
+      }
+
+      if (imagesBytes != null && imageFileNames != null && 
+          imagesBytes.length != imageFileNames.length) {
+        throw Exception('imagesBytes and imageFileNames must have the same length');
+      }
+
       // Create document reference to get ID
       final docRef = _lostItemsCollection.doc();
       final String itemId = docRef.id;
 
-      // Upload images
-      final List<String> imageUrls = await uploadMultipleImages(images, itemId);
+      // Upload images with progress callback
+      final List<String> imageUrls;
+      if (kIsWeb || (imagesBytes != null && imagesBytes.isNotEmpty)) {
+        // Web or bytes provided: use bytes upload
+        imageUrls = await uploadMultipleImagesBytes(
+          imagesBytes!,
+          imageFileNames ?? List.generate(imagesBytes.length, (i) => 'image_$i.jpg'),
+          itemId,
+          onProgress: onImageUploadProgress,
+        );
+      } else {
+        // Mobile/Desktop: use file upload
+        imageUrls = await uploadMultipleImages(
+          images!,
+          itemId,
+          onProgress: onImageUploadProgress,
+        );
+      }
 
       // Create lost item data
       final Map<String, dynamic> lostItemData = {
@@ -196,10 +280,10 @@ Stream<QuerySnapshot> getLostItems({String status = 'available', int limit = 50}
         final data = doc.data() as Map<String, dynamic>;
         final List<dynamic> images = data['images'] ?? [];
 
-        // Delete images from Cloudinary
+        // Delete images from Supabase Storage
         for (String imageUrl in images) {
           try {
-            await _cloudinary.deleteImage(imageUrl);
+            await _storage.deleteImage(imageUrl);
           } catch (e) {
             print('Failed to delete image: $e');
           }
