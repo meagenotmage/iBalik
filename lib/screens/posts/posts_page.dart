@@ -159,144 +159,217 @@ class _PostsPageState extends State<PostsPage> {
   }
 
   void _showFilterBottomSheet() {
-  // Create local copies of the state variables
-  String localCategory = _selectedCategory;
-  String localLocation = _selectedLocation;
-  
   showModalBottomSheet(
     context: context,
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
     builder: (context) {
-      return Container(
-        height: MediaQuery.of(context).size.height * 0.8,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Header
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(color: Colors.grey[300]!),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    const Text(
-                      'Filters',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.tune),
-                      onPressed: () {},
-                    ),
-                  ],
-                ),
+      return StatefulBuilder(
+        builder: (BuildContext context, StateSetter setModalState) {
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.8,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
               ),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Category Section
-                      const Text(
-                        'Category',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
+            ),
+            child: SafeArea(
+              child: Column(
+                children: [
+                  // Header
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(color: Colors.grey[300]!),
                       ),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          for (var cat in _categories) _buildFilterChip(cat, localCategory, (value) {
-                            setState(() {
-                              localCategory = value;
-                              _selectedCategory = value;
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                        const Text(
+                          'Filters',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            setModalState(() {
+                              _selectedCategory = 'All';
+                              _selectedLocation = 'All Locations';
                             });
-                          }),
+                            setState(() {
+                              _selectedCategory = 'All';
+                              _selectedLocation = 'All Locations';
+                            });
+                          },
+                          child: const Text(
+                            'Reset',
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Category Section
+                          const Text(
+                            'Category',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              for (var cat in _categories)
+                                GestureDetector(
+                                  onTap: () {
+                                    setModalState(() {
+                                      _selectedCategory = cat;
+                                    });
+                                    setState(() {
+                                      _selectedCategory = cat;
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                    decoration: BoxDecoration(
+                                      color: _selectedCategory == cat ? AppColors.primary : Colors.white,
+                                      border: Border.all(
+                                        color: _selectedCategory == cat ? AppColors.primary : AppColors.lightGray,
+                                      ),
+                                      borderRadius: BorderRadius.circular(AppRadius.standard),
+                                    ),
+                                    child: Text(
+                                      cat,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: _selectedCategory == cat ? FontWeight.w600 : FontWeight.normal,
+                                        color: _selectedCategory == cat ? Colors.white : Colors.black87,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+                          // Location Section
+                          const Text(
+                            'Location',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              for (var loc in _locations)
+                                GestureDetector(
+                                  onTap: () {
+                                    setModalState(() {
+                                      _selectedLocation = loc;
+                                    });
+                                    setState(() {
+                                      _selectedLocation = loc;
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                    decoration: BoxDecoration(
+                                      color: _selectedLocation == loc ? AppColors.primary : Colors.white,
+                                      border: Border.all(
+                                        color: _selectedLocation == loc ? AppColors.primary : AppColors.lightGray,
+                                      ),
+                                      borderRadius: BorderRadius.circular(AppRadius.standard),
+                                    ),
+                                    child: Text(
+                                      loc,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: _selectedLocation == loc ? FontWeight.w600 : FontWeight.normal,
+                                        color: _selectedLocation == loc ? Colors.white : Colors.black87,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
                         ],
                       ),
-                      const SizedBox(height: 24),
-                      // Location Section
-                      const Text(
-                        'Location',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
+                    ),
+                  ),
+                  // Apply Button
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, -5),
+                        ),
+                      ],
+                    ),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.standard),
+                          ),
+                        ),
+                        child: const Text(
+                          'Apply Filters',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          for (var loc in _locations) _buildFilterChip(loc, localLocation, (value) {
-                            setState(() {
-                              localLocation = value;
-                              _selectedLocation = value;
-                            });
-                          }),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                    ],
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       );
     },
   );
 }
 
-  Widget _buildFilterChip(String label, String selectedValue, Function(String) onTap) {
-    final isSelected = selectedValue == label;
-    return InkWell(
-      onTap: () => onTap(label),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : Colors.white,
-          border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.lightGray,
-          ),
-          borderRadius: BorderRadius.circular(AppRadius.standard),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            color: isSelected ? Colors.white : Colors.black87,
-          ),
-        ),
-      ),
-    );
-  }
+
 
   Widget _buildEmptyState() {
     return Center(
@@ -331,14 +404,23 @@ class _PostsPageState extends State<PostsPage> {
   }
 
   Widget _buildItemsList(List<Map<String, dynamic>> filteredItems) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      physics: const ClampingScrollPhysics(),
-      itemCount: filteredItems.length,
-      itemBuilder: (context, index) {
-        final item = filteredItems[index];
-        return _buildItemCard(item);
+    return RefreshIndicator(
+      onRefresh: () async {
+        // Trigger a rebuild by calling setState
+        setState(() {});
+        // Small delay to show the refresh indicator
+        await Future.delayed(const Duration(milliseconds: 500));
       },
+      color: AppColors.primary,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        physics: const AlwaysScrollableScrollPhysics(),
+        itemCount: filteredItems.length,
+        itemBuilder: (context, index) {
+          final item = filteredItems[index];
+          return _buildItemCard(item);
+        },
+      ),
     );
   }
 

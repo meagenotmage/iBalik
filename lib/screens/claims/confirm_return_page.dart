@@ -37,6 +37,73 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final ImagePicker _picker = ImagePicker();
   final SupabaseStorageService _storageService = SupabaseStorageService();
+  
+  Map<String, dynamic> _itemData = {};
+  bool _loadingItemData = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadItemData();
+  }
+  
+  Future<void> _loadItemData() async {
+    try {
+      // Get claim to find itemId
+      final claimDoc = await _firestore.collection('claims').doc(widget.claimId).get();
+      if (!claimDoc.exists) {
+        setState(() {
+          _itemData = widget.itemData;
+          _loadingItemData = false;
+        });
+        return;
+      }
+      
+      final claimData = claimDoc.data() as Map<String, dynamic>;
+      final itemId = claimData['itemId'];
+      
+      if (itemId != null) {
+        // Fetch the lost_item document
+        final itemDoc = await _firestore.collection('lost_items').doc(itemId.toString()).get();
+        
+        if (itemDoc.exists) {
+          final lostItemData = itemDoc.data() as Map<String, dynamic>;
+          
+          // Merge claim data with lost item data
+          setState(() {
+            _itemData = {
+              ...widget.itemData,
+              'title': lostItemData['title'] ?? lostItemData['name'] ?? widget.itemData['title'],
+              'description': lostItemData['description'] ?? lostItemData['details'] ?? widget.itemData['description'],
+              'location': lostItemData['location'] ?? lostItemData['pickupLocation'] ?? lostItemData['foundAt'],
+              'images': lostItemData['images'],
+              'imageUrl': (lostItemData['images'] is List && (lostItemData['images'] as List).isNotEmpty) 
+                  ? (lostItemData['images'] as List).first 
+                  : null,
+              'itemId': itemId,
+              'claimerId': claimData['claimerId'],
+              'founderId': claimData['founderId'],
+              'claimerName': claimData['claimerName'] ?? claimData['seekerName'],
+            };
+            _loadingItemData = false;
+          });
+          return;
+        }
+      }
+      
+      // Fallback to widget data
+      setState(() {
+        _itemData = widget.itemData;
+        _loadingItemData = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading item data: $e');
+      setState(() {
+        _itemData = widget.itemData;
+        _loadingItemData = false;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -227,62 +294,77 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
       // 3. Create notification for the claimer (item owner)
       if (claimerId != null) {
         final notificationRef = _firestore.collection('notifications').doc();
+        final itemTitle = _itemData['title'] ?? widget.itemData['title'] ?? 'item';
         batch.set(notificationRef, {
           'userId': claimerId,
           'type': 'item_returned',
           'title': 'Item Successfully Returned! 🎉',
-          'message': 'Your ${widget.itemData['title'] ?? 'item'} has been successfully returned by the founder.',
+          'message': 'Your $itemTitle has been successfully returned by the founder.',
           'createdAt': FieldValue.serverTimestamp(),
           'isRead': false,
           'meta': {
             'itemId': itemId,
             'claimId': widget.claimId,
-            'itemTitle': widget.itemData['title'],
+            'itemTitle': itemTitle,
             'founderId': founderId,
           },
         });
       }
 
       // 4. Create notification for the founder (current user)
+      final itemTitle2 = _itemData['title'] ?? widget.itemData['title'] ?? 'the item';
       final founderNotificationRef = _firestore.collection('notifications').doc();
       batch.set(founderNotificationRef, {
         'userId': currentUser.uid,
         'type': 'return_confirmed',
         'title': 'Return Confirmed!',
-        'message': 'You successfully returned ${widget.itemData['title'] ?? 'the item'} to its owner.',
+        'message': 'You successfully returned $itemTitle2 to its owner.',
         'createdAt': FieldValue.serverTimestamp(),
         'isRead': false,
         'meta': {
           'itemId': itemId,
           'claimId': widget.claimId,
-          'itemTitle': widget.itemData['title'],
+          'itemTitle': itemTitle2,
           'claimerId': claimerId,
         },
       });
 
       // 5. Add activity for the claimer
       if (claimerId != null) {
+        final itemTitle3 = _itemData['title'] ?? widget.itemData['title'] ?? 'item';
         final claimerActivityRef = _firestore.collection('users').doc(claimerId).collection('activities').doc();
         batch.set(claimerActivityRef, {
           'type': 'item_received',
           'title': 'Item Received',
-          'message': 'You received your ${widget.itemData['title'] ?? 'item'} from the founder.',
+          'message': 'You received your $itemTitle3 from the founder.',
           'createdAt': FieldValue.serverTimestamp(),
           'meta': {
             'itemId': itemId,
             'claimId': widget.claimId,
-            'itemTitle': widget.itemData['title'],
+            'itemTitle': itemTitle3,
             'founderId': founderId,
           },
         });
       }
 
-      // 6. Use GameService for consistent rewards (points, karma, activity, notifications)
-      final gameService = GameService();
-      await gameService.rewardSuccessfulReturn(widget.itemData['itemName'] ?? widget.itemData['title'] ?? 'Item');
-
-      // Commit all operations
+      // Commit all Firestore operations first
       await batch.commit();
+      print('✅ Batch commit successful for claim ${widget.claimId}');
+      
+      // 6. Use GameService for consistent rewards (points, karma, activity, notifications)
+      // This should be called AFTER commit to ensure the claim is marked completed
+      final gameService = GameService();
+      final itemTitle = _itemData['title'] ?? widget.itemData['title'] ?? widget.itemData['itemName'] ?? 'Item';
+      print('🎁 Rewarding successful return for: "$itemTitle" to user: ${currentUser.uid}');
+      print('📊 Rewards: +20 Points, +15 Karma, +25 XP');
+      
+      try {
+        await gameService.rewardSuccessfulReturn(itemTitle);
+        print('✅ Rewards successfully applied!');
+      } catch (rewardError) {
+        print('❌ Error applying rewards: $rewardError');
+        // Don't fail the entire operation if rewards fail
+      }
 
       // Show success dialog
       if (mounted) {
@@ -343,7 +425,13 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
         Navigator.pop(context); // Close dialog
         Navigator.pushReplacement(
           context,
-          SmoothPageRoute(page: const ReturnSuccessPage()),
+          SmoothPageRoute(
+            page: const ReturnSuccessPage(
+              pointsEarned: 20,  // From GameService.rewardSuccessfulReturn
+              karmaEarned: 15,
+              xpEarned: 25,
+            ),
+          ),
         );
       }
     });
@@ -402,68 +490,86 @@ class _ConfirmReturnPageState extends State<ConfirmReturnPage> {
                   Container(
                     padding: EdgeInsets.all(ClaimsSpacing.md),
                     decoration: ClaimsCardStyles.card(),
-                    child: Row(
-                      children: [
-                        // Item Image
-                        Container(
-                          width: 70,
-                          height: 70,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: widget.itemData['itemImageUrl'] != null
-                              ? ClipRRect(
+                    child: _loadingItemData
+                        ? const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(20),
+                              child: CircularProgressIndicator(),
+                            ),
+                          )
+                        : Row(
+                            children: [
+                              // Item Image
+                              Container(
+                                width: 70,
+                                height: 70,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[200],
                                   borderRadius: BorderRadius.circular(12),
-                                  child: Image.network(
-                                    widget.itemData['itemImageUrl'],
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Icon(
+                                ),
+                                child: (_itemData['imageUrl'] != null && _itemData['imageUrl'].toString().isNotEmpty)
+                                    ? ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Image.network(
+                                          _itemData['imageUrl'],
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) {
+                                            return Icon(
+                                              Icons.image,
+                                              color: Colors.grey[400],
+                                              size: 35,
+                                            );
+                                          },
+                                          loadingBuilder: (context, child, loadingProgress) {
+                                            if (loadingProgress == null) return child;
+                                            return Center(
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                value: loadingProgress.expectedTotalBytes != null
+                                                    ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                                    : null,
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      )
+                                    : Icon(
                                         Icons.image,
                                         color: Colors.grey[400],
                                         size: 35,
-                                      );
-                                    },
-                                  ),
-                                )
-                              : Icon(
-                                  Icons.image,
-                                  color: Colors.grey[400],
-                                  size: 35,
+                                      ),
+                              ),
+                              SizedBox(width: ClaimsSpacing.md),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _itemData['title'] ?? 'Unknown Item',
+                                      style: ClaimsTypography.subtitle,
+                                    ),
+                                    SizedBox(height: ClaimsSpacing.xxs),
+                                    Text(
+                                      _itemData['description'] ?? 'No description available',
+                                      style: ClaimsTypography.body,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    SizedBox(height: ClaimsSpacing.xs),
+                                    ClaimsWidgets.infoRow(
+                                      icon: Icons.location_on,
+                                      text: _itemData['location'] ?? 'Unknown location',
+                                    ),
+                                    SizedBox(height: ClaimsSpacing.xs),
+                                    ClaimsWidgets.infoRow(
+                                      icon: Icons.person,
+                                      text: 'Returning to: ${_itemData['claimerName'] ?? 'Unknown user'}',
+                                    ),
+                                  ],
                                 ),
-                        ),
-                        SizedBox(width: ClaimsSpacing.md),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                widget.itemData['itemName'] ?? widget.itemData['title'] ?? 'Unknown Item',
-                                style: ClaimsTypography.subtitle,
-                              ),
-                              SizedBox(height: ClaimsSpacing.xxs),
-                              Text(
-                                widget.itemData['itemDetails'] ?? widget.itemData['description'] ?? 'No description available',
-                                style: ClaimsTypography.body,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              SizedBox(height: ClaimsSpacing.xs),
-                              ClaimsWidgets.infoRow(
-                                icon: Icons.location_on,
-                                text: widget.itemData['pickupLocation'] ?? widget.itemData['location'] ?? 'Unknown location',
-                              ),
-                              SizedBox(height: ClaimsSpacing.xs),
-                              ClaimsWidgets.infoRow(
-                                icon: Icons.person,
-                                text: 'Returning to: ${widget.itemData['claimerName'] ?? widget.itemData['seekerName'] ?? 'Unknown user'}',
                               ),
                             ],
                           ),
-                        ),
-                      ],
-                    ),
                   ),
                   
                   const SizedBox(height: 20),

@@ -56,23 +56,42 @@ class _SignUpPageState extends State<SignUpPage> {
       return;
     }
 
+    // Validate format first
+    if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(username)) {
+      setState(() {
+        _usernameError = 'Only letters, numbers, and underscores allowed';
+        _isCheckingUsername = false;
+      });
+      return;
+    }
+
     setState(() {
       _isCheckingUsername = true;
+      _usernameError = null; // Clear any previous errors
     });
 
     try {
-      final isAvailable = await _authService.isUsernameAvailable(username);
+      // Convert to lowercase for checking (consistent with auth service)
+      final usernameToCheck = username.toLowerCase();
+      final isAvailable = await _authService.isUsernameAvailable(usernameToCheck);
+      
+      if (!mounted) return;
+      
       setState(() {
         _isCheckingUsername = false;
         _usernameError = isAvailable ? null : 'Username is already taken';
       });
+      
+      debugPrint('Username availability check result for "$usernameToCheck": ${isAvailable ? "available" : "taken"}');
     } catch (e, st) {
       debugPrint('Username availability check failed: $e');
       debugPrint('Stack: $st');
 
+      if (!mounted) return;
+      
       setState(() {
         _isCheckingUsername = false;
-        _usernameError = 'Unable to verify username. Check your connection.';
+        _usernameError = null; // Don't block signup on connection error
       });
     }
   }
@@ -91,7 +110,7 @@ class _SignUpPageState extends State<SignUpPage> {
       final emailValidation = SecurityValidationUtils.validateWvsuEmail(email);
       if (!emailValidation['isValid']) {
         setState(() => _isLoading = false);
-        _showErrorSnackBar(emailValidation['error']);
+        _showErrorSnackBar(emailValidation['message'] ?? 'Invalid email');
         return;
       }
       
@@ -99,7 +118,7 @@ class _SignUpPageState extends State<SignUpPage> {
       final usernameValidation = SecurityValidationUtils.validateUsername(_usernameController.text.trim());
       if (!usernameValidation['isValid']) {
         setState(() => _isLoading = false);
-        _showErrorSnackBar(usernameValidation['error']);
+        _showErrorSnackBar(usernameValidation['message'] ?? 'Invalid username');
         return;
       }
       
@@ -107,7 +126,7 @@ class _SignUpPageState extends State<SignUpPage> {
       final passwordValidation = SecurityValidationUtils.validatePassword(_passwordController.text);
       if (!passwordValidation['isValid']) {
         setState(() => _isLoading = false);
-        _showErrorSnackBar(passwordValidation['error']);
+        _showErrorSnackBar(passwordValidation['message'] ?? 'Invalid password');
         return;
       }
       
@@ -115,7 +134,7 @@ class _SignUpPageState extends State<SignUpPage> {
       final phoneValidation = SecurityValidationUtils.validatePhoneNumber(_phoneController.text.trim());
       if (!phoneValidation['isValid']) {
         setState(() => _isLoading = false);
-        _showErrorSnackBar(phoneValidation['error']);
+        _showErrorSnackBar(phoneValidation['message'] ?? 'Invalid phone number');
         return;
       }
       
@@ -305,7 +324,7 @@ class _SignUpPageState extends State<SignUpPage> {
                         
                         // Tab Switcher
                         Container(
-                          padding: const EdgeInsets.all(4),
+                          padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 5),
                           decoration: BoxDecoration(
                             color: AppColors.lightGray.withOpacity(0.5),
                             borderRadius: BorderRadius.circular(AppRadius.full),
@@ -314,6 +333,7 @@ class _SignUpPageState extends State<SignUpPage> {
                               width: 1,
                             ),
                           ),
+                          clipBehavior: Clip.none,
                           child: Row(
                             children: [
                               // Log In Tab
@@ -326,14 +346,20 @@ class _SignUpPageState extends State<SignUpPage> {
                                     );
                                   },
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
-                                    child: Text(
-                                      'Log In',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w500,
-                                        color: AppColors.textSecondary,
+                                    constraints: const BoxConstraints(minHeight: 48),
+                                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                                    child: Center(
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: Text(
+                                          'Log In',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w500,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -342,19 +368,25 @@ class _SignUpPageState extends State<SignUpPage> {
                               // Sign Up Tab (Selected)
                               Expanded(
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  constraints: const BoxConstraints(minHeight: 48),
+                                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
                                   decoration: BoxDecoration(
                                     color: AppColors.white,
                                     borderRadius: BorderRadius.circular(AppRadius.full),
                                     boxShadow: AppShadows.soft,
                                   ),
-                                  child: const Text(
-                                    'Sign Up',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.darkGray,
+                                  child: Center(
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        'Sign Up',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.darkGray,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -438,7 +470,8 @@ class _SignUpPageState extends State<SignUpPage> {
                             if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) {
                               return 'Only letters, numbers, and underscores allowed';
                             }
-                            if (_usernameError != null) {
+                            // Only block if actively showing an error (not if checking or connection failed)
+                            if (_usernameError != null && _usernameError!.contains('taken')) {
                               return _usernameError;
                             }
                             return null;

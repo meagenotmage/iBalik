@@ -48,7 +48,8 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
-    _gameService.dispose(); // Dispose GameService
+    // Don't dispose GameService - it's shared across multiple pages
+    // _gameService.dispose();
     super.dispose();
   }
 
@@ -210,14 +211,24 @@ class _HomePageState extends State<HomePage> {
           children: [
             // Main scrollable content
             Expanded(
-              child: SingleChildScrollView(
-                physics: const ClampingScrollPhysics(),
-                padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Header Section
-                    Container(
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  // Reload user data and trigger rebuild
+                  await _loadUserName();
+                  await _loadUserRank();
+                  setState(() {});
+                  // Small delay to show the refresh indicator
+                  await Future.delayed(const Duration(milliseconds: 500));
+                },
+                color: AppColors.primary,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header Section
+                      Container(
                       decoration: BoxDecoration(
                         color: AppColors.white,
                         boxShadow: AppShadows.soft,
@@ -230,14 +241,10 @@ class _HomePageState extends State<HomePage> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               // Logo
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(AppRadius.sm),
-                                child: Image.asset(
-                                  'assets/logo_icon.png',
-                                  width: 44,
-                                  height: 44,
-                                  fit: BoxFit.contain,
-                                ),
+                              Image.asset(
+                                'assets/ibalik_home.png',
+                                height: 30,
+                                fit: BoxFit.contain,
                               ),
                               // Notification Bell
                               IconButton(
@@ -550,8 +557,9 @@ class _HomePageState extends State<HomePage> {
                         },
                       ),
                     ),
-                    const SizedBox(height: AppSpacing.xl),
-                  ],
+                      const SizedBox(height: AppSpacing.xl),
+                    ],
+                  ),
                 ),
               ),
             ),

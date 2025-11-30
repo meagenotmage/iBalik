@@ -92,6 +92,10 @@ class _PointsStorePageState extends State<PointsStorePage> {
   }
 
   Future<void> _redeemReward(Map<String, dynamic> reward) async {
+    // Show coming soon dialog
+    _showComingSoonDialog();
+    
+    /* TODO: Implement redemption system
     if (_gameService.points < reward['cost']) {
       _showInsufficientPointsDialog();
       return;
@@ -176,6 +180,7 @@ class _PointsStorePageState extends State<PointsStorePage> {
       });
       _showErrorDialog('Failed to redeem reward: ${e.toString()}');
     }
+    */
   }
 
   String _generateTokenCode() {
@@ -207,6 +212,69 @@ class _PointsStorePageState extends State<PointsStorePage> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text('OK', style: TextStyle(color: AppColors.primary)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showComingSoonDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.schedule, color: Color(0xFF2196F3), size: 28),
+            SizedBox(width: 12),
+            Text('Coming Soon'),
+          ],
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Points Redemption Feature',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            SizedBox(height: 12),
+            Text(
+              'The ability to redeem points for rewards is currently under development. Stay tuned for exciting rewards coming soon!',
+              style: TextStyle(height: 1.5),
+            ),
+            SizedBox(height: 16),
+            Row(
+              children: [
+                Icon(Icons.info_outline, size: 20, color: Colors.grey),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Keep earning points by helping others!',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Got It',
+              style: TextStyle(
+                color: Color(0xFF2196F3),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),

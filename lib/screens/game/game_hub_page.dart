@@ -30,7 +30,7 @@ class _GameHubPageState extends State<GameHubPage> {
   late GameDataService _gameDataService;
   
   String? _profileImageUrl;
-  bool _isLoading = true;
+  bool _isLoading = false;
   bool _isInitialized = false;
 
   @override
@@ -41,24 +41,36 @@ class _GameHubPageState extends State<GameHubPage> {
   }
 
   Future<void> _initializeData() async {
-    setState(() => _isLoading = true);
     try {
-      // Ensure default data is seeded and user challenges are assigned
-      await _gameDataService.initializeDefaultData();
-      await _gameDataService.initialize();
-      await _gameDataService.refreshChallenges();
-      await _loadRecentAchievements();
-      await _loadProfileImage();
-      setState(() {
-        _isInitialized = true;
-        _isLoading = false;
-      });
+      // Start loading profile image immediately (non-blocking)
+      _loadProfileImage();
+      
+      // Run all initialization tasks in parallel for faster loading
+      await Future.wait([
+        _gameDataService.initializeDefaultData(),
+        _gameDataService.initialize(),
+      ]);
+      
+      // Refresh challenges and achievements after initialization
+      await Future.wait([
+        _gameDataService.refreshChallenges(),
+        _loadRecentAchievements(),
+      ]);
+      
+      if (mounted) {
+        setState(() {
+          _isInitialized = true;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       debugPrint('Error initializing game data: $e');
-      setState(() {
-        _isLoading = false;
-        _isInitialized = true;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isInitialized = true;
+        });
+      }
     }
   }
 
@@ -83,10 +95,12 @@ class _GameHubPageState extends State<GameHubPage> {
 
   Future<void> _loadRecentAchievements() async {
     try {
-      final achievements = await _gameDataService.getRecentAchievements(limit: 5);
-      setState(() {
-
-      });
+      await _gameDataService.getRecentAchievements(limit: 5);
+      if (mounted) {
+        setState(() {
+          // Achievement data is stored in GameDataService
+        });
+      }
     } catch (e) {
       debugPrint('Error loading achievements: $e');
     }
@@ -120,7 +134,8 @@ class _GameHubPageState extends State<GameHubPage> {
 
   @override
   void dispose() {
-    _gameService.dispose();
+    // Don't dispose GameService - it's used across multiple pages
+    // _gameService.dispose();
     super.dispose();
   }
 
@@ -607,7 +622,6 @@ class _GameHubPageState extends State<GameHubPage> {
     final cardPadding = isSmallScreen ? AppSpacing.md : AppSpacing.lg;
     final iconSize = isSmallScreen ? 18.0 : 22.0;
     final valueFontSize = isSmallScreen ? 20.0 : 24.0;
-    final labelFontSize = isSmallScreen ? 10.0 : 12.0;
     final subtitleFontSize = isSmallScreen ? 9.0 : 11.0;
     
     return Container(

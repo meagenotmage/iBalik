@@ -10,35 +10,59 @@ import 'utils/app_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() async {
+  // Catch any uncaught errors
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    print('Flutter Error: ${details.exception}');
+    print('Stack trace: ${details.stack}');
+  };
+  
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize Firebase first
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    // Initialize Firebase first
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    print('***** Firebase initialized successfully');
+  } catch (e, stackTrace) {
+    print('Firebase initialization error: $e');
+    print('Stack trace: $stackTrace');
+    // Continue anyway - some features may not work but app should still launch
+  }
   
-  // Initialize Supabase for image hosting
-  await Supabase.initialize(
-    url: 'https://erljzvaikyztphsamptd.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVybGp6dmFpa3l6dHBoc2FtcHRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQxNzg1NDgsImV4cCI6MjA3OTc1NDU0OH0.jTZJt3yXcK1xnMyasBtL8r1iH5hK2B6_bhthK7IJ2wk',
-  );
+  try {
+    // Initialize Supabase for image hosting
+    await Supabase.initialize(
+      url: 'https://erljzvaikyztphsamptd.supabase.co',
+      anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVybGp6dmFpa3l6dHBoc2FtcHRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQxNzg1NDgsImV4cCI6MjA3OTc1NDU0OH0.jTZJt3yXcK1xnMyasBtL8r1iH5hK2B6_bhthK7IJ2wk',
+    );
+    print('***** Supabase initialized successfully');
+  } catch (e, stackTrace) {
+    print('Supabase initialization error: $e');
+    print('Stack trace: $stackTrace');
+    // Continue anyway - some features may not work but app should still launch
+  }
   
-  // Ensure storage bucket exists
-  await _ensureStorageBucket();
-  
-  // Run storage cleanup in background
-  _runStorageCleanup();
-  
+  // Run app immediately without waiting for background services
   runApp(const MyApp());
+  
+  // Run background operations AFTER app starts - delay even longer
+  Future.delayed(const Duration(seconds: 5), () {
+    _ensureStorageBucket();
+    _runStorageCleanup();
+  });
 }
 
 /// Ensure the storage bucket exists for image uploads
-Future<void> _ensureStorageBucket() async {
+void _ensureStorageBucket() async {
   try {
     final storageService = SupabaseStorageService();
     await storageService.ensureBucketExists();
+    print('Storage bucket setup completed');
   } catch (e) {
-    print('Storage bucket setup error: $e');
+    print('Storage bucket setup error (non-critical): $e');
+    // Don't throw - this is a non-critical background operation
   }
 }
 
@@ -47,8 +71,10 @@ void _runStorageCleanup() async {
   try {
     final cleanupService = StorageCleanupService();
     await cleanupService.checkAndRunCleanup();
+    print('Storage cleanup completed');
   } catch (e) {
-    print('Storage cleanup error: $e');
+    print('Storage cleanup error (non-critical): $e');
+    // Don't throw - this is a non-critical background operation
   }
 }
 
@@ -61,19 +87,39 @@ class MyApp extends StatelessWidget {
       title: 'iBalik',
       theme: AppTheme.lightTheme,
       debugShowCheckedModeBanner: false,
-      home: StreamBuilder<fb_auth.User?>(
-        stream: fb_auth.FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          // Show loading while checking auth state
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
-              body: Center(
-                child: CircularProgressIndicator(),
+      home: _buildHomePage(),
+    );
+  }
+  
+  Widget _buildHomePage() {
+    // Wrap in error boundary
+    return StreamBuilder<fb_auth.User?>(
+      stream: fb_auth.FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        // Handle errors
+        if (snapshot.hasError) {
+          print('Auth stream error: ${snapshot.error}');
+          return const Scaffold(
+            body: Center(
+              child: WelcomePage(),
+            ),
+          );
+        }
+        
+        // Show loading while checking auth state
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            backgroundColor: Colors.black,
+            body: Center(
+              child: CircularProgressIndicator(
+                color: Colors.white,
               ),
-            );
-          }
-          
-          // Smooth fade transition when showing pages
+            ),
+          );
+        }
+        
+        // Determine which page to show
+        try {
           Widget page;
           if (snapshot.hasData && snapshot.data!.emailVerified) {
             page = const HomePage();
@@ -87,8 +133,15 @@ class MyApp extends StatelessWidget {
             switchOutCurve: Curves.easeInOut,
             child: page,
           );
-        },
-      ),
+        } catch (e) {
+          print('Error building page: $e');
+          return const Scaffold(
+            body: Center(
+              child: WelcomePage(),
+            ),
+          );
+        }
+      },
     );
   }
 }

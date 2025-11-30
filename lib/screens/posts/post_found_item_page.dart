@@ -1581,14 +1581,6 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
       return;
     }
     
-    // Set cooldown immediately when user posts
-    await _setCooldown();
-    setState(() {
-      _isOnCooldown = true;
-      _remainingCooldown = const Duration(minutes: 10);
-    });
-    _startCooldownTimer();
-    
     // Navigate to drop-off page based on availability selection
     if (_selectedAvailability == 'Keep with me') {
       // Upload to Firebase and post immediately
@@ -1719,6 +1711,14 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
           'images': uploadedImageUrls,
         };
         
+        // Set cooldown after successful posting
+        await _setCooldown();
+        setState(() {
+          _isOnCooldown = true;
+          _remainingCooldown = const Duration(minutes: 10);
+        });
+        _startCooldownTimer();
+        
         Navigator.push(
           context,
           SmoothPageRoute(page: PostSuccessPage(itemData: itemData)),
@@ -1728,6 +1728,14 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
         setState(() {
           _isUploading = false;
         });
+        
+        // Clear cooldown on error so user can retry
+        await _clearCooldown();
+        setState(() {
+          _isOnCooldown = false;
+          _remainingCooldown = Duration.zero;
+        });
+        _cooldownTimer?.cancel();
         
         // Enhanced error handling with retry option
         String errorMessage = 'Error posting item';

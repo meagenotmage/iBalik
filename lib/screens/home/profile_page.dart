@@ -17,6 +17,7 @@ import '../game/challenges_page.dart';
 import '../claims/claims_page.dart';
 import '../auth/login_page.dart';
 import '../store/points_store_page.dart';
+import 'my_posts_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -54,44 +55,44 @@ class _ProfilePageState extends State<ProfilePage> {
 
   // Department to courses mapping
   final Map<String, List<String>> _departmentCourses = {
-    'College of Information and Communications Technology': [
+    'CICT': [
       'BS Information Technology',
       'BS Computer Science',
       'BS Information Systems',
       'BS Entertainment and Multimedia Computing',
       'BS Library and Information Science',
     ],
-    'College of Nursing': [
+    'CON': [
       'BS Nursing',
     ],
-    'College of Law': [
+    'COL': [
       'Juris Doctor',
     ],
-    'College of Education': [
+    'COE': [
       'BS Education - Elementary',
       'BS Education - Secondary',
       'BS Physical Education',
       'BS Special Education',
       'Bachelor of Early Childhood Education',
     ],
-    'College of Business and Management': [
+    'CBM': [
       'BS Business Administration',
       'BS in Office Administration',
       'BS in Hospitality Management',
     ],
-    'College of PESCAR': [
+    'COP': [
       'BS in Sports Science',
       'BS in Physical Education',
     ],
-    'College of Communications': [
+    'COC': [
       'BS in Development Communication',
       'BS in Broadcasting',
       'BS in Journalism',
     ],
-    'College of Medicine': [
+    'COM': [
       'Doctor of Medicine',
     ],
-    'College of Arts and Sciences': [
+    'CAS': [
       'BS Psychology',
       'BS Biology',
       'BS Chemistry',
@@ -100,23 +101,23 @@ class _ProfilePageState extends State<ProfilePage> {
       'AB in Political Science',
       'AB in English',
     ],
-    'College of Dentistry': [
+    'COD': [
       'Doctor of Dental Medicine',
     ],
   };
 
   // Available options for dropdowns
   final List<String> departments = [
-    'College of Information and Communications Technology',
-    'College of Nursing',
-    'College of Law',
-    'College of Education',
-    'College of Business and Management',
-    'College of PESCAR',
-    'College of Communications',
-    'College of Medicine',
-    'College of Arts and Sciences',
-    'College of Dentistry',
+    'CICT',
+    'CON',
+    'COL',
+    'COE',
+    'CBM',
+    'PESCAR',
+    'COC',
+    'COM',
+    'CAS',
+    'COD',
   ];
 
   final List<String> years = [
@@ -137,7 +138,8 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   void dispose() {
-    _gameService.dispose();
+    // Don't dispose GameService - it's shared across multiple pages
+    // _gameService.dispose();
     super.dispose();
   }
 
@@ -164,16 +166,20 @@ class _ProfilePageState extends State<ProfilePage> {
           .count()
           .get();
 
-      setState(() {
-        _userRank = (higherKarmaQuery.count ?? 0) + 1;
-        _statsLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _userRank = (higherKarmaQuery.count ?? 0) + 1;
+          _statsLoading = false;
+        });
+      }
     } catch (e) {
       debugPrint('Error calculating user rank: $e');
-      setState(() {
-        _userRank = 0;
-        _statsLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _userRank = 0;
+          _statsLoading = false;
+        });
+      }
     }
   }
 
@@ -188,59 +194,60 @@ class _ProfilePageState extends State<ProfilePage> {
 
       if (userDoc.exists && userDoc.data() != null) {
         final data = userDoc.data()!;
-        setState(() {
-          final username = data['username'] as String?;
-          final fullName = data['name'] as String?;
-          userName =
-              username ??
-              fullName ??
-              user.displayName ??
-              user.email?.split('@').first ??
-              'User Name';
+        if (mounted) {
+          setState(() {
+            final username = data['username'] as String?;
+            final fullName = data['name'] as String?;
+            userName =
+                username ??
+                fullName ??
+                user.displayName ??
+                user.email?.split('@').first ??
+                'User Name';
 
-          // Handle department mapping - convert "CICT" to full name
-          final storedDept = (data['department'] as String?) ?? 'CICT';
-          department = _mapDepartmentToFullName(storedDept);
-          
-          course = (data['course'] as String?) ?? 'BS Information Technology';
-          year = (data['year'] as String?) ?? '3rd Year';
-          bio = (data['bio'] as String?) ?? 
-                'Passionate about helping the WVSU community. Always happy to help reunite lost items with their owners!';
-          profileImageUrl = data['profileImageUrl'] as String?;
-          // Load real stats from Firestore
-          _itemsReturned = (data['itemsReturned'] as int?) ?? (data['returned'] as int?) ?? 0;
-          _currentStreak = (data['currentStreak'] as int?) ?? (data['streak'] as int?) ?? 0;
-          
-          // Calculate user rank asynchronously
-          _calculateUserRank();
+            // Handle department mapping - convert "CICT" to full name
+            final storedDept = (data['department'] as String?) ?? 'CICT';
+            department = _mapDepartmentToFullName(storedDept);
+            
+            course = (data['course'] as String?) ?? 'BS Information Technology';
+            year = (data['year'] as String?) ?? '3rd Year';
+            bio = (data['bio'] as String?) ?? 
+                  'Passionate about helping the WVSU community. Always happy to help reunite lost items with their owners!';
+            profileImageUrl = data['profileImageUrl'] as String?;
+            // Load real stats from Firestore
+            _itemsReturned = (data['itemsReturned'] as int?) ?? (data['returned'] as int?) ?? 0;
+            _currentStreak = (data['currentStreak'] as int?) ?? (data['streak'] as int?) ?? 0;
+            
+            // Load settings
+            final settings = data['settings'] as Map<String, dynamic>?;
+            final notifications = settings?['notifications'] as Map<String, dynamic>?;
+            final privacy = settings?['privacy'] as Map<String, dynamic>?;
 
-          // Create sample activities for new users
-          _createSampleActivities();
-
-          // Load settings
-          final settings = data['settings'] as Map<String, dynamic>?;
-          final notifications = settings?['notifications'] as Map<String, dynamic>?;
-          final privacy = settings?['privacy'] as Map<String, dynamic>?;
-
-          pushNotifications = notifications?['pushNotifications'] as bool? ?? true;
-          emailNotifications = notifications?['emailNotifications'] as bool? ?? true;
-          claimNotifications = notifications?['claimNotifications'] as bool? ?? true;
-          publicProfile = privacy?['publicProfile'] as bool? ?? true;
-          showStatistics = privacy?['showStatistics'] as bool? ?? true;
-        });
+            pushNotifications = notifications?['pushNotifications'] as bool? ?? true;
+            emailNotifications = notifications?['emailNotifications'] as bool? ?? true;
+            claimNotifications = notifications?['claimNotifications'] as bool? ?? true;
+            publicProfile = privacy?['publicProfile'] as bool? ?? true;
+            showStatistics = privacy?['showStatistics'] as bool? ?? true;
+          });
+        }
+        // These must be called after setState
+        _calculateUserRank();
+        _createSampleActivities();
       } else {
         _createUserDocument(user);
       }
     }
   } catch (e) {
     debugPrint('Error loading user data: $e');
-    setState(() {
-      userName = 'User Name';
-      department = 'College of Information and Communications Technology';
-      course = 'BS Information Technology';
-      year = '3rd Year';
-      bio = 'Passionate about helping the WVSU community. Always happy to help reunite lost items with their owners!';
-    });
+    if (mounted) {
+      setState(() {
+        userName = 'User Name';
+        department = 'CICT';
+        course = 'BS Information Technology';
+        year = '3rd Year';
+        bio = 'Passionate about helping the WVSU community. Always happy to help reunite lost items with their owners!';
+      });
+    }
   }
 }
 
@@ -251,7 +258,7 @@ class _ProfilePageState extends State<ProfilePage> {
         .doc(user.uid)
         .set({
       'username': user.displayName ?? user.email?.split('@').first ?? 'User',
-      'department': 'College of Information and Communications Technology', // Use full name
+      'department': 'CICT',
       'course': 'BS Information Technology',
       'year': '3rd Year',
       'bio': 'Passionate about helping the WVSU community. Always happy to help reunite lost items with their owners!',
@@ -721,13 +728,32 @@ Future<void> _updateProfile(
   }
 }
 
-  // Helper to map department abbreviations to full names
+  // Helper to convert old full college names to abbreviations
   String _mapDepartmentToFullName(String dept) {
+    // Convert old full names to abbreviations for backwards compatibility
     switch (dept) {
-      case 'CICT':
-        return 'College of Information and Communications Technology';
+      case 'College of Information and Communications Technology':
+        return 'CICT';
+      case 'College of Nursing':
+        return 'CN';
+      case 'College of Law':
+        return 'CL';
+      case 'College of Education':
+        return 'CED';
+      case 'College of Business and Management':
+        return 'CBM';
+      case 'College of PESCAR':
+        return 'CPESCAR';
+      case 'College of Communications':
+        return 'CC';
+      case 'College of Medicine':
+        return 'CM';
+      case 'College of Arts and Sciences':
+        return 'CAS';
+      case 'College of Dentistry':
+        return 'CD';
       default:
-        return dept;
+        return dept; // Already an abbreviation or unknown
     }
   }
 
@@ -1614,7 +1640,7 @@ Future<void> _updateProfile(
                 () {
                   Navigator.push(
                     context,
-                    SmoothPageRoute(page: const PostsPage()),
+                    SmoothPageRoute(page: const MyPostsPage()),
                   );
                 },
               ),

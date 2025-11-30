@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/lost_item_service.dart';
 import '../../services/activity_service.dart';
 import '../../services/game_service.dart'; // Import GameService
@@ -98,6 +99,10 @@ class _DropOffSuccessPageState extends State<DropOffSuccessPage> {
         _itemId = createdId;
         _isCreating = false;
       });
+      
+      // Set cooldown after successful drop-off posting
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('lastPostTimestamp', DateTime.now().millisecondsSinceEpoch);
     } catch (e) {
       setState(() {
         _isCreating = false;
@@ -518,7 +523,7 @@ class _DropOffSuccessPageState extends State<DropOffSuccessPage> {
                           ),
                           const SizedBox(height: 12),
                           const Text(
-                            'The hub staff will handle the return process',
+                            'The staff will handle your item until a user claims it',
                             style: TextStyle(
                               fontSize: 13,
                               color: Color(0xFF1976D2),
@@ -527,8 +532,8 @@ class _DropOffSuccessPageState extends State<DropOffSuccessPage> {
                           const SizedBox(height: 20),
                           _buildStep(
                             '1',
-                            'Hub staff manages claims',
-                            'They\'ll review and approve legitimate claim requests',
+                            'Staff manages dropped off items',
+                            'They\'ll wait for owners to claim their items, approved by you',
                             const Color(0xFF2196F3),
                           ),
                           const SizedBox(height: 16),

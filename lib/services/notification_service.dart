@@ -123,7 +123,10 @@ class NotificationService {
         await batch.commit();
       }
 
-      // Keep only last 20 notifications for this user
+      // TODO: Keep only last 20 notifications requires composite index
+      // Create index at: https://console.firebase.google.com/
+      // For now, commented out to avoid index errors
+      /*
       final allNotifications = await _firestore
           .collection('notifications')
           .where('userId', isEqualTo: userId)
@@ -147,6 +150,7 @@ class NotificationService {
         }
         await batch.commit();
       }
+      */
     } catch (e) {
       print('Error cleaning up notifications for user $userId: $e');
     }

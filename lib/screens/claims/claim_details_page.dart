@@ -89,6 +89,16 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
   void initState() {
     super.initState();
     _data = Map.from(widget.claimData);
+    
+    // DEBUG: Print all claim data to see what we have
+    debugPrint('======= CLAIM DETAILS DEBUG =======');
+    debugPrint('Claim Data Keys: ${widget.claimData.keys.toList()}');
+    debugPrint('Full Claim Data: ${widget.claimData}');
+    debugPrint('imageUrl field: ${widget.claimData['imageUrl']}');
+    debugPrint('itemImageUrl field: ${widget.claimData['itemImageUrl']}');
+    debugPrint('itemId: ${widget.claimData['itemId']}');
+    debugPrint('===================================');
+    
     _claimStream = FirebaseFirestore.instance
         .collection('claims')
         .doc(_data['docId'])
@@ -168,12 +178,32 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
           _data['founderContactValue'] = _data['founderContactValue'] ?? d['founderContactValue'];
           
           // Copy imageUrl from lost_item's images array if not present
-          if (_data['imageUrl'] == null) {
+          if (_data['imageUrl'] == null || _data['imageUrl'].toString().isEmpty) {
             final images = d['images'];
-            if (images is List && images.isNotEmpty && images[0] is String) {
-              _data['imageUrl'] = images[0];
+            if (images is List && images.isNotEmpty) {
+              // Get first non-empty image URL
+              for (var img in images) {
+                if (img is String && img.isNotEmpty) {
+                  _data['imageUrl'] = img;
+                  debugPrint('ClaimDetails: Set imageUrl from lost_item images: $img');
+                  break;
+                }
+              }
             }
           }
+          
+          // Also try to get from claim data itself
+          if (_data['imageUrl'] == null || _data['imageUrl'].toString().isEmpty) {
+            if (widget.claimData['itemImageUrl'] != null) {
+              _data['imageUrl'] = widget.claimData['itemImageUrl'];
+              debugPrint('ClaimDetails: Set imageUrl from claim itemImageUrl: ${_data["imageUrl"]}');
+            } else if (widget.claimData['imageUrl'] != null) {
+              _data['imageUrl'] = widget.claimData['imageUrl'];
+              debugPrint('ClaimDetails: Set imageUrl from claim imageUrl: ${_data["imageUrl"]}');
+            }
+          }
+          
+          debugPrint('ClaimDetails: Final imageUrl = ${_data["imageUrl"]}');
         });
       }
     } catch (_) {}
@@ -752,28 +782,24 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
                                     child: ClipRRect(
                                       borderRadius: BorderRadius.circular(11),
                                       child: (_data['imageUrl'] != null && _data['imageUrl'].toString().isNotEmpty)
-                                          ? Image.network(
-                                              _data['imageUrl'].toString(),
+                                          ? CachedNetworkImage(
+                                              imageUrl: _data['imageUrl'].toString(),
                                               width: 64,
                                               height: 64,
                                               fit: BoxFit.cover,
-                                              errorBuilder: (context, error, stackTrace) => Icon(
+                                              placeholder: (context, url) => Center(
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                                    AppColors.primary,
+                                                  ),
+                                                ),
+                                              ),
+                                              errorWidget: (context, url, error) => Icon(
                                                 Icons.broken_image,
                                                 color: Colors.grey[400],
                                                 size: 32,
                                               ),
-                                              loadingBuilder: (context, child, loadingProgress) {
-                                                if (loadingProgress == null) return child;
-                                                return Center(
-                                                  child: CircularProgressIndicator(
-                                                    strokeWidth: 2,
-                                                    value: loadingProgress.expectedTotalBytes != null
-                                                        ? loadingProgress.cumulativeBytesLoaded /
-                                                            loadingProgress.expectedTotalBytes!
-                                                        : null,
-                                                  ),
-                                                );
-                                              },
                                             )
                                           : Icon(
                                               Icons.image,

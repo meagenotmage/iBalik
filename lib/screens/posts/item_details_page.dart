@@ -21,6 +21,11 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
   String? _existingClaimStatus;
   int _currentImageIndex = 0;
   final PageController _imagePageController = PageController();
+  
+  // Founder details
+  String? _founderFullName;
+  String? _founderProfileImageUrl;
+  bool _isLoadingFounderDetails = true;
 
   // Check if current user is the founder of the item
   bool get _isCurrentUserFounder {
@@ -34,6 +39,7 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
   void initState() {
     super.initState();
     _checkExistingClaim();
+    _loadFounderDetails();
   }
 
   @override
@@ -80,6 +86,44 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
       setState(() {
         _isCheckingClaim = false;
       });
+    }
+  }
+
+  // Load founder details from Firestore
+  Future<void> _loadFounderDetails() async {
+    try {
+      final userId = widget.item['userId'];
+      if (userId == null || userId.toString().isEmpty) {
+        setState(() {
+          _isLoadingFounderDetails = false;
+        });
+        return;
+      }
+
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId.toString())
+          .get();
+
+      if (userDoc.exists && mounted) {
+        final userData = userDoc.data()!;
+        setState(() {
+          _founderFullName = userData['fullName'] ?? userData['name'] ?? 'Unknown';
+          _founderProfileImageUrl = userData['profileImageUrl'];
+          _isLoadingFounderDetails = false;
+        });
+      } else if (mounted) {
+        setState(() {
+          _isLoadingFounderDetails = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading founder details: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingFounderDetails = false;
+        });
+      }
     }
   }
 
@@ -259,84 +303,150 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: Colors.grey[200]!),
                     ),
-                    child: Row(
-                      children: [
-                        // Avatar
-                        Container(
-                          width: 50,
-                          height: 50,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF4318FF),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.person,
-                            color: Colors.white,
-                            size: 28,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        // Name and Label
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                    child: _isLoadingFounderDetails
+                        ? Row(
                             children: [
-                              Text(
-                                'Found by',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.grey[600],
+                              Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[300],
+                                  shape: BoxShape.circle,
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                widget.item['userName'] ?? widget.item['foundBy'] ?? 'Unknown',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.black87,
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      height: 12,
+                                      width: 80,
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[300],
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Container(
+                                      height: 16,
+                                      width: 120,
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[300],
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Container(
+                                      height: 12,
+                                      width: 100,
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[300],
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Verified Student',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.grey[600],
+                            ],
+                          )
+                        : Row(
+                            children: [
+                              // Avatar with profile image
+                              Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF4318FF),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.grey[300]!,
+                                    width: 2,
+                                  ),
+                                ),
+                                child: ClipOval(
+                                  child: _founderProfileImageUrl != null && _founderProfileImageUrl!.isNotEmpty
+                                      ? CachedNetworkImage(
+                                          imageUrl: _founderProfileImageUrl!,
+                                          fit: BoxFit.cover,
+                                          placeholder: (context, url) => const Center(
+                                            child: CircularProgressIndicator(strokeWidth: 2),
+                                          ),
+                                          errorWidget: (context, url, error) => const Icon(
+                                            Icons.person,
+                                            color: Colors.white,
+                                            size: 28,
+                                          ),
+                                        )
+                                      : const Icon(
+                                          Icons.person,
+                                          color: Colors.white,
+                                          size: 28,
+                                        ),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              // Name and Label
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Found by',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      _founderFullName ?? 'Unknown',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Verified Student',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Trusted Badge
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE8F5E9),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: const [
+                                    Icon(
+                                      Icons.check_circle,
+                                      size: 16,
+                                      color: Color(0xFF4CAF50),
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Trusted',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF4CAF50),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                        // Trusted Badge
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE8F5E9),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              Icon(
-                                Icons.check_circle,
-                                size: 16,
-                                color: Color(0xFF4CAF50),
-                              ),
-                              SizedBox(width: 4),
-                              Text(
-                                'Trusted',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF4CAF50),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
                   const SizedBox(height: 16),
                   // Pickup Information Card

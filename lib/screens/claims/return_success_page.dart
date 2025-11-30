@@ -1,10 +1,126 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../utils/page_transitions.dart';
 import '../home/home_page.dart';
 import '../../utils/app_theme.dart';
 
-class ReturnSuccessPage extends StatelessWidget {
-  const ReturnSuccessPage({super.key});
+class ReturnSuccessPage extends StatefulWidget {
+  final int pointsEarned;
+  final int karmaEarned;
+  final int xpEarned;
+  
+  const ReturnSuccessPage({
+    super.key,
+    this.pointsEarned = 20,  // Default from GameService.rewardSuccessfulReturn
+    this.karmaEarned = 15,
+    this.xpEarned = 25,
+  });
+
+  @override
+  State<ReturnSuccessPage> createState() => _ReturnSuccessPageState();
+}
+
+class _ReturnSuccessPageState extends State<ReturnSuccessPage> {
+  bool _loading = true;
+  int _totalItemsReturned = 0;
+  int _totalStudentsHelped = 0;
+  int _campusRank = 0;
+  int _currentLevel = 1;
+  String _levelTitle = 'Newcomer';
+  bool _leveledUp = false;
+  int _previousLevel = 1;
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadUserStats();
+  }
+  
+  Future<void> _loadUserStats() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+      
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      
+      if (userDoc.exists) {
+        final data = userDoc.data()!;
+        
+        // Get items returned (just updated)
+        final itemsReturned = (data['itemsReturned'] ?? 0) as int;
+        
+        // Calculate students helped (could be claims + returns)
+        final claimsApproved = (data['claimsApproved'] ?? 0) as int;
+        final studentsHelped = itemsReturned + claimsApproved;
+        
+        // Get current level
+        final level = (data['level'] ?? 1) as int;
+        
+        // Check if just leveled up (compare with previous activities)
+        final activitiesSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('activities')
+            .orderBy('createdAt', descending: true)
+            .limit(2)
+            .get();
+        
+        bool levelUp = false;
+        int prevLevel = level;
+        if (activitiesSnapshot.docs.length >= 2) {
+          // Check if most recent activity is level up
+          final recentActivity = activitiesSnapshot.docs.first.data();
+          if (recentActivity['type'] == 'level_up') {
+            levelUp = true;
+            prevLevel = level - 1;
+          }
+        }
+        
+        // Get user rank
+        final higherKarmaQuery = await FirebaseFirestore.instance
+            .collection('users')
+            .where('karma', isGreaterThan: data['karma'] ?? 0)
+            .count()
+            .get();
+        final rank = (higherKarmaQuery.count ?? 0) + 1;
+        
+        if (mounted) {
+          setState(() {
+            _totalItemsReturned = itemsReturned;
+            _totalStudentsHelped = studentsHelped;
+            _campusRank = rank;
+            _currentLevel = level;
+            _levelTitle = _getLevelTitle(level);
+            _leveledUp = levelUp;
+            _previousLevel = prevLevel;
+            _loading = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() => _loading = false);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading user stats: $e');
+      if (mounted) {
+        setState(() => _loading = false);
+      }
+    }
+  }
+  
+  String _getLevelTitle(int level) {
+    if (level >= 10) return 'Legend';
+    if (level >= 8) return 'Champion';
+    if (level >= 6) return 'Hero';
+    if (level >= 4) return 'Helper';
+    if (level >= 2) return 'Beginner';
+    return 'Newcomer';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -102,7 +218,7 @@ class ReturnSuccessPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 20),
                       
-                      // Points and Karma
+                      // Points, Karma, and XP
                       Row(
                         children: [
                           Expanded(
@@ -112,20 +228,20 @@ class ReturnSuccessPage extends StatelessWidget {
                                 color: const Color(0xFFE3F2FD),
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: const Column(
+                              child: Column(
                                 children: [
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(
+                                      const Icon(
                                         Icons.stars,
                                         color: Color(0xFF2196F3),
                                         size: 24,
                                       ),
-                                      SizedBox(width: 8),
+                                      const SizedBox(width: 8),
                                       Text(
-                                        '+25',
-                                        style: TextStyle(
+                                        '+${widget.pointsEarned}',
+                                        style: const TextStyle(
                                           fontSize: 24,
                                           fontWeight: FontWeight.bold,
                                           color: Color(0xFF2196F3),
@@ -133,9 +249,9 @@ class ReturnSuccessPage extends StatelessWidget {
                                       ),
                                     ],
                                   ),
-                                  SizedBox(height: 8),
-                                  Text(
-                                    'Points Earned',
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'Points',
                                     style: TextStyle(
                                       fontSize: 13,
                                       color: Color(0xFF2196F3),
@@ -154,20 +270,20 @@ class ReturnSuccessPage extends StatelessWidget {
                                 color: const Color(0xFFF3E5F5),
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: const Column(
+                              child: Column(
                                 children: [
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(
+                                      const Icon(
                                         Icons.favorite,
                                         color: Color(0xFF9C27B0),
                                         size: 24,
                                       ),
-                                      SizedBox(width: 8),
+                                      const SizedBox(width: 8),
                                       Text(
-                                        '+50',
-                                        style: TextStyle(
+                                        '+${widget.karmaEarned}',
+                                        style: const TextStyle(
                                           fontSize: 24,
                                           fontWeight: FontWeight.bold,
                                           color: Color(0xFF9C27B0),
@@ -175,12 +291,54 @@ class ReturnSuccessPage extends StatelessWidget {
                                       ),
                                     ],
                                   ),
-                                  SizedBox(height: 8),
-                                  Text(
-                                    'Karma Earned',
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'Karma',
                                     style: TextStyle(
                                       fontSize: 13,
                                       color: Color(0xFF9C27B0),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE8F5E9),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(
+                                        Icons.trending_up,
+                                        color: Color(0xFF4CAF50),
+                                        size: 24,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        '+${widget.xpEarned}',
+                                        style: const TextStyle(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF4CAF50),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'XP',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Color(0xFF4CAF50),
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -193,93 +351,106 @@ class ReturnSuccessPage extends StatelessWidget {
                       
                       const SizedBox(height: 16),
                       
-                      // New Badge Unlocked
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFF9E6),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Column(
-                          children: [
-                            Icon(
-                              Icons.workspace_premium,
-                              color: Color(0xFFF9A825),
-                              size: 32,
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'New Badge Unlocked!',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFFE65100),
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              'Good Samaritan',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFFF57C00),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 16),
-                      
-                      // Level Up
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE8F5E9),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.trending_up,
-                                  color: Color(0xFF4CAF50),
-                                  size: 20,
-                                ),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Level Up!',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF2E7D32),
+                      // Level Up (only show if leveled up)
+                      if (_leveledUp)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE8F5E9),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            children: [
+                              const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.emoji_events,
+                                    color: Color(0xFFFFD700),
+                                    size: 32,
                                   ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Level Up!',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF2E7D32),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'You\'re now Level $_currentLevel • $_levelTitle',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  color: Color(0xFF388E3C),
+                                  fontWeight: FontWeight.w600,
                                 ),
-                              ],
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'You\'re now Level 3 • Campus Helper',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF388E3C),
-                                fontWeight: FontWeight.w600,
                               ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              'Moved up 2 spots in rankings!',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF66BB6A),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Leveled up from Level $_previousLevel!',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF66BB6A),
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
+                      
+                      if (!_leveledUp)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE8F5E9),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            children: [
+                              const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.trending_up,
+                                    color: Color(0xFF4CAF50),
+                                    size: 20,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Current Level',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF2E7D32),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Level $_currentLevel • $_levelTitle',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF388E3C),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              const Text(
+                                'Keep helping to level up!',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF66BB6A),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -345,14 +516,33 @@ class ReturnSuccessPage extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          _buildStatItem('6', 'Items Returned', const Color(0xFF6C63FF)),
-                          _buildStatItem('12', 'Students Helped', const Color(0xFF6C63FF)),
-                          _buildStatItem('#13', 'Campus Rank', const Color(0xFF6C63FF)),
-                        ],
-                      ),
+                      _loading
+                          ? const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(20),
+                                child: CircularProgressIndicator(),
+                              ),
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                _buildStatItem(
+                                  _totalItemsReturned.toString(),
+                                  'Items Returned',
+                                  const Color(0xFF6C63FF),
+                                ),
+                                _buildStatItem(
+                                  _totalStudentsHelped.toString(),
+                                  'Students Helped',
+                                  const Color(0xFF6C63FF),
+                                ),
+                                _buildStatItem(
+                                  _campusRank > 0 ? '#$_campusRank' : 'N/A',
+                                  'Campus Rank',
+                                  const Color(0xFF6C63FF),
+                                ),
+                              ],
+                            ),
                     ],
                   ),
                 ),
@@ -403,152 +593,12 @@ class ReturnSuccessPage extends StatelessWidget {
               
               const SizedBox(height: 24),
               
-              // Keep the Momentum Card
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFF6B35).withOpacity(0.2),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.track_changes,
-                              color: Color(0xFFFF6B35),
-                              size: 20,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          const Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Keep the Momentum',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                              Text(
-                                'Your next challenges await',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.black54,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      _buildChallengeItem(
-                        'Library Guardian',
-                        'Return 2 more library items',
-                        '3/5',
-                        const Color(0xFFFF6B35),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildChallengeItem(
-                        'Weekly Helper',
-                        'Help 3 more students this week',
-                        '2/5',
-                        const Color(0xFF2196F3),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              
-              const SizedBox(height: 24),
-              
               // Action Buttons
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
                   children: [
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          // Navigate to challenges page (placeholder)
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2196F3),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.emoji_events, size: 20),
-                            SizedBox(width: 8),
-                            Text(
-                              'View All Challenges',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: () {
-                          // Navigate to ranking page (placeholder)
-                        },
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.black87,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          side: BorderSide(color: Colors.grey[300]!),
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.leaderboard, size: 20),
-                            SizedBox(width: 8),
-                            Text(
-                              'Check Your Ranking',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
+
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton(
@@ -652,48 +702,5 @@ class ReturnSuccessPage extends StatelessWidget {
     );
   }
 
-  Widget _buildChallengeItem(String title, String subtitle, String progress, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: color,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Text(
-            progress,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
 }

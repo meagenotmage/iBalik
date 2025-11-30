@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -54,13 +55,16 @@ class AuthService {
       }
 
       // Check if username is available
-      final isAvailable = await isUsernameAvailable(username);
+      final usernameToCheck = username.toLowerCase();
+      final isAvailable = await isUsernameAvailable(usernameToCheck);
       if (!isAvailable) {
         return {
           'success': false,
           'message': 'Username is already taken. Please choose another one.'
         };
       }
+      
+      debugPrint('Username "$usernameToCheck" is available for registration');
 
       // Create user account (Firebase Auth)
       UserCredential userCredential = await _auth.createUserWithEmailAndPassword(

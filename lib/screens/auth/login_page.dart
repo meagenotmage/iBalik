@@ -243,7 +243,7 @@ class _LoginPageState extends State<LoginPage> {
                         
                         // Tab Switcher
                         Container(
-                          padding: const EdgeInsets.all(4),
+                          padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 5),
                           decoration: BoxDecoration(
                             color: AppColors.lightGray.withOpacity(0.5),
                             borderRadius: BorderRadius.circular(AppRadius.full),
@@ -252,24 +252,31 @@ class _LoginPageState extends State<LoginPage> {
                               width: 1,
                             ),
                           ),
+                          clipBehavior: Clip.none,
                           child: Row(
                             children: [
                               // Log In Tab (Selected)
                               Expanded(
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  constraints: const BoxConstraints(minHeight: 48),
+                                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
                                   decoration: BoxDecoration(
                                     color: AppColors.white,
                                     borderRadius: BorderRadius.circular(AppRadius.full),
                                     boxShadow: AppShadows.soft,
                                   ),
-                                  child: const Text(
-                                    'Log In',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.darkGray,
+                                  child: Center(
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        'Log In',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.darkGray,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -284,14 +291,20 @@ class _LoginPageState extends State<LoginPage> {
                                     );
                                   },
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
-                                    child: Text(
-                                      'Sign Up',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w500,
-                                        color: AppColors.textSecondary,
+                                    constraints: const BoxConstraints(minHeight: 48),
+                                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                                    child: Center(
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: Text(
+                                          'Sign Up',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w500,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),

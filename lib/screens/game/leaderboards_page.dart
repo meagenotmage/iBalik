@@ -4,6 +4,7 @@ import '../../models/game_models.dart';
 import '../../services/game_service.dart';
 import '../../services/game_data_service.dart';
 import '../../utils/app_theme.dart';
+import '../home/public_profile_page.dart';
 
 class LeaderboardsPage extends StatefulWidget {
   const LeaderboardsPage({super.key});
@@ -315,93 +316,106 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
     final color = colors[rank]!;
     final score = _getEntryScore(entry);
 
-    return Column(
-      children: [
-        // Avatar
-        Container(
-          width: rank == 1 ? 70 : 60,
-          height: rank == 1 ? 70 : 60,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: color, width: 3),
-            boxShadow: [
-              BoxShadow(
-                color: color.withOpacity(0.5),
-                blurRadius: 10,
-              ),
-            ],
-          ),
-          child: ClipOval(
-            child: entry.user.profileImageUrl != null && entry.user.profileImageUrl!.isNotEmpty
-                ? CachedNetworkImage(
-                    imageUrl: entry.user.profileImageUrl!,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      color: AppColors.darkSurface,
-                      child: const Center(
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    ),
-                    errorWidget: (context, url, error) => _buildInitialsAvatar(entry.user, color),
-                  )
-                : _buildInitialsAvatar(entry.user, color),
-          ),
-        ),
-        const SizedBox(height: 8),
-        // Name
-        SizedBox(
-          width: 80,
-          child: Text(
-            entry.user.userName,
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.bodySmall.copyWith(
-              color: AppColors.lightText,
-              fontWeight: FontWeight.w600,
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PublicProfilePage(
+              userId: entry.user.odI,
+              userName: entry.user.userName,
             ),
           ),
-        ),
-        const SizedBox(height: 4),
-        // Score
-        Text(
-          score,
-          style: TextStyle(
-            color: color,
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(height: 8),
-        // Podium
-        Container(
-          width: 80,
-          height: height,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                color,
-                color.withOpacity(0.7),
+        );
+      },
+      child: Column(
+        children: [
+          // Avatar
+          Container(
+            width: rank == 1 ? 70 : 60,
+            height: rank == 1 ? 70 : 60,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: color, width: 3),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withOpacity(0.5),
+                  blurRadius: 10,
+                ),
               ],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
             ),
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(8),
+            child: ClipOval(
+              child: entry.user.profileImageUrl != null && entry.user.profileImageUrl!.isNotEmpty
+                  ? CachedNetworkImage(
+                      imageUrl: entry.user.profileImageUrl!,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(
+                        color: AppColors.darkSurface,
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                      errorWidget: (context, url, error) => _buildInitialsAvatar(entry.user, color),
+                    )
+                  : _buildInitialsAvatar(entry.user, color),
             ),
           ),
-          child: Center(
+          const SizedBox(height: 8),
+          // Name
+          SizedBox(
+            width: 80,
             child: Text(
-              rank.toString(),
-              style: TextStyle(
-                color: rank == 1 ? Colors.black : Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: rank == 1 ? 32 : 24,
+              entry.user.userName,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.lightText,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
-        ),
-      ],
+          const SizedBox(height: 4),
+          // Score
+          Text(
+            score,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Podium
+          Container(
+            width: 80,
+            height: height,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  color,
+                  color.withOpacity(0.7),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(8),
+              ),
+            ),
+            child: Center(
+              child: Text(
+                rank.toString(),
+                style: TextStyle(
+                  color: rank == 1 ? Colors.black : Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: rank == 1 ? 32 : 24,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -425,20 +439,32 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
     final isTopTen = entry.rank <= 10;
     final score = _getEntryScore(entry);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.darkCard,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: isTopTen
-            ? Border.all(
-                color: AppColors.secondary.withOpacity(0.3),
-                width: 1,
-              )
-            : null,
-      ),
-      child: Row(
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PublicProfilePage(
+              userId: entry.user.odI,
+              userName: entry.user.userName,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.darkCard,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: isTopTen
+              ? Border.all(
+                  color: AppColors.secondary.withOpacity(0.3),
+                  width: 1,
+                )
+              : null,
+        ),
+        child: Row(
         children: [
           // Rank
           Container(
@@ -540,6 +566,7 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
             ],
           ),
         ],
+        ),
       ),
     );
   }
@@ -573,7 +600,7 @@ class _LeaderboardsPageState extends State<LeaderboardsPage> {
       case LeaderboardCriteria.level:
         return entry.user.level.toString();
       case LeaderboardCriteria.streak:
-        return '${entry.user.currentStreak} days';
+        return entry.user.currentStreak.toString();
     }
   }
 

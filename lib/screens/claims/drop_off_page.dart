@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../utils/page_transitions.dart';
+import '../../utils/image_picker_data.dart';
 import 'drop_off_success_page.dart';
 
 class DropOffPage extends StatefulWidget {
@@ -17,13 +18,6 @@ class _DropOffPageState extends State<DropOffPage> {
   final List<Map<String, dynamic>> _staffMembers = [
     {
       'id': '1',
-      'name': 'Student Council Member',
-      'title': 'Student council representative will handle the item back to the owner',
-      'availability': 'Mon-Sat 10AM-5PM',
-      'avatar': Icons.person,
-    },
-    {
-      'id': '2',
       'name': 'Staff/Instructor',
       'title': 'A staff or instructor will assist in returning the item to its owner',
       'availability': 'Mon-Sat 8AM-5PM',
@@ -105,37 +99,7 @@ class _DropOffPageState extends State<DropOffPage> {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(12),
-                          child: widget.itemData['imageUrl'] != null && widget.itemData['imageUrl'].toString().isNotEmpty
-                              ? Image.network(
-                                  widget.itemData['imageUrl'],
-                                  width: 70,
-                                  height: 70,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Icon(
-                                      Icons.image_outlined,
-                                      size: 36,
-                                      color: Colors.grey[400],
-                                    );
-                                  },
-                                  loadingBuilder: (context, child, loadingProgress) {
-                                    if (loadingProgress == null) return child;
-                                    return Center(
-                                      child: CircularProgressIndicator(
-                                        value: loadingProgress.expectedTotalBytes != null
-                                            ? loadingProgress.cumulativeBytesLoaded /
-                                                loadingProgress.expectedTotalBytes!
-                                            : null,
-                                        strokeWidth: 2,
-                                      ),
-                                    );
-                                  },
-                                )
-                              : Icon(
-                                  Icons.image_outlined,
-                                  size: 36,
-                                  color: Colors.grey[400],
-                                ),
+                          child: _buildItemImage(),
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -382,6 +346,7 @@ class _DropOffPageState extends State<DropOffPage> {
                   ),
                   const SizedBox(height: 16),
                   Container(
+                    width: double.infinity,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -437,6 +402,46 @@ class _DropOffPageState extends State<DropOffPage> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildItemImage() {
+    // Try to get ImagePickerData first
+    final imagePickerDataList = widget.itemData['imagePickerData'] as List<dynamic>?;
+    
+    if (imagePickerDataList != null && imagePickerDataList.isNotEmpty) {
+      final firstImage = imagePickerDataList[0] as ImagePickerData;
+      return Image.memory(
+        firstImage.bytes,
+        width: 70,
+        height: 70,
+        fit: BoxFit.cover,
+      );
+    }
+    
+    // Fallback to imageUrl if available
+    final imageUrl = widget.itemData['imageUrl'];
+    if (imageUrl != null && imageUrl.toString().isNotEmpty) {
+      return Image.network(
+        imageUrl,
+        width: 70,
+        height: 70,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return Icon(
+            Icons.image_outlined,
+            size: 36,
+            color: Colors.grey[400],
+          );
+        },
+      );
+    }
+    
+    // No image available
+    return Icon(
+      Icons.image_outlined,
+      size: 36,
+      color: Colors.grey[400],
     );
   }
 
