@@ -10,6 +10,8 @@ import '../../services/activity_service.dart';
 import '../../services/game_service.dart';
 import '../../services/game_data_service.dart';
 import '../../services/supabase_storage_service.dart';
+import '../../services/update_service.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../posts/posts_page.dart';
 import '../game/game_hub_page.dart';
 import '../game/leaderboards_page.dart';
@@ -49,6 +51,7 @@ class _ProfilePageState extends State<ProfilePage> {
   // Settings state
   bool pushNotifications = true;
   bool emailNotifications = true;
+  String? _appVersion;
   bool claimNotifications = true;
   bool publicProfile = true;
   bool showStatistics = true;
@@ -134,6 +137,20 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
     _loadUserData();
+    _loadAppVersion();
+  }
+  
+  Future<void> _loadAppVersion() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      if (mounted) {
+        setState(() {
+          _appVersion = '${packageInfo.version}+${packageInfo.buildNumber}';
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading app version: $e');
+    }
   }
 
   @override
@@ -811,6 +828,11 @@ Future<void> _updateProfile(
         ],
       ),
     );
+  }
+  
+  void _checkForUpdates() {
+    final updateService = UpdateService();
+    updateService.manualUpdateCheck(context);
   }
 
   void _showHelpAndSupport() {
@@ -2321,6 +2343,13 @@ Future<void> _updateProfile(
                 title: 'Help & Support',
                 hasArrow: true,
                 onTap: _showHelpAndSupport,
+              ),
+              
+              _buildSettingItem(
+                title: 'Check for Updates',
+                subtitle: 'Version ${_appVersion ?? '1.0.0'}',
+                hasArrow: true,
+                onTap: _checkForUpdates,
               ),
 
               _buildSettingItem(

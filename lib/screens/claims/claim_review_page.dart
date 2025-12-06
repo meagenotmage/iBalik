@@ -760,6 +760,112 @@ class _ClaimReviewPageState extends State<ClaimReviewPage> {
                 try {
                   final fs = FirebaseFirestore.instance;
                   
+                  // First, check if item is already claimed
+                  if (itemId != null) {
+                    DocumentSnapshot? itemDoc;
+                    try {
+                      itemDoc = await fs.collection('lost_items').doc(itemId.toString()).get();
+                    } catch (_) {
+                      // fallback: find by itemId field
+                      final q = await fs.collection('lost_items').where('itemId', isEqualTo: itemId).limit(1).get();
+                      if (q.docs.isNotEmpty) {
+                        itemDoc = q.docs.first;
+                      }
+                    }
+                    
+                    if (itemDoc != null && itemDoc.exists) {
+                      final itemStatus = (itemDoc.data() as Map<String, dynamic>?)?['status'];
+                      if (itemStatus == 'claimed' || itemStatus == 'completed') {
+                        // Item already claimed by someone else
+                        if (mounted) {
+                          setState(() {
+                            _isProcessing = false;
+                          });
+                        }
+                        
+                        if (context.mounted) {
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              title: const Row(
+                                children: [
+                                  Icon(Icons.info, color: Color(0xFFFF9800), size: 28),
+                                  SizedBox(width: 12),
+                                  Text('Already Claimed'),
+                                ],
+                              ),
+                              content: const Text(
+                                'This item has already been claimed by another user. You cannot approve additional claims for this item.',
+                                style: TextStyle(fontSize: 14),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(context); // Close dialog
+                                    Navigator.pop(context); // Go back to claims page
+                                  },
+                                  child: const Text('OK'),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                        return;
+                      }
+                    }
+                  }
+                  
+                  // Check if there's already an approved claim for this item
+                  final existingApprovedClaims = await fs.collection('claims')
+                      .where('itemId', isEqualTo: itemId)
+                      .where('status', isEqualTo: 'approved')
+                      .limit(1)
+                      .get();
+                  
+                  if (existingApprovedClaims.docs.isNotEmpty) {
+                    // Another claim is already approved for this item
+                    if (mounted) {
+                      setState(() {
+                        _isProcessing = false;
+                      });
+                    }
+                    
+                    if (context.mounted) {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          title: const Row(
+                            children: [
+                              Icon(Icons.info, color: Color(0xFFFF9800), size: 28),
+                              SizedBox(width: 12),
+                              Text('Already Approved'),
+                            ],
+                          ),
+                          content: const Text(
+                            'Another claim for this item has already been approved. You cannot approve multiple claims for the same item.',
+                            style: TextStyle(fontSize: 14),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pop(context); // Close dialog
+                                Navigator.pop(context); // Go back to claims page
+                              },
+                              child: const Text('OK'),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                    return;
+                  }
+                  
                   // Update claim status (this will trigger StreamBuilder updates for both users)
                   await fs.collection('claims').doc(claimId).update({
                     'status': 'approved',
@@ -790,6 +896,41 @@ class _ClaimReviewPageState extends State<ClaimReviewPage> {
                           });
                         }
                       } catch (_) {}
+                    }
+                    
+                    // Auto-reject all other pending claims for this item
+                    try {
+                      final otherPendingClaims = await fs.collection('claims')
+                          .where('itemId', isEqualTo: itemId)
+                          .where('status', isEqualTo: 'pending')
+                          .get();
+                      
+                      for (var doc in otherPendingClaims.docs) {
+                        if (doc.id != claimId) {
+                          await doc.reference.update({
+                            'status': 'rejected',
+                            'rejectedBy': currentUid,
+                            'rejectedAt': FieldValue.serverTimestamp(),
+                            'rejectionReason': 'Item already claimed by another user',
+                          });
+                          
+                          // Notify the rejected claimer
+                          final rejectedClaimerId = doc.data()['claimerId'] as String?;
+                          if (rejectedClaimerId != null) {
+                            try {
+                              final notificationService = NotificationService();
+                              await notificationService.notifyUserClaimDenied(
+                                userId: rejectedClaimerId,
+                                itemName: itemTitle,
+                                claimId: doc.id,
+                                reason: 'Item already claimed by another user',
+                              );
+                            } catch (_) {}
+                          }
+                        }
+                      }
+                    } catch (_) {
+                      // If auto-rejection fails, continue with the approval
                     }
                   }
 

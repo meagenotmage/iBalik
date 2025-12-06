@@ -1,13 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
 import 'screens/auth/welcome_page.dart';
 import 'screens/home/home_page.dart';
 import 'services/storage_cleanup_service.dart';
 import 'services/supabase_storage_service.dart';
+import 'services/push_notification_service.dart';
 import 'utils/app_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+// Background message handler (must be top-level)
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  print('Background message: ${message.notification?.title}');
+}
 
 void main() async {
   // Catch any uncaught errors
@@ -25,6 +34,9 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
     print('***** Firebase initialized successfully');
+    
+    // Set up background message handler
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   } catch (e, stackTrace) {
     print('Firebase initialization error: $e');
     print('Stack trace: $stackTrace');
@@ -51,7 +63,22 @@ void main() async {
   Future.delayed(const Duration(seconds: 5), () {
     _ensureStorageBucket();
     _runStorageCleanup();
+    _initializePushNotifications();
   });
+}
+
+/// Initialize push notifications after user logs in
+void _initializePushNotifications() async {
+  try {
+    // Only initialize if user is logged in
+    if (fb_auth.FirebaseAuth.instance.currentUser != null) {
+      final pushService = PushNotificationService();
+      await pushService.initialize();
+      print('Push notifications initialized');
+    }
+  } catch (e) {
+    print('Push notification initialization error (non-critical): $e');
+  }
 }
 
 /// Ensure the storage bucket exists for image uploads

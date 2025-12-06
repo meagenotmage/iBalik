@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../services/lost_item_service.dart';
+import '../../services/push_notification_service.dart';
+import '../../services/update_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../utils/page_transitions.dart';
@@ -43,7 +45,34 @@ class _HomePageState extends State<HomePage> {
     _gameDataService = _gameService.gameData;
     _loadUserName();
     _loadUserRank();
+    _initializePushNotifications();
+    _checkForUpdates();
     // GameService initializes its listener in constructor
+  }
+  
+  /// Initialize push notifications for logged-in user
+  void _initializePushNotifications() async {
+    try {
+      final pushService = PushNotificationService();
+      await pushService.initialize();
+    } catch (e) {
+      // Silently fail - not critical
+      debugPrint('Push notification init error: $e');
+    }
+  }
+  
+  /// Check for app updates when home page loads
+  void _checkForUpdates() async {
+    // Delay check slightly to let UI load first
+    await Future.delayed(const Duration(seconds: 2));
+    if (!mounted) return;
+    
+    try {
+      final updateService = UpdateService();
+      await updateService.checkForUpdate(context);
+    } catch (e) {
+      debugPrint('Update check error: $e');
+    }
   }
 
   @override
@@ -388,7 +417,12 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                           TextButton(
-                            onPressed: () {},
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                SmoothPageRoute(page: const PostsPage()),
+                              );
+                            },
                             child: const Text(
                               'View All',
                               style: TextStyle(

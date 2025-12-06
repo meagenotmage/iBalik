@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'push_notification_service.dart';
 
 /// Notification types for the iBalik app
 enum NotificationType {
@@ -36,6 +37,7 @@ enum NotificationType {
 class NotificationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final PushNotificationService _pushService = PushNotificationService();
 
   /// Get current user ID
   String? get _userId => _auth.currentUser?.uid;
@@ -95,6 +97,19 @@ class NotificationService {
         'isRead': false,
         'createdAt': FieldValue.serverTimestamp(),
       });
+
+      // Send push notification
+      await _pushService.sendPushNotification(
+        userId: userId,
+        title: title,
+        body: message,
+        data: {
+          'type': type.name,
+          'actionRoute': actionRoute ?? '',
+          'actionId': actionId ?? '',
+          ...?metadata,
+        },
+      );
 
       // Cleanup old notifications for that user
       await _cleanupOldNotificationsForUser(userId);

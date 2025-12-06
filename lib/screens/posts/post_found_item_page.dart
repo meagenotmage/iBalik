@@ -101,6 +101,7 @@ class _PostFoundItemPageState extends State<PostFoundItemPage> {
     'College of PESCAR',
     'College of Dentistry',
     'Guard House',
+    'Student Council',
   ];
 
   @override

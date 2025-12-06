@@ -486,4 +486,90 @@ class GameService with ChangeNotifier {
       debugPrint('Error updating daily streak: $e');
     }
   }
+
+  /// Reverse rewards when an item is deleted
+  /// This deducts points, karma, and XP from the user
+  Future<void> reverseRewards({
+    required int points,
+    required int karma,
+    required int xp,
+    String? decrementField,
+    List<String>? decrementFields,
+  }) async {
+    if (_userId == null) return;
+
+    try {
+      final userRef = _firestore.collection('users').doc(_userId);
+
+      await _firestore.runTransaction((transaction) async {
+        final snapshot = await transaction.get(userRef);
+        
+        if (!snapshot.exists) {
+          throw Exception("User document does not exist!");
+        }
+
+        final data = snapshot.data() as Map<String, dynamic>;
+        int currentPoints = (data['points'] ?? 0).toInt();
+        int currentKarma = (data['karma'] ?? 0).toInt();
+        int currentXP = (data['currentXP'] ?? 0).toInt();
+        int currentLevel = (data['level'] ?? 1).toInt();
+        int maxXP = (data['maxXP'] ?? 100).toInt();
+
+        // Deduct values (ensure they don't go below 0)
+        int newPoints = currentPoints - points;
+        if (newPoints < 0) newPoints = 0;
+        
+        int newKarma = currentKarma - karma;
+        if (newKarma < 0) newKarma = 0;
+        
+        int newXP = currentXP - xp;
+        if (newXP < 0) newXP = 0;
+        
+        // Keep level and maxXP the same (no level down)
+        int newLevel = currentLevel;
+        int newMaxXP = maxXP;
+
+        final updates = <String, dynamic>{
+          'points': newPoints,
+          'karma': newKarma,
+          'currentXP': newXP,
+          'level': newLevel,
+          'maxXP': newMaxXP,
+          'lastActiveAt': FieldValue.serverTimestamp(),
+        };
+        
+        // Decrement specific stat field if provided (single field - for backwards compatibility)
+        if (decrementField != null) {
+          final currentValue = (data[decrementField] ?? 0).toInt();
+          if (currentValue > 0) {
+            updates[decrementField] = FieldValue.increment(-1);
+          }
+        }
+        
+        // Decrement multiple stat fields if provided
+        if (decrementFields != null) {
+          for (final field in decrementFields) {
+            final currentValue = (data[field] ?? 0).toInt();
+            if (currentValue > 0) {
+              updates[field] = FieldValue.increment(-1);
+            }
+          }
+        }
+
+        transaction.update(userRef, updates);
+      });
+
+      // Log Activity for reversal
+      await _activityService.recordActivity(
+        type: ActivityType.itemPosted, // Using existing type, could create new one
+        title: 'Rewards Reversed',
+        description: 'Rewards reversed due to item deletion',
+        pointsChange: -points,
+        karmaChange: -karma,
+      );
+
+    } catch (e) {
+      debugPrint('Error reversing rewards: $e');
+    }
+  }
 }

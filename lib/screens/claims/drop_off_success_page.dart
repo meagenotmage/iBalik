@@ -5,6 +5,8 @@ import '../../services/lost_item_service.dart';
 import '../../services/activity_service.dart';
 import '../../services/game_service.dart'; // Import GameService
 import '../../utils/image_picker_data.dart';
+import '../../utils/page_transitions.dart';
+import '../home/my_posts_page.dart';
 
 class DropOffSuccessPage extends StatefulWidget {
   final Map<String, dynamic> itemData;
@@ -636,10 +638,12 @@ class _DropOffSuccessPageState extends State<DropOffSuccessPage> {
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: () {
-                        // Navigate to my posted items page (to be implemented)
-                        Navigator.pop(context);
-                        Navigator.pop(context);
-                        Navigator.pop(context);
+                        // Navigate to home then to my posted items page
+                        Navigator.of(context).popUntil((route) => route.isFirst);
+                        Navigator.push(
+                          context,
+                          SmoothPageRoute(page: const MyPostsPage()),
+                        );
                       },
                       icon: const Icon(Icons.emoji_events, color: Colors.white),
                       label: const Text(

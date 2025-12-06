@@ -594,8 +594,8 @@ Future<String> _resolveFounderNameFromItem(dynamic itemId) async {
             ),
             child: Row(
               children: [
-                Expanded(child: _buildSwitchTab('My Claims', 0)),
-                Expanded(child: _buildSwitchTab('Claim Requests', 1)),
+                Expanded(child: _buildSwitchTabWithCounter('My Claims', 0)),
+                Expanded(child: _buildSwitchTabWithCounter('Claim Requests', 1)),
               ],
             ),
           ),
@@ -650,6 +650,98 @@ Future<String> _resolveFounderNameFromItem(dynamic itemId) async {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildSwitchTabWithCounter(String label, int index) {
+    final isSelected = _tabController.index == index;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    
+    if (uid == null) {
+      return _buildSwitchTab(label, index);
+    }
+    
+    // Stream for counting unread claims
+    Stream<int> unreadStream;
+    if (index == 0) {
+      // My Claims - count pending claims
+      unreadStream = FirebaseFirestore.instance
+        .collection('claims')
+        .where('claimerId', isEqualTo: uid)
+        .where('status', isEqualTo: 'pending')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+    } else {
+      // Claim Requests - count pending claims that need review
+      unreadStream = FirebaseFirestore.instance
+        .collection('claims')
+        .where('founderId', isEqualTo: uid)
+        .where('status', isEqualTo: 'pending')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+    }
+    
+    return StreamBuilder<int>(
+      stream: unreadStream,
+      builder: (context, snapshot) {
+        final count = snapshot.data ?? 0;
+        
+        return GestureDetector(
+          onTap: () {
+            setState(() {
+              _tabController.animateTo(index);
+            });
+          },
+          child: Container(
+            margin: const EdgeInsets.all(2),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+            decoration: BoxDecoration(
+              color: isSelected ? AppColors.white : Colors.transparent,
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+              border: isSelected ? Border.all(
+                color: AppColors.primary.withValues(alpha: 0.2),
+                width: 1,
+              ) : null,
+              boxShadow: isSelected ? AppShadows.soft : null,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+                if (count > 0) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: ClaimsColors.pending,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    constraints: const BoxConstraints(minWidth: 20),
+                    child: Text(
+                      count > 99 ? '99+' : count.toString(),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

@@ -308,6 +308,24 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
         const SnackBar(content: Text('Copied to clipboard')));
   }
 
+  /// Fetch user's phone number from Firestore
+  Future<String?> _fetchUserPhone(String userId) async {
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+      
+      if (userDoc.exists) {
+        final data = userDoc.data();
+        return data?['phone']?.toString();
+      }
+    } catch (e) {
+      debugPrint('Error fetching user phone: $e');
+    }
+    return null;
+  }
+
   Future<void> _markSuccessfulClaim() async {
     final claimId = _data['docId'] as String?;
     final itemId = _data['itemId'];
@@ -339,12 +357,13 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
       return;
     }
 
-    // Validate user authorization (must be founder to confirm return)
+    // Validate user authorization (must be founder OR claimer to confirm return)
     final isFounder = founderId != null && currentUserId == founderId.toString();
-    if (!isFounder) {
+    final isClaimer = claimerId != null && currentUserId == claimerId.toString();
+    if (!isFounder && !isClaimer) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Only the item finder can confirm the return'),
+          content: Text('Only the item finder or claimer can confirm the return'),
           backgroundColor: Colors.orange,
           duration: Duration(seconds: 3),
         ),
@@ -1144,7 +1163,53 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
                                     ? _data['claimerContactValue']
                                     : _data['founderContactValue'];
                                 
+                                // If no contact info from claim, try to get founder's phone from user document
                                 if (contactMethod == null || contactValue == null || contactValue.toString().isEmpty) {
+                                  // Get the user ID of the person we want to contact
+                                  final contactUserId = viewerIsFounder ? _data['claimerId'] : _data['founderId'];
+                                  
+                                  if (contactUserId != null && !viewerIsFounder) {
+                                    // Only fetch for founder's phone (when claimer is viewing)
+                                    return [
+                                      FutureBuilder<String?>(
+                                        future: _fetchUserPhone(contactUserId),
+                                        builder: (context, snapshot) {
+                                          if (snapshot.connectionState == ConnectionState.waiting) {
+                                            return _buildCompactInfoCard(
+                                              icon: Icons.phone,
+                                              iconColor: Colors.grey,
+                                              label: 'Phone Number',
+                                              value: 'Loading...',
+                                              onTap: null,
+                                            );
+                                          }
+                                          
+                                          final phone = snapshot.data;
+                                          if (phone != null && phone.isNotEmpty) {
+                                            return _buildCompactInfoCard(
+                                              icon: Icons.phone,
+                                              iconColor: const Color(0xFF4CAF50),
+                                              label: 'Phone Number',
+                                              value: phone,
+                                              subtitle: 'Tap to copy',
+                                              onTap: () {
+                                                _copyToClipboard(context, phone);
+                                              },
+                                            );
+                                          }
+                                          
+                                          return _buildCompactInfoCard(
+                                            icon: Icons.contact_phone,
+                                            iconColor: Colors.grey,
+                                            label: 'Contact Information',
+                                            value: 'Not provided',
+                                            onTap: null,
+                                          );
+                                        },
+                                      ),
+                                    ];
+                                  }
+                                  
                                   return [
                                     _buildCompactInfoCard(
                                       icon: Icons.contact_phone,
@@ -1304,9 +1369,46 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Removed Item Claimed button - claimers just see status
-                  // Show status container for all states
-                  if (true) // Always show status
+                  // Show "Item Received" button for claimer when approved
+                  if (isApproved && viewerIsClaimer)
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _processing
+                            ? null
+                            : () async {
+                                final confirm = await _showConfirmationDialog(
+                                  'Confirm Item Received',
+                                  'Have you successfully received this item from the finder?',
+                                );
+                                if (!confirm) return;
+                                await _markSuccessfulClaim();
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: ClaimsColors.approved,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: _processing
+                            ? const SizedBox(
+                                height: 18,
+                                width: 18,
+                                child: CircularProgressIndicator(
+                                    color: Colors.white, strokeWidth: 2))
+                            : const Text(
+                                'Confirm Item Received',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                      ),
+                    )
+                  // Show status container for all other states
+                  else if (!isApproved || !viewerIsClaimer)
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -1326,9 +1428,9 @@ class _ClaimDetailsPageState extends State<ClaimDetailsPage> {
                             : (isRejected
                                 ? 'Claim Rejected'
                                 : (isCompleted
-                                    ? 'Claim Completed'
+                                    ? 'Item Received ✓'
                                     : (isApproved
-                                        ? 'Awaiting Claimer'
+                                        ? 'Awaiting Pickup'
                                         : 'Not available'))),
                         textAlign: TextAlign.center,
                         style: const TextStyle(

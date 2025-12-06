@@ -101,6 +101,9 @@ class AuthService {
             'fullName': fullName,
             'username': usernameLower,
             'phone': phone,
+            'itemsPosted': 0,
+            'itemsReturned': 0,
+            'currentStreak': 0,
             'createdAt': FieldValue.serverTimestamp(),
             'updatedAt': FieldValue.serverTimestamp(),
           });
@@ -183,6 +186,9 @@ class AuthService {
           'needsVerification': true,
         };
       }
+
+      // Fix missing fields for existing users
+      await _ensureUserFieldsExist(userCredential.user!.uid);
 
       return {
         'success': true,
@@ -289,6 +295,41 @@ class AuthService {
       return {'success': true, 'message': 'Account deleted successfully'};
     } catch (e) {
       return {'success': false, 'message': 'An error occurred: $e'};
+    }
+  }
+
+  // Ensure user document has all required fields (for migration of existing users)
+  Future<void> _ensureUserFieldsExist(String uid) async {
+    try {
+      final userDoc = await _firestore.collection('users').doc(uid).get();
+      
+      if (!userDoc.exists) return;
+      
+      final data = userDoc.data() as Map<String, dynamic>;
+      final updates = <String, dynamic>{};
+      
+      // Check and add missing fields
+      if (!data.containsKey('itemsPosted')) {
+        updates['itemsPosted'] = 0;
+      }
+      if (!data.containsKey('itemsReturned')) {
+        updates['itemsReturned'] = 0;
+      }
+      if (!data.containsKey('currentStreak')) {
+        updates['currentStreak'] = 0;
+      }
+      
+      // Only update if there are missing fields
+      if (updates.isNotEmpty) {
+        await _firestore.collection('users').doc(uid).update(updates);
+        if (kDebugMode) {
+          print('Added missing fields to user $uid: ${updates.keys.join(', ')}');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error ensuring user fields exist: $e');
+      }
     }
   }
 }

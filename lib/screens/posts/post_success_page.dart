@@ -4,6 +4,8 @@ import '../../utils/app_theme.dart';
 import '../../utils/loading_components.dart';
 import '../../utils/design_system.dart';
 import '../../utils/shimmer_widgets.dart';
+import '../../utils/page_transitions.dart';
+import '../home/my_posts_page.dart';
 
 class PostSuccessPage extends StatelessWidget {
   final Map<String, dynamic> itemData;
@@ -417,9 +419,12 @@ class PostSuccessPage extends StatelessWidget {
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: () {
-                        // Navigate to my posted items page (to be implemented)
-                        Navigator.pop(context);
-                        Navigator.pop(context);
+                        // Navigate to home then to my posted items page
+                        Navigator.of(context).popUntil((route) => route.isFirst);
+                        Navigator.push(
+                          context,
+                          SmoothPageRoute(page: const MyPostsPage()),
+                        );
                       },
                       icon: const Icon(Icons.chat_bubble_outline, color: Colors.white),
                       label: const Text(

@@ -128,7 +128,7 @@ class _ReturnSuccessPageState extends State<ReturnSuccessPage> {
       backgroundColor: Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
-          physics: const ClampingScrollPhysics(),
+          physics: const BouncingScrollPhysics(),
           child: Column(
             children: [
               // Top gradient section with trophy
@@ -145,12 +145,12 @@ class _ReturnSuccessPageState extends State<ReturnSuccessPage> {
                     ],
                   ),
                 ),
-                padding: const EdgeInsets.symmetric(vertical: 40),
+                padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
                 child: Column(
                   children: [
                     Container(
-                      width: 100,
-                      height: 100,
+                      width: 80,
+                      height: 80,
                       decoration: const BoxDecoration(
                         color: Color(0xFF2196F3),
                         shape: BoxShape.circle,
@@ -158,20 +158,20 @@ class _ReturnSuccessPageState extends State<ReturnSuccessPage> {
                       child: const Icon(
                         Icons.emoji_events,
                         color: Color(0xFFFFD700),
-                        size: 50,
+                        size: 40,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     Text(
                       'Amazing Work!',
-                      style: AppTextStyles.successHeader,
+                      style: AppTextStyles.successHeader.copyWith(fontSize: 24),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     const Text(
                       'You\'ve successfully returned\nanother item!',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 14,
                         color: Colors.black54,
                       ),
                     ),
@@ -179,14 +179,14 @@ class _ReturnSuccessPageState extends State<ReturnSuccessPage> {
                 ),
               ),
               
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               
               // Rewards Earned Card
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
@@ -203,27 +203,27 @@ class _ReturnSuccessPageState extends State<ReturnSuccessPage> {
                       const Text(
                         'Rewards Earned',
                         style: TextStyle(
-                          fontSize: 20,
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Colors.black87,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       const Text(
                         'Your contribution has been recognized!',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 13,
                           color: Colors.black54,
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 16),
                       
                       // Points, Karma, and XP
                       Row(
                         children: [
                           Expanded(
                             child: Container(
-                              padding: const EdgeInsets.all(16),
+                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFE3F2FD),
                                 borderRadius: BorderRadius.circular(12),
@@ -236,24 +236,26 @@ class _ReturnSuccessPageState extends State<ReturnSuccessPage> {
                                       const Icon(
                                         Icons.stars,
                                         color: Color(0xFF2196F3),
-                                        size: 24,
+                                        size: 20,
                                       ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        '+${widget.pointsEarned}',
-                                        style: const TextStyle(
-                                          fontSize: 24,
-                                          fontWeight: FontWeight.bold,
-                                          color: Color(0xFF2196F3),
+                                      const SizedBox(width: 4),
+                                      Flexible(
+                                        child: Text(
+                                          '+${widget.pointsEarned}',
+                                          style: const TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF2196F3),
+                                          ),
                                         ),
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 8),
+                                  const SizedBox(height: 6),
                                   const Text(
                                     'Points',
                                     style: TextStyle(
-                                      fontSize: 13,
+                                      fontSize: 11,
                                       color: Color(0xFF2196F3),
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -262,10 +264,10 @@ class _ReturnSuccessPageState extends State<ReturnSuccessPage> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: Container(
-                              padding: const EdgeInsets.all(16),
+                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFF3E5F5),
                                 borderRadius: BorderRadius.circular(12),
@@ -278,24 +280,26 @@ class _ReturnSuccessPageState extends State<ReturnSuccessPage> {
                                       const Icon(
                                         Icons.favorite,
                                         color: Color(0xFF9C27B0),
-                                        size: 24,
+                                        size: 20,
                                       ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        '+${widget.karmaEarned}',
-                                        style: const TextStyle(
-                                          fontSize: 24,
-                                          fontWeight: FontWeight.bold,
-                                          color: Color(0xFF9C27B0),
+                                      const SizedBox(width: 4),
+                                      Flexible(
+                                        child: Text(
+                                          '+${widget.karmaEarned}',
+                                          style: const TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF9C27B0),
+                                          ),
                                         ),
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 8),
+                                  const SizedBox(height: 6),
                                   const Text(
                                     'Karma',
                                     style: TextStyle(
-                                      fontSize: 13,
+                                      fontSize: 11,
                                       color: Color(0xFF9C27B0),
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -304,10 +308,10 @@ class _ReturnSuccessPageState extends State<ReturnSuccessPage> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: Container(
-                              padding: const EdgeInsets.all(16),
+                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFE8F5E9),
                                 borderRadius: BorderRadius.circular(12),
@@ -320,24 +324,26 @@ class _ReturnSuccessPageState extends State<ReturnSuccessPage> {
                                       const Icon(
                                         Icons.trending_up,
                                         color: Color(0xFF4CAF50),
-                                        size: 24,
+                                        size: 20,
                                       ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        '+${widget.xpEarned}',
-                                        style: const TextStyle(
-                                          fontSize: 24,
-                                          fontWeight: FontWeight.bold,
-                                          color: Color(0xFF4CAF50),
+                                      const SizedBox(width: 4),
+                                      Flexible(
+                                        child: Text(
+                                          '+${widget.xpEarned}',
+                                          style: const TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF4CAF50),
+                                          ),
                                         ),
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 8),
+                                  const SizedBox(height: 6),
                                   const Text(
                                     'XP',
                                     style: TextStyle(
-                                      fontSize: 13,
+                                      fontSize: 11,
                                       color: Color(0xFF4CAF50),
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -349,13 +355,13 @@ class _ReturnSuccessPageState extends State<ReturnSuccessPage> {
                         ],
                       ),
                       
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
                       
                       // Level Up (only show if leveled up)
                       if (_leveledUp)
                         Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
                             color: const Color(0xFFE8F5E9),
                             borderRadius: BorderRadius.circular(12),
@@ -368,24 +374,25 @@ class _ReturnSuccessPageState extends State<ReturnSuccessPage> {
                                   Icon(
                                     Icons.emoji_events,
                                     color: Color(0xFFFFD700),
-                                    size: 32,
+                                    size: 28,
                                   ),
                                   SizedBox(width: 8),
                                   Text(
                                     'Level Up!',
                                     style: TextStyle(
-                                      fontSize: 18,
+                                      fontSize: 16,
                                       fontWeight: FontWeight.bold,
                                       color: Color(0xFF2E7D32),
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: 8),
                               Text(
                                 'You\'re now Level $_currentLevel • $_levelTitle',
+                                textAlign: TextAlign.center,
                                 style: const TextStyle(
-                                  fontSize: 16,
+                                  fontSize: 14,
                                   color: Color(0xFF388E3C),
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -394,7 +401,7 @@ class _ReturnSuccessPageState extends State<ReturnSuccessPage> {
                               Text(
                                 'Leveled up from Level $_previousLevel!',
                                 style: const TextStyle(
-                                  fontSize: 13,
+                                  fontSize: 12,
                                   color: Color(0xFF66BB6A),
                                 ),
                               ),
@@ -405,7 +412,7 @@ class _ReturnSuccessPageState extends State<ReturnSuccessPage> {
                       if (!_leveledUp)
                         Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
                             color: const Color(0xFFE8F5E9),
                             borderRadius: BorderRadius.circular(12),
@@ -418,24 +425,24 @@ class _ReturnSuccessPageState extends State<ReturnSuccessPage> {
                                   Icon(
                                     Icons.trending_up,
                                     color: Color(0xFF4CAF50),
-                                    size: 20,
+                                    size: 18,
                                   ),
                                   SizedBox(width: 8),
                                   Text(
                                     'Current Level',
                                     style: TextStyle(
-                                      fontSize: 16,
+                                      fontSize: 14,
                                       fontWeight: FontWeight.bold,
                                       color: Color(0xFF2E7D32),
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 6),
                               Text(
                                 'Level $_currentLevel • $_levelTitle',
                                 style: const TextStyle(
-                                  fontSize: 14,
+                                  fontSize: 13,
                                   color: Color(0xFF388E3C),
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -444,7 +451,7 @@ class _ReturnSuccessPageState extends State<ReturnSuccessPage> {
                               const Text(
                                 'Keep helping to level up!',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 11,
                                   color: Color(0xFF66BB6A),
                                 ),
                               ),
@@ -456,14 +463,14 @@ class _ReturnSuccessPageState extends State<ReturnSuccessPage> {
                 ),
               ),
               
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               
               // Your Community Impact Card
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF3F1FF),
                     borderRadius: BorderRadius.circular(16),
@@ -489,33 +496,35 @@ class _ReturnSuccessPageState extends State<ReturnSuccessPage> {
                             child: const Icon(
                               Icons.groups,
                               color: Colors.white,
-                              size: 20,
+                              size: 18,
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          const Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Your Community Impact',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
+                          const SizedBox(width: 10),
+                          const Flexible(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Your Community Impact',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                'Making WVSU a better place',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF6C63FF),
+                                Text(
+                                  'Making WVSU a better place',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Color(0xFF6C63FF),
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 16),
                       _loading
                           ? const Center(
                               child: Padding(
@@ -548,14 +557,14 @@ class _ReturnSuccessPageState extends State<ReturnSuccessPage> {
                 ),
               ),
               
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               
               // You're Making a Difference Card
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFF0F5),
                     borderRadius: BorderRadius.circular(16),
@@ -565,25 +574,25 @@ class _ReturnSuccessPageState extends State<ReturnSuccessPage> {
                       Icon(
                         Icons.favorite,
                         color: Color(0xFFFF4081),
-                        size: 40,
+                        size: 32,
                       ),
-                      SizedBox(height: 12),
+                      SizedBox(height: 10),
                       Text(
                         'You\'re Making a Difference!',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFFC2185B),
                         ),
                       ),
-                      SizedBox(height: 8),
+                      SizedBox(height: 6),
                       Text(
                         'Every item you return helps create a more caring and connected campus community. Your kindness has a ripple effect that touches more lives than you know.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 13,
                           color: Color(0xFFD81B60),
-                          height: 1.5,
+                          height: 1.4,
                         ),
                       ),
                     ],
@@ -591,46 +600,81 @@ class _ReturnSuccessPageState extends State<ReturnSuccessPage> {
                 ),
               ),
               
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               
               // Action Buttons
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () {
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        SmoothPageRoute(page: const HomePage()),
+                        (route) => false,
+                      );
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.black87,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      side: BorderSide(color: Colors.grey[300]!),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.home, size: 18),
+                        SizedBox(width: 8),
+                        Text(
+                          'Back to Home',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Social Share Message
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
                   children: [
-
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            SmoothPageRoute(page: const HomePage()),
-                            (route) => false,
-                          );
-                        },
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.black87,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          side: BorderSide(color: Colors.grey[300]!),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.celebration,
+                          color: Color(0xFFFF6B35),
+                          size: 14,
                         ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.home, size: 20),
-                            SizedBox(width: 8),
-                            Text(
-                              'Back to Home',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            'Want to share your good deed? Tag us',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey[600],
                             ),
-                          ],
+                          ),
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '@IBalikWVSU on social media!',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
@@ -638,40 +682,6 @@ class _ReturnSuccessPageState extends State<ReturnSuccessPage> {
               ),
               
               const SizedBox(height: 24),
-              
-              // Social Share Message
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.celebration,
-                      color: Color(0xFFFF6B35),
-                      size: 16,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Want to share your good deed? Tag us',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '@IBalikWVSU on social media!',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              
-              const SizedBox(height: 32),
             ],
           ),
         ),
@@ -682,19 +692,23 @@ class _ReturnSuccessPageState extends State<ReturnSuccessPage> {
   Widget _buildStatItem(String value, String label, Color color) {
     return Column(
       children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: color,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
           ),
         ),
         const SizedBox(height: 4),
         Text(
           label,
+          textAlign: TextAlign.center,
           style: const TextStyle(
-            fontSize: 12,
+            fontSize: 11,
             color: Colors.black54,
           ),
         ),

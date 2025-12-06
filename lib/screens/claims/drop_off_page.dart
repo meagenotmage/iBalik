@@ -14,16 +14,39 @@ class DropOffPage extends StatefulWidget {
 
 class _DropOffPageState extends State<DropOffPage> {
   String? _selectedStaffId;
+  List<Map<String, dynamic>> _staffMembers = [];
 
-  final List<Map<String, dynamic>> _staffMembers = [
-    {
-      'id': '1',
-      'name': 'Staff/Instructor',
-      'title': 'A staff or instructor will assist in returning the item to its owner',
-      'availability': 'Mon-Sat 8AM-5PM',
-      'avatar': Icons.person,
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _initializeStaffMembers();
+  }
+
+  void _initializeStaffMembers() {
+    final dropOffLocation = widget.itemData['dropOffLocation'] ?? '';
+    
+    // Base staff member available everywhere
+    _staffMembers = [
+      {
+        'id': '1',
+        'name': 'Staff/Instructor',
+        'title': 'A staff or instructor will assist in returning the item to its owner',
+        'availability': 'Mon-Sat 8AM-5PM',
+        'avatar': Icons.person,
+      },
+    ];
+    
+    // Add Student Council option for all locations except Library and Guard House
+    if (dropOffLocation != 'Library' && dropOffLocation != 'Guard House') {
+      _staffMembers.add({
+        'id': '2',
+        'name': 'Student Council Member',
+        'title': 'A Student Council member will assist in returning the item to its owner',
+        'availability': 'Mon-Fri 8AM-5PM',
+        'avatar': Icons.school,
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

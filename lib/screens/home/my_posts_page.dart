@@ -4,7 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import '../../services/lost_item_service.dart';
-import '../../utils/page_transitions.dart';
+import '../../services/game_service.dart';
+
 import '../../utils/app_theme.dart';
 
 class MyPostsPage extends StatefulWidget {
@@ -21,8 +22,6 @@ class _MyPostsPageState extends State<MyPostsPage> with SingleTickerProviderStat
   int _totalPosts = 0;
   int _activePosts = 0;
   int _returnedPosts = 0;
-  int _totalViews = 0;
-  int _totalClaims = 0;
   
   String _selectedFilter = 'All';
   
@@ -49,23 +48,12 @@ class _MyPostsPageState extends State<MyPostsPage> with SingleTickerProviderStat
           .where('userId', isEqualTo: userId)
           .get();
       
-      int totalViews = 0;
-      int totalClaims = 0;
       int active = 0;
       int returned = 0;
       
       for (var doc in snapshot.docs) {
         final data = doc.data();
-        totalViews += (data['views'] as num?)?.toInt() ?? 0;
-        
         final status = data['status'] as String? ?? 'available';
-        
-        // Count claims based on claimRequests or claimedBy
-        if (data['claimRequests'] is List) {
-          totalClaims += (data['claimRequests'] as List).length;
-        } else if (data['claimedBy'] != null) {
-          totalClaims += 1;
-        }
         
         if (status == 'available') {
           active++;
@@ -79,8 +67,6 @@ class _MyPostsPageState extends State<MyPostsPage> with SingleTickerProviderStat
           _totalPosts = snapshot.docs.length;
           _activePosts = active;
           _returnedPosts = returned;
-          _totalViews = totalViews;
-          _totalClaims = totalClaims;
         });
       }
     } catch (e) {
@@ -174,29 +160,6 @@ class _MyPostsPageState extends State<MyPostsPage> with SingleTickerProviderStat
                             _returnedPosts.toString(),
                             'Returned',
                             Colors.green,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    // Bottom Row Stats
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildStatCardWithIcon(
-                            _totalViews.toString(),
-                            'Total Views',
-                            Icons.visibility,
-                            Colors.grey[700]!,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildStatCardWithIcon(
-                            _totalClaims.toString(),
-                            'Total Claims',
-                            Icons.description_outlined,
-                            Colors.grey[700]!,
                           ),
                         ),
                       ],
@@ -336,43 +299,7 @@ class _MyPostsPageState extends State<MyPostsPage> with SingleTickerProviderStat
     );
   }
   
-  Widget _buildStatCardWithIcon(String value, String label, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: color),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-                ),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
   
   Widget _buildFilterTab(String label, int count) {
     final isSelected = _selectedFilter == label;
@@ -408,17 +335,8 @@ class _MyPostsPageState extends State<MyPostsPage> with SingleTickerProviderStat
     final String title = item['itemName'] ?? item['name'] ?? item['title'] ?? 'Untitled';
     final String location = item['location'] ?? 'Unknown location';
     final String status = item['status'] ?? 'available';
-    final int views = (item['views'] as num?)?.toInt() ?? 0;
     final List<dynamic> images = item['images'] ?? [];
     final String imageUrl = images.isNotEmpty ? images[0] : '';
-    
-    // Get claim count
-    int claimCount = 0;
-    if (item['claimRequests'] is List) {
-      claimCount = (item['claimRequests'] as List).length;
-    } else if (item['claimedBy'] != null) {
-      claimCount = 1;
-    }
     
     // Format date
     String dateStr = '';
@@ -459,16 +377,11 @@ class _MyPostsPageState extends State<MyPostsPage> with SingleTickerProviderStat
       child: Material(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () {
-            // Navigate to item details
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
                 // Image
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
@@ -575,34 +488,6 @@ class _MyPostsPageState extends State<MyPostsPage> with SingleTickerProviderStat
                       Row(
                         children: [
                           Icon(
-                            Icons.visibility,
-                            size: 14,
-                            color: Colors.grey[500],
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '$views views',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Icon(
-                            Icons.description_outlined,
-                            size: 14,
-                            color: Colors.grey[500],
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '$claimCount claims',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          const Spacer(),
-                          Icon(
                             Icons.access_time,
                             size: 14,
                             color: Colors.grey[500],
@@ -614,6 +499,16 @@ class _MyPostsPageState extends State<MyPostsPage> with SingleTickerProviderStat
                               fontSize: 12,
                               color: Colors.grey[600],
                             ),
+                          ),
+                          const Spacer(),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, color: Colors.red),
+                            iconSize: 20,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () {
+                              _confirmDeletePost(itemId, title);
+                            },
                           ),
                         ],
                       ),
@@ -644,7 +539,6 @@ class _MyPostsPageState extends State<MyPostsPage> with SingleTickerProviderStat
               ],
             ),
           ),
-        ),
       ),
     );
   }
@@ -707,4 +601,186 @@ class _MyPostsPageState extends State<MyPostsPage> with SingleTickerProviderStat
       },
     );
   }
+  
+  void _confirmDeletePost(String itemId, String title) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.warning, color: Colors.orange, size: 28),
+            SizedBox(width: 12),
+            Text('Delete Post?'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to delete "$title"?',
+              style: const TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'This action cannot be undone. All associated claims and data will be permanently deleted.',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.red,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _deletePost(itemId, title);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Future<void> _deletePost(String itemId, String title) async {
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Deleting post...'),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    
+    try {
+      // Get item data before deletion to check rewards earned
+      final itemDoc = await FirebaseFirestore.instance
+          .collection('lost_items')
+          .doc(itemId)
+          .get();
+      
+      final itemData = itemDoc.data();
+      final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+      
+      // Check if user earned rewards from this post and reverse them
+      if (itemData != null && currentUserId != null) {
+        final userId = itemData['userId'];
+        
+        // Only reverse if current user is the poster
+        if (userId == currentUserId) {
+          final gameService = GameService();
+          
+          // Determine which type of reward was given
+          final availability = itemData['availability'];
+          int totalPoints;
+          int totalKarma;
+          int totalXP;
+          List<String> decrementFields = ['itemsPosted'];
+          
+          if (availability == 'Drop off location') {
+            // User chose drop-off: only gets drop-off rewards (8 pts, 6 karma, 15 XP)
+            totalPoints = 8;
+            totalKarma = 6;
+            totalXP = 15;
+          } else {
+            // User chose "Keep with me": only gets item post rewards (5 pts, 10 karma, 5 XP)
+            totalPoints = 5;
+            totalKarma = 10;
+            totalXP = 5;
+          }
+          
+          // Add return rewards if item was returned/claimed
+          final status = itemData['status'];
+          if (status == 'returned' || status == 'claimed') {
+            totalPoints += 20;
+            totalKarma += 15;
+            totalXP += 25;
+            decrementFields.add('itemsReturned');
+          }
+          
+          // Make a single call to reverse all rewards at once
+          await gameService.reverseRewards(
+            points: totalPoints,
+            karma: totalKarma,
+            xp: totalXP,
+            decrementFields: decrementFields,
+          );
+        }
+      }
+      
+      // Delete from Firestore
+      await FirebaseFirestore.instance
+          .collection('lost_items')
+          .doc(itemId)
+          .delete();
+      
+      // Also delete any associated claims
+      final claimsSnapshot = await FirebaseFirestore.instance
+          .collection('claims')
+          .where('itemId', isEqualTo: itemId)
+          .get();
+      
+      for (var doc in claimsSnapshot.docs) {
+        await doc.reference.delete();
+      }
+      
+      if (mounted) {
+        Navigator.pop(context); // Close loading dialog
+        
+        // Reload stats
+        await _loadStats();
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Post "$title" deleted successfully'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Close loading dialog
+        
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error deleting post: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+      debugPrint('Error deleting post: $e');
+    }
+  }
+  
+
 }

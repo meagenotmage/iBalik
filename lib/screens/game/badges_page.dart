@@ -242,11 +242,12 @@ class _BadgesPageState extends State<BadgesPage> with SingleTickerProviderStateM
       color: AppColors.primary,
       child: GridView.builder(
         padding: const EdgeInsets.all(16),
+        physics: const AlwaysScrollableScrollPhysics(),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
           childAspectRatio: 0.85,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
         ),
         itemCount: badges.length,
         itemBuilder: (context, index) => _buildEarnedBadgeCard(badges[index]),
@@ -365,11 +366,12 @@ class _BadgesPageState extends State<BadgesPage> with SingleTickerProviderStateM
       color: AppColors.primary,
       child: GridView.builder(
         padding: const EdgeInsets.all(16),
+        physics: const AlwaysScrollableScrollPhysics(),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
-          childAspectRatio: 0.75,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
+          childAspectRatio: 0.85,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
         ),
         itemCount: badges.length,
         itemBuilder: (context, index) => _buildAvailableBadgeCard(badges[index]),
@@ -388,23 +390,26 @@ class _BadgesPageState extends State<BadgesPage> with SingleTickerProviderStateM
       onTap: () => _showBadgeDetails(definition: badge, progress: progress),
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.darkCard.withOpacity(0.6),
+          color: const Color(0xFF2A2A2A),
           borderRadius: BorderRadius.circular(AppRadius.lg),
           border: Border.all(
-            color: AppColors.darkBorder,
-            width: 1,
+            color: const Color(0xFF404040),
+            width: 1.5,
           ),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
             // Badge Icon (Locked style)
             Stack(
               alignment: Alignment.center,
               children: [
                 Container(
-                  width: 70,
-                  height: 70,
+                  width: 50,
+                  height: 50,
                   decoration: BoxDecoration(
                     color: AppColors.darkSurface,
                     shape: BoxShape.circle,
@@ -419,83 +424,76 @@ class _BadgesPageState extends State<BadgesPage> with SingleTickerProviderStateM
                         opacity: 0.5,
                         child: Text(
                           badge.icon,
-                          style: const TextStyle(fontSize: 36),
+                          style: const TextStyle(fontSize: 24),
                         ),
                       ),
                     ),
                   ),
                 ),
                 if (progress < 1.0)
-                  Container(
-                    width: 70,
-                    height: 70,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: AppColors.darkBorder,
-                        width: 3,
-                      ),
-                    ),
+                  SizedBox(
+                    width: 50,
+                    height: 50,
                     child: CircularProgressIndicator(
                       value: progress,
                       strokeWidth: 3,
-                      backgroundColor: Colors.transparent,
+                      backgroundColor: AppColors.darkBorder,
                       valueColor: AlwaysStoppedAnimation<Color>(rarityColor),
                     ),
                   ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             // Badge Name
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text(
-                badge.name,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.titleSmall.copyWith(
-                  color: AppColors.lightTextSecondary,
-                ),
+            Text(
+              badge.name,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.titleSmall.copyWith(
+                color: AppColors.lightTextSecondary,
+                fontSize: 11,
               ),
             ),
             const SizedBox(height: 4),
             // Rarity Tag
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 color: AppColors.darkSurface,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
                 _getRarityLabel(badge.rarity),
                 style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 9,
                   color: AppColors.lightTextSecondary,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             // Progress
             if (current != null && required != null)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       '$current / $required',
                       style: AppTextStyles.bodySmall.copyWith(
                         color: rarityColor,
                         fontWeight: FontWeight.bold,
+                        fontSize: 10,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(4),
                       child: LinearProgressIndicator(
                         value: progress,
-                        minHeight: 4,
+                        minHeight: 3,
                         backgroundColor: AppColors.darkBorder,
                         valueColor: AlwaysStoppedAnimation<Color>(rarityColor),
                       ),
@@ -507,12 +505,15 @@ class _BadgesPageState extends State<BadgesPage> with SingleTickerProviderStateM
               Text(
                 badge.unlockCondition,
                 textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.bodySmall.copyWith(
                   color: AppColors.lightTextSecondary,
-                  fontSize: 10,
+                  fontSize: 9,
                 ),
               ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -633,7 +634,7 @@ class _BadgesPageState extends State<BadgesPage> with SingleTickerProviderStateM
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'Earned ${_formatEarnedDate(badge!.earnedAt)}',
+                    'Earned ${_formatEarnedDate(badge.earnedAt)}',
                     style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.secondary,
                       fontWeight: FontWeight.bold,

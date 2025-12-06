@@ -70,6 +70,11 @@ dependencies:
   cached_network_image: ^3.3.1
   shimmer: ^3.0.0
   flutter_staggered_animations: ^1.1.1
+  firebase_messaging: ^16.0.4
+  
+  # In-app updates
+  in_app_update: ^4.2.3
+  package_info_plus: ^8.0.0
 
 dev_dependencies:
   flutter_test:
@@ -101,13 +106,14 @@ flutter:
     - assets/logo_icon.png
     - assets/ibalikpng.png
 
-# Flutter Launcher Icons configuration
+# Flutter Launcher Icons configuration - uses exact image size
 flutter_launcher_icons:
   android: true
   ios: false
   image_path: "assets/ibalikpng.png"
   adaptive_icon_background: "#FFFFFF"
   adaptive_icon_foreground: "assets/ibalikpng.png"
+  min_sdk_android: 21
 
   # To add assets to your application, add an assets section, like this:
   # assets:
